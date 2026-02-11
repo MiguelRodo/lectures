@@ -1,0 +1,327 @@
+---
+title: Additional notes
+author: Miguel Rodo
+----
+
+# References
+
+## Zero reference manager
+
+- Create a `thebibliography` environment in `LaTeX`, which has `\bibitem` entries, specifying the citation key, reference details and the style.
+- For example:
+
+```latex
+\begin{thebibliography}{9}
+\bibitem{texbook}
+Donald E. Knuth (1986) \emph{The \TeX{} Book}, Addison-Wesley Professional.
+
+\bibitem{lamport94}
+Leslie Lamport (1994) \emph{\LaTeX: a document preparation system}, Addison
+Wesley, Massachusetts, 2nd ed.
+\end{thebibliography}
+```
+
+- This is a manual process, where you have to order, style and write out the references yourself.
+- You cite them in the text with `\cite{<citation_key>}`.
+
+## `BibTeX`
+
+- This is essentially a program to generate the bibliography automatically for you.
+- You have a `.bib` file, which is a plain text file that contains your bibliography entries in a specific format (e.g. `@book`, `@article`, etc.), with fields for the author, title, year, etc. For example:
+
+```latex
+@article{einstein,
+    author =       "Albert Einstein",
+    title =        "{Zur Elektrodynamik bewegter K{\"o}rper}. ({German})
+        [{On} the electrodynamics of moving bodies]",
+    journal =      "Annalen der Physik",
+    volume =       "322",
+    number =       "10",
+    pages =        "891--921",
+    year =         "1905",
+    DOI =          "http://dx.doi.org/10.1002/andp.19053221004"
+}
+
+@book{latexcompanion,
+    author    = "Michel Goossens and Frank Mittelbach and Alexander Samarin",
+    title     = "The \LaTeX\ Companion",
+    year      = "1993",
+    publisher = "Addison-Wesley",
+    address   = "Reading, Massachusetts"
+}
+
+@misc{knuthwebsite,
+    author    = "Donald Knuth",
+    title     = "Knuth: Computers and Typesetting",
+    url       = "http://www-cs-faculty.stanford.edu/\~{}uno/abcde.html"
+}
+```
+
+- In the text, you cite with `\cite{<citation_key>}` as before.
+- Your `LaTeX` engine (e.g. `pdflatex`, `xelatex`) will generate an auxiliary file (`.aux`) that contains the citation keys used in the document (a wish list).
+- The program `bibtex` then reads this `.aux` file, looks up the corresponding entries in a bibliography database file (`.bib`), and generates a bibliography file (`.bbl`) that contains the formatted bibliography entries.
+- The `LaTeX` engine then basically pastes the contents of that `.bbl` file directly where you have the `\bibliography{<bib_file>}` command in your document, which is where you want the bibliography to appear.
+  - These multiple runs are handled automatically by `Overleaf`, as it uses `latexmk` in the background. `Quarto` and `RMarkdown` also handle this automatically when you render the document.
+- You can specify the bibliography style with `\bibliographystyle{<style>}`, which determines how the entries are formatted (e.g. `plain`, `alpha`, `abbrv`, etc.).
+
+## `natbib`
+
+- To use `bibtex`, you don't need to load any specific package, but `natbib` is a popular package that provides additional features for handling citations and bibliographies in `LaTeX`.
+- Well, the main thing it handles is citation style, really.
+  - With `BibTex`, you can only cite using numbers, e.g. `Einstein's theory of relativity [1]`, whereas with NatBib you can cite author-year, e.g. `Einstein's theory of relativity (Einstein, 1905)`.
+- You add this to the preamble:
+
+```latex
+\usepackage{natbib}
+```
+
+- Then cite with `\cite{}`, `\citet{}` (textual), `\citep{}` (parenthetical), etc, and put `\bibliography{<bib_file>}` where you want the bibliography to appear.
+- You can customise this further in the premable (the citation style).
+
+## `biblatex`
+
+- The primary issue with `natbib` is that the style of the bibliography is determined by the bibliography style you choose with `\bibliographystyle{<style>}`, and there are only a limited number of styles available and it is (apparently) extremely difficult to create your own custom style.
+  - In the background, when you say `\bibliographystyle{plain}`, `natbib` is using a file called `plain.bst` to format the bibliography, and if you want to change the formatting, you have to edit that file, which is a nightmare.
+- `biblatex` is a more modern package that provides much more flexibility and control over the formatting of the bibliography and citations.
+  - It does not rely on these `bst` files, but rather the formatting is done directly in `LaTeX` with the `biblatex` commands, which is much easier to customise.
+- You add this to the preamble:
+
+```latex
+\usepackage[style=authoryear]{biblatex}
+\addbibresource{<bib_file>.bib}
+```
+
+- Then, you cite using `\cite{}`, `\textcite{}` (textual), `\parencite{}` (parenthetical), etc, and put `\printbibliography` where you want the bibliography to appear.
+- It is also much faster than `bibtex`.
+
+# Running `R` in `LaTeX`
+
+Link: https://docs.overleaf.com/integrations-and-add-ons/r-code-knitr#Introduction
+
+- Seem unable to do this via `\input{<file_path>.Rtex}`
+  - If keeping `R` code in other files, must use the `read_chunk` function and keep it in `R` files.
+- Must change `main.tex` to `main.Rtex`
+
+## Chunks
+
+<<>>=
+# R code goes here
+@
+
+## In-line
+
+\Sexpr{r code here}
+
+## Plots
+
+- Chunk name is the label name, prefixed with `fig:`. 
+- So, refer to it with \ref{fig:chunk-name}.
+
+## R environment
+
+### Installed packages
+
+<<>>=
+pkgVec <- installed.packages()[, "Package"] 
+pkgVecNull <- setNames(pkgVec, NULL) 
+sort(pkgVecNull)
+@
+
+### R version
+
+Version is 3.6.3, which is quite old - released in 2020, and we're now at R4.5.2, so there's been a major version change (3 -> 4).
+The pipe operator (`|>`), for example, is not available before R4.1, I think.
+
+# Zotero
+
+# Overleaf
+
+- Spell check
+
+## Compile timeouts
+
+- Advice from OverLeaf: https://docs.overleaf.com/troubleshooting-and-support/fixing-and-preventing-compile-timeouts#steps-to-resolve-compile-timeouts
+
+# Presentations
+
+- beamerh
+- Staggering images in LaTeX
+
+# Prompt
+
+# Collaboration
+
+- If more than two people:
+  - View link for all group members
+  - Delete person who isn't writing anything
+
+# Quarto/RMarkdown versus Overleaf
+
+- You control the `R` environment fully, so can install packages, use any version of `R`, etc.
+- No compile time limit. 
+- Will need to set up `LaTeX` locally.
+- Easiest to do this with the `tinytex` package in `R`, which provides a lightweight distribution of `LaTeX` that is easy to install and manage:
+
+```{r}
+#| eval: false
+install.packages("tinytex")
+tinytex::install_tinytex()
+```
+
+# Math
+
+Q&A
+Custom Gem
+Gemini said
+Beyond basic alignment with amsmath, there are several "pro-tier" behaviors and alternative environments you'll likely run into when your math gets more complex.
+
+1. The "Star" Versions (Unnumbered Equations)
+By default, environments like equation and align automatically number your math on the right side of the page.
+
+How to hide numbers: Append an asterisk (*) to the environment name, like \begin{align*} ... \end{align*}.
+
+The amsmath benefit: While standard LaTeX has a displaymath environment, using equation* is generally preferred because it handles spacing more consistently.
+
+2. The cases Environment
+If you need to define a function that changes based on a condition (like an absolute value or a piecewise function), cases is the easiest tool.
+
+f(x)={ 
+x
+−x
+​
+  
+if x≥0
+if x<0
+​
+ 
+3. Matrices and Grouping
+The amsmath package provides specialized environments for matrices that handle the brackets for you:
+
+matrix: Plain numbers.
+
+pmatrix: Parentheses (…).
+
+bmatrix: Square brackets […].
+
+vmatrix: Determinant bars ∣…∣.
+
+4. Text inside Math
+If you type "if" or "where" inside a math environment, LaTeX treats it as a string of variables and removes all spacing (looking like if). Use the \text{...} command to insert normal text with proper spacing inside your equations.
+
+/QA [Advanced LaTeX Math and amsmath]
+Source Text: The amsmath package offers extended math functionality. Starred environments, such as align*, suppress automatic equation numbering. The cases environment is used for piecewise functions, while pmatrix and bmatrix handle matrices with different bracket styles. To include readable text within math environments, the \text{} command is required to prevent LaTeX from formatting words as italicized variables.
+
+Advanced Math Facts
+What symbol suppresses equation numbering?
+
+Asterisk (*)
+
+Which environment is used for piecewise functions?
+
+cases
+
+What does the pmatrix environment add?
+
+Parentheses
+
+What does the bmatrix environment add?
+
+Square brackets
+
+What does the vmatrix environment add?
+
+Vertical bars
+
+How does LaTeX format plain text inside math?
+
+Italicized variables
+
+What command inserts normal text into math?
+
+\text{}
+
+Does \text{} preserve standard spacing?
+
+Yes
+
+Which package provides these environments?
+
+amsmath
+
+Would you like me to show you how to use \label and \eqref to automatically link to your numbered equations in your text?
+
+You said
+Show me how to use the cases environment, and is that part of amsmath? Is amsmath the only math package you "by deafult" need to load?
+
+Q&A
+Custom Gem
+Gemini said
+Yes, the cases environment is a core feature of the amsmath package. While amsmath is the "must-have" foundation for almost any technical document, it is usually part of a small "starter pack" of math packages you'll want to load by default.
+
+1. Using the cases Environment
+The cases environment is used for piecewise functions. It automatically adds a large left brace and handles the internal alignment.
+
+Syntax Example:
+
+Code snippet
+\[
+f(x) = 
+\begin{cases} 
+  \frac{1}{x} & \text{if } x \neq 0 \\
+  0           & \text{if } x = 0 
+\end{cases}
+\]
+The & symbol: Used to align the conditions (like the "if" statements).
+
+The \\ command: Used to start a new line within the brace.
+
+The \text{} command: Essential for writing the "if" part so it doesn't look like italicized variables.
+
+2. Is amsmath the only package you need?
+While amsmath is the most important, most users load a "Big Three" set of packages to cover all bases:
+
+amsmath: For the logic, environments (like align, cases), and basic symbols.
+
+amssymb: Provides a massive library of mathematical symbols (like R for real numbers or ℏ).
+
+amsfonts: Provides specialized fonts, such as "blackboard bold" used in set theory.
+
+The Modern Pro-Tip: Many power users now load mathtools instead of amsmath. It automatically loads amsmath but adds fixes for spacing and extra commands like \xRightarrow or better vertical alignment for matrices.
+
+/QA [The cases Environment and Math Packages]
+Source Text: The cases environment is part of the amsmath package and is used for piecewise functions. It utilizes the & symbol for alignment and \\ for line breaks. For a complete math setup, users often load amsmath, amssymb, and amsfonts. The mathtools package is a common alternative that includes amsmath while providing additional formatting fixes.
+
+LaTeX Math Package Facts
+What package contains the cases environment?
+
+amsmath
+
+What does the cases environment display?
+
+Piecewise functions
+
+What symbol aligns conditions in a case?
+
+Ampersand (&)
+
+What command starts a new line in a case?
+
+Double backslash (\\)
+
+Which package provides extra math symbols?
+
+amssymb
+
+Which package provides blackboard bold fonts?
+
+amsfonts
+
+What modern package loads and improves amsmath?
+
+mathtools
+
+Is \text{} required for words inside math?
+
+Yes
+
+Would you like me to show you how to use the amssymb pack
