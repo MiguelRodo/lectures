@@ -107,51 +107,75 @@ While `bibtex` can be used alone, the `natbib` package is commonly loaded to pro
 
 # `R` in `LaTeX`
 
-## Running `R` code
-
-
-
-```latex
-<<>>=
-# R code goes here
-@
-```
+We can both display `R` code as text and run `R` code to include results in our document.
 
 ## Displaying `R` code
 
-To include R code as text in an appendix without executing it, use the `listings` package. This allows you to display your scripts clearly while maintaining proper formatting.
+To include R code as text without executing it (e.g., in an appendix), the **`minted`** package is the gold standard. It provides superior syntax highlighting compared to the basic `listings` package and handles long lines of code gracefully.
 
-* *Configuration*: You specify global settings in the preamble to ensure the code is readable and fits the page.
-* *Line Wrapping*: The `breaklines=true` setting is essential to prevent long lines of code from extending past the page margins.
-* *Font Choice*: Using a monospace font ensures the code preserves its intended structure.
+* **Pygments Highlighting**: `minted` uses Python-based highlighting, which correctly identifies R functions and variables.
+* **Customization**: By setting global options, you can ensure consistent font sizes and line numbering across your entire document.
+* **Technical Note**: Ensure your Overleaf compiler is set to **pdfLaTeX**, **XeLaTeX**, or **LuaLaTeX**. Overleaf handles the `-shell-escape` requirement automatically for the `minted` package.
 
-- Add the following to your preamble:
+### 1. Preamble Configuration
+
+Add the following to your preamble to set the global style for your R code:
 
 ```latex
-\usepackage{listings}
+\usepackage{minted}
 
-\lstset{
-  basicstyle=\ttfamily,
-  columns=fullflexible,
-  breaklines=true
+\setminted{
+    fontsize=\small,
+    breaklines=true,
+    linenos,
+    frame=lines
 }
 ```
 
-- In your document, you can then include an R script as follows:
+The above settings define the visual style of your code blocks as follows:
+
+* **`fontsize=\small`**: Scales the code text down slightly to fit more content on each line and improve readability.
+* **`breaklines=true`**: Automatically wraps long lines of code so they stay within the page margins instead of overflowing.
+* **`linenos`**: Enables line numbering on the left side of the block, making it easy to reference specific lines in your writing.
+* **`frame=lines`**: Places horizontal rules above and below the code snippet to clearly separate it from the surrounding text.
+
+### 2. Including your Code
+
+In your document, you can include an external R script file or write the code directly in the LaTeX editor.
+
+**To include an external file:**
 
 ```latex
-\lstinputlisting{your_script.R}
+\inputminted{r}{your_script.R}
 ```
 
+**To write code inline:**
 
+```latex
+\begin{minted}{r}
+# This is an R comment
+summary(cars)
+plot(cars)
+\end{minted}
+```
 
 ## Running `R` code
 
-- Link to [OverLeaf help page](https://docs.overleaf.com/integrations-and-add-ons/r-code-knitr#Introduction).
+For documents requiring dynamic data or analysis, Overleaf allows you to execute R code directly within your project. This is achieved using the `knitr` engine, which processes code chunks and inserts the results into your final PDF.
 
-## How to
+### Core Requirements
 
-Main file is `main.Rtex`, which is a LaTeX file that can include R code chunks (so, you'll have to rename `main.tex` to `main.Rtex`). 
+* **File Extension**: You must rename your primary file from `main.tex` to `main.Rtex` for Overleaf to recognize and execute the R code.
+* **Engine Support**: This environment is specifically designed for `knitr`; other methods like `\input{*.Rtex}` are generally not supported.
+* **Documentation**: For official guidance, refer to the [Overleaf knitr documentation](https://docs.overleaf.com/integrations-and-add-ons/r-code-knitr#Introduction).
+
+```latex
+<<chunk-name, echo=TRUE, eval=FALSE>>=
+# R code goes here
+# echo=TRUE displays the code in the PDF
+# eval=FALSE prevents the code from running
+@
+```
 
 ### `R` code written in the `LaTeX` file
 
@@ -178,11 +202,18 @@ Main file is `main.Rtex`, which is a LaTeX file that can include R code chunks (
 
 Refer to results with `\Sexpr{}`, e.g. `The result is \Sexpr{2 + 2}.` or `The result is \Sexpr{mean(x)}.` where `x` has been defined in a previous chunk.
 
-### Reading in `R` code from an external file
+### Inline R Code
 
-Suppose we have our `R` code written in a file `my_script.R`.
+You can embed R results directly into your text without creating a full block. This is useful for citing specific statistics or variables.
 
-Must specify chunk names with this syntax:
+* **Syntax**: Use the `\Sexpr{}` command.
+* **Example**: "The mean value is `\Sexpr{mean(data)}`."
+
+### Managing External R Scripts
+
+If you prefer to keep your R code in a separate `.R` file, you can import it into your `main.Rtex` document using the `read_chunk` function.
+
+**Tag the Script**: In your `.R` file, identify chunks using a specific comment header: `## ---- chunk-label`. For example:
 
 ```r
 ## ---- chunk-name-1
@@ -192,7 +223,7 @@ Must specify chunk names with this syntax:
 # R code here
 ```
 
-Then read the chunks in your `main.Rtex` file:
+**Load the File**: Read the script into your LaTeX document using a code chunk:
 
 ```latex
 <<>>=
@@ -200,57 +231,72 @@ read_chunk("my_script.R")
 @
 ```
 
-Refer to later chunks by making the `latex` chunk name the same name as the `## ----- chunk-name` in the R file:
+The first chunk is automatically run.
+
+**Reference the Label**: To display or run a specific part of that script later, use a LaTeX chunk with the matching label name. For example:
 
 ```latex
 <<chunk-name-2, echo=TRUE>>=
 @
 ```
 
-Note that the first chunk is automatically displayed in the initial `read_chunk` `latex` chunk (a chunky sentence).
+As you can see, a `knitr` chunk option was used. Any `knitr` chunk option is valid here.
 
-## Plots
+### Visualizing Data
 
-- Chunk name is the label name, prefixed with `fig:`, so refer to it later with `\ref{fig:chunk-name}`. 
-- So, refer to it with \ref{fig:chunk-name}.
+When you generate plots, `knitr` handles the figure environment and labeling automatically.
 
-For example:
+* **Labeling**: The name you give the chunk becomes the LaTeX label, automatically prefixed with `fig:`.
+* **Referencing**: You can reference a plot named `myplot` using `\ref{fig:myplot}`.
+* **Captions**: Use the `fig.cap` option within the chunk header to define the figure's title.
 
 ```latex
-<<plot1, fig.pos="t", fig.height=4, fig.width=4, fig.cap="First plot">>=
+<<histogram-plot, fig.pos="t", fig.height=4, fig.width=4, fig.cap="Standard Normal Distribution">>=
 set.seed(2)
-hist(rnorm(20), main="Overleaf histogram", xlab="Data")
+hist(rnorm(100), main="Sample Histogram", xlab="Value")
 @
 
-The figure \ref{fig:plot1} is simple histogram.
+The figure \ref{fig:histogram-plot} shows a histogram of 100 random normal values.
 ```
+### The R Environment on Overleaf
 
-### R environment
+The R environment on Overleaf differs significantly from a local setup.
 
-### Installed packages
+* **R Version**: Overleaf currently uses R version 3.6.3. This version was released in 2020 and precedes major updates found in R 4.0 and later.
+* **Compatibility**: Features like the native pipe operator (`|>`) are unavailable, as they require R 4.1 or higher.
+* **Package Limitations**: You are limited to the packages pre-installed in the Overleaf `R` environment. You can get a full list by adding the following to your `main.Rtex` file:
 
-Add this to your `main.Rtex` file to get a sorted list of all installed packages:
-
+```latex
 <<>>=
 pkgVec <- installed.packages()[, "Package"] 
 pkgVecNull <- setNames(pkgVec, NULL) 
 sort(pkgVecNull)
 @
-
-### R version
-
-Version is 3.6.3, which is quite old - released in 2020, and we're now at R4.5.2, so there's been a major version change (3 -> 4).
-The pipe operator (`|>`), for example, is not available before R4.1, I think.
+```
 
 # Zotero
 
-# Overleaf
+# Overcoming Overleaf limitations
 
-- Spell check
+## Collaboration
+
+On the free plan, you can only have two editors per project.
+If you have more than two people, you have several options:
+
+- Paying \$ 10  per month or \$ 98 per year for the Student plan.
+- Use a view link for all group members, and remove people not currently writing anything.
 
 ## Compile timeouts
 
-- Advice from OverLeaf: https://docs.overleaf.com/troubleshooting-and-support/fixing-and-preventing-compile-timeouts#steps-to-resolve-compile-timeouts
+On the free plan, you have a shorter compile time limit and slower servers, and some documents may not compile in time.
+Again, you have several options:
+
+- Pay for the Student plan, which has a longer compile time limit and faster servers.
+- Optimise your document to reduce compile time, such as by:
+  - Using PDF images instead of PNGs or SVGs.
+  - Compiling parts of the document separately and reading them with `\includepdf[pages=-]{file.pdf}`.
+    - This will require fiddling with page numbers to make them follow on correctly.
+  - Following other advice from Overleaf: https://docs.overleaf.com/troubleshooting-and-support/fixing-and-preventing-compile-timeouts#steps-to-resolve-compile-timeouts
 
 # Presentations
 
