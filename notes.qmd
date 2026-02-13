@@ -9,45 +9,196 @@ format:
     embed-resources: true
 ---
 
-# Bibliography Management in LaTeX
+# Essential math
 
-This guide outlines the different methods for managing references, ranging from manual entry to modern automated systems.
+## Essential packages
 
-- OverLeaf links:
-  - [bibtex](https://www.overleaf.com/learn/latex/Bibliography_management_with_bibtex)
-  - [natbib](https://www.overleaf.com/learn/latex/Bibliography_management_with_natbib)
-  - [biblatex](https://www.overleaf.com/learn/latex/Bibliography_management_with_biblatex)
+To have full access to mathematical symbols and fonts, include these in your preamble:
 
-## Comparison of Reference Systems
+```latex
+\usepackage{amsmath}   % Core logic and environments
+\usepackage{amssymb}   % Extended library of symbols (e.g., set notation)
+\usepackage{amsfonts}  % Specialized math fonts (e.g., blackboard bold)
+```
 
-| System | Automation Level | Style Control | Primary Benefit |
-| :--- | :--- | :--- | :--- |
-| Zero Reference Manager | Manual  | Hard-coded  | No external files or packages required. |
-| BibTeX | Automatic  | .bst files  | Separates data (.bib) from document structure. |
-| natbib | Automatic  | .bst files  | Adds author-year citation support to BibTeX. |
-| biblatex | Automatic  | LaTeX commands  | High flexibility, modern, and faster performance. |
+## Display vs. inline math
 
-## Manual Method: Zero Reference Manager
+LaTeX distinguishes between math that appears within a sentence and math that stands alone in its own block.
 
-This approach is entirely manual, requiring you to order, style, and write every entry yourself.
+* Inline Math: Use `$...$` or `\( ... \)` to include math within a paragraph.
+* Display Math: Use `\[ ... \]` or an environment (like `equation`) to center the math on its own line.
 
-* *Environment*: Create a `thebibliography` environment at the end of your document.
-* *Entries*: Use `\bibitem{key}` to define individual references within that environment.
-* *In-text Citation*: Use the `\cite{key}` command to reference the entry in your text.
+For example, the following:
+
+```latex
+The formula for the area of a circle is $A = \pi r^2$ (inline). 
+Alternatively, it can be displayed as:
+
+\[
+A = \pi r^2
+\]
+```
+
+renders as:
+
+The formula for the area of a circle is $A = \pi r^2$ (inline). 
+Alternatively, it can be displayed as:
+
+$$
+A = \pi r^2
+$$
+
+## Common Environments
+
+**The "Star" Versions (Unnumbered)**
+
+By default, environments like `equation` and `align` add a number on the right. To hide the number, append an asterisk:
+
+```latex
+\begin{align*}
+  y &= mx + c \\
+  y &= 2x + 5
+\end{align*}
+```
+
+**The `cases` Environment**
+
+Used for piecewise functions:
+
+```latex
+\[
+f(x) = 
+\begin{cases} 
+  x  & \text{if } x \geq 0 \\
+  -x & \text{if } x < 0 
+\end{cases}
+\]
+```
+
+## Matrices
+
+Use the following enviroments for creating matrices:
+
+* **`pmatrix`**: Uses parentheses $( \dots )$
+* **`bmatrix`**: Uses square brackets $[ \dots ]$
+
+For example:
+
+```latex
+\[
+A =
+\begin{pmatrix}
+  a_{11} & a_{12} \\
+  a_{21} & a_{22}
+\end{pmatrix}
+\]
+```
+
+displays as
+
+$$
+A =
+\begin{pmatrix}
+  a_{11} & a_{12} \\
+  a_{21} & a_{22}
+\end{pmatrix}
+$$
+
+## Text inside Math
+
+All letters inside `LaTeX` math environments display as italic.
+To include normal text, use the `\text{...}` command.
+
+For example, $E = mc^2$ with an explanation would be written as:
+
+```latex
+\[
+E = mc^2 \quad \text{where } m \text{ is the mass.}
+\]
+```
+
+and render as:
+
+$$
+E = mc^2 \quad \text{where } m \text{ is the mass.}
+$$
+
+# Bibliographies
+
+In academic writing, we support and attribute statements we make by citing sources.
+For example, we write "The Earth revolves around the Sun (Copernicus, 1543)" in our text, and then include metadata about the source (author, title, year, etc.) in a bibliography at the end of the document.
+
+In `LaTeX`, one cites references in-text using `\cite{<key>}`, e.g. `\cite{einstein1905}`, which then becomes, for example, a number (`[1]`).
+A bibliography at the end specifies the metadata for each such citation.
+
+There are several ways to manage references in `LaTeX`, all of which we describe below.
+You will either use `natbib` or `biblatex`, so skip to the end of the section if you want to get straight to those.
+Either works, and you can start with one and switch to the other later, or use a different one for different projects.
+
+## Comparison of reference systems
+
+<table>
+  <thead>
+    <tr>
+      <th>System</th>
+      <th>Automation Level</th>
+      <th>Style Control</th>
+      <th>Primary Benefit</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Zero Reference Manager</td>
+      <td>Manual</td>
+      <td>Hard-coded</td>
+      <td>None, really.</td>
+    </tr>
+    <tr>
+      <td>BibTeX</td>
+      <td>Automatic</td>
+      <td><code>.bst</code> files, hard to customise</td>
+      <td>Automatic bibliography generation</td>
+    </tr>
+    <tr>
+      <td>natbib</td>
+      <td>Automatic</td>
+      <td><code>.bst</code> files, hard to customise</td>
+      <td>Can use author-year in-text citations. Journals often use <code>.bst</code> files.</td>
+    </tr>
+    <tr>
+      <td>biblatex</td>
+      <td>Automatic</td>
+      <td><code>LaTeX</code> commands, easier to customise</td>
+      <td>Fast and easier to style.</td>
+    </tr>
+  </tbody>
+</table>
+
+## `thebibliography` environment
+
+[Overleaf help: bibtex](https://www.overleaf.com/learn/latex/Bibliography_management_with_bibtex)
+
+This approach is entirely manual, requiring you to order, style, and write every entry in the bibliography yourself, like so:
 
 ```latex
 \begin{thebibliography}{9}
 \bibitem{texbook}
 Donald E. Knuth (1986) \emph{The \TeX{} Book}, Addison-Wesley Professional.
+\bibitem{latexcompanion}
+Michel Goossens, Frank Mittelbach, and Alexander Samarin (1993) \emph{The \LaTeX\ Companion}, Addison-Wesley, Reading, Massachusetts.
 \end{thebibliography}
 ```
 
-## Automated Method: BibTeX
+If you decide to change anything about the bibliography, such as the order of entries or the formatting, you will have to change it manually in the text.
+This is not practical.
+For this reason, the automated methods below were developed.
+No-one actually handles bibliographies manually, but I included this here because all the methods below essentially automatically generate the above `thebibliography` environment.
 
-BibTeX is a program that automatically generates the bibliography for you.
+## `bibtex`
 
-### 1. The .bib File
-You store your bibliography entries in a plain text `.bib` file. These entries follow a specific format (e.g., `@book`, `@article`) and include fields for author, title, year, and other metadata.
+The `bibtex` approach requires no additional packages.
+What it does require is a plain text file that is essentially the database of all your references.
+Individual entries look like this:
 
 ```latex
 @book{latexcompanion,
@@ -59,51 +210,74 @@ You store your bibliography entries in a plain text `.bib` file. These entries f
 }
 ```
 
-### The Workflow
+The citation key for this entry is `latexcompanion`, and so you cite this using `\cite{latexcompanion}`.
+`bibtex` will recognise that you cited `latexcompanion` and will use the `.bib` file to generate its bibliography entry.
 
-The automated bibliography process involves a sequence of file generations:
+To insert the bibliography, you add the `\bibliography` command, specifying the path to the `.bib` file but dropping the `.bib` extension:
 
-* *The Wish List*: Your LaTeX engine generates an auxiliary file (`.aux`) that contains every citation key used in the document.
-* *The Processing*: The `bibtex` program reads this `.aux` file, retrieves the matching entries from your bibliography database (`.bib`), and generates a bibliography file (`.bbl`) containing the formatted entries.
-* *The Inclusion*: The engine then pastes the content of that `.bbl` file directly where the `\bibliography{<bib_file>}` command is located in your document.
-* *Automation*: These multiple processing runs are handled automatically by Overleaf (which uses `latexmk` in the background) and by Quarto or RMarkdown during the rendering process.
-* *Styling*: You can determine how entries are formatted (e.g., `plain`, `alpha`, or `abbrv`) by specifying a style with the `\bibliographystyle{<style>}` command.
 
----
+```latex
+\bibliography{references}
+```
 
-### Enhanced Citation: natbib
+The `.bib` file referred to is named `references.bib`.
 
-While `bibtex` can be used alone, the `natbib` package is commonly loaded to provide expanded citation features:
+To style the bibliography, you make use of preset styles, specified using the `\bibliographystyle` command before the `\bibliography` command.
 
-* *Citation Style*: Standard BibTeX is often limited to numerical citations like `[1]`. `natbib` enables author-year citations, such as `(Einstein, 1905)`.
-* *Implementation*: To use these features, include the package in your preamble.
+```latex
+\bibliographystyle{plain}
+\bibliography{references}
+```
+
+## natbib
+
+[Overleaf help: natbib](https://www.overleaf.com/learn/latex/Bibliography_management_with_natbib)
+
+`bibtex` automated the bibliography generation, but it could only give numeric in-text citations (e.g. `[2]`) and not `author-year` citations (e.g. `(Goossens et al., 1993)`).
+
+To use `natbib`:
+
+- In your preamble, load the package and specify the style (optional to specify style):
 
 ```latex
 \usepackage{natbib}
+\bibliographystyle{abbrvnat}
 ```
 
-* *Commands*: Once loaded, you can use `\cite{}` for standard references, `\citet{}` for textual citations, or `\citep{}` for parenthetical citations.
-* *Final List*: Place the `\bibliography{<bib_file>}` command in your document body where you want the reference list to appear.
-* *Limitations*: Customizing styles in `natbib` is notoriously difficult because it relies on editing complex `.bst` files, such as `plain.bst`.
+Note that now we must load a package, and the style is specified in the preamble.
 
----
+- Cite your sources using `\cite{}`, `\citet{}` (textual, e.g `Knuth (1995)`), or `\citep{}` (parenthetical, e.g. `(Knuth, 1995)`).
+- Specify the bibliography file and where you want the bibliography to appear in the body: `\bibligraphy{<bib_file>}`, where again we drop the `.bib` extension.
 
-### The Modern Standard: biblatex
+The main disadvantage of `natbib` is that styling the bibliography relies in `.bst` files, which are (apparently) extremely hard to modify.
+It can also be slow, and not treat non-English languages well.
+But for most documents, it is perfectly fine, and many journals want you to use their own `.bst` files.
 
-`biblatex` is a modern alternative that offers significantly more flexibility and control over your bibliography:
+## `biblatex`
 
-* *Ease of Customization*: Formatting is performed directly within LaTeX using `biblatex` commands, which are much easier to modify than external `.bst` files.
-* *Speed*: It is generally faster than the traditional `bibtex` program.
-* *Implementation*: Add the package and the database resource to your preamble.
+[Overleaf help: biblatex](https://www.overleaf.com/learn/latex/Bibliography_management_with_biblatex)
 
+`biblatex` allows you to specify the style using `LaTeX` options and commands, rather than `.bst` files.
+The upshot for this is that granular control is much easier, as with `natbib` you simply find an acceptable `.bst` file and use it, but with `biblatex` you can easily modify the style to your liking.
+
+`biblatex` is also faster and works better with non-English languages.
+
+To use `biblatex`:
+
+- In your preamble, load the package and specify the `.bib` files:
 
 ```latex
-\usepackage[style=authoryear]{biblatex}
+\usepackage[style=alphabetic, sorting=ynt]{biblatex}
 \addbibresource{<bib_file>.bib}
 ```
 
-* *Commands*: Cite your sources using `\cite{}`, `\textcite{}` (textual), or `\parencite{}` (parenthetical).
-* *Printing*: Use the `\printbibliography` command to render the reference list in your document.
+Note that you specify the style as an option to the package, and the bibliography file is specified in the preamble.
+Multiple bibliography files can be added with multiple `\addbibresource` commands.
+
+- Cite references using `\cite` (I think there are more flexible options, but I have not looked this up)
+- Specify where to place the bibliography using `\printbibliography`.
+
+To customise `biblatex`, see the Overleaf documentation (as for `natbib`).
 
 # `R` in `LaTeX`
 
@@ -111,15 +285,11 @@ We can both display `R` code as text and run `R` code to include results in our 
 
 ## Displaying `R` code
 
-To include R code as text without executing it (e.g., in an appendix), the **`minted`** package is the gold standard. It provides superior syntax highlighting compared to the basic `listings` package and handles long lines of code gracefully.
+To include R code as text without executing it (e.g., in an appendix), the `minted` package is easy to use and displays code elegantly.
 
-* **Pygments Highlighting**: `minted` uses Python-based highlighting, which correctly identifies R functions and variables.
-* **Customization**: By setting global options, you can ensure consistent font sizes and line numbering across your entire document.
-* **Technical Note**: Ensure your Overleaf compiler is set to **pdfLaTeX**, **XeLaTeX**, or **LuaLaTeX**. Overleaf handles the `-shell-escape` requirement automatically for the `minted` package.
+To use `minted`:
 
-### 1. Preamble Configuration
-
-Add the following to your preamble to set the global style for your R code:
+- Add the following to your preamble to set the global style for your R code:
 
 ```latex
 \usepackage{minted}
@@ -134,12 +304,12 @@ Add the following to your preamble to set the global style for your R code:
 
 The above settings define the visual style of your code blocks as follows:
 
-* **`fontsize=\small`**: Scales the code text down slightly to fit more content on each line and improve readability.
-* **`breaklines=true`**: Automatically wraps long lines of code so they stay within the page margins instead of overflowing.
-* **`linenos`**: Enables line numbering on the left side of the block, making it easy to reference specific lines in your writing.
-* **`frame=lines`**: Places horizontal rules above and below the code snippet to clearly separate it from the surrounding text.
+* `fontsize=\small`: Makes text smaller, which helps it fit.
+* `breaklines=true`: Automatically wraps long lines of code.
+* `linenos`: Adds line numbers.
+* `frame=lines`: Places horizontal rules above and below the code snippet demarcate it.
 
-### 2. Including your Code
+None of the above settings are required, but `breaklines` in particular is very helpful.
 
 In your document, you can include an external R script file or write the code directly in the LaTeX editor.
 
@@ -161,23 +331,15 @@ plot(cars)
 
 ## Running `R` code
 
-For documents requiring dynamic data or analysis, Overleaf allows you to execute R code directly within your project. This is achieved using the `knitr` engine, which processes code chunks and inserts the results into your final PDF.
+[Overleaf knitr documentation](https://docs.overleaf.com/integrations-and-add-ons/r-code-knitr#Introduction)
 
-### Core Requirements
+You can actually run `R` code in your `.tex` document on Overleaf.
 
-* **File Extension**: You must rename your primary file from `main.tex` to `main.Rtex` for Overleaf to recognize and execute the R code.
-* **Engine Support**: This environment is specifically designed for `knitr`; other methods like `\input{*.Rtex}` are generally not supported.
-* **Documentation**: For official guidance, refer to the [Overleaf knitr documentation](https://docs.overleaf.com/integrations-and-add-ons/r-code-knitr#Introduction).
+To do this:
 
-```latex
-<<chunk-name, echo=TRUE, eval=FALSE>>=
-# R code goes here
-# echo=TRUE displays the code in the PDF
-# eval=FALSE prevents the code from running
-@
-```
+**Rename file**: Rename your primary file extension from `.tex` to `.Rtex`, e.g. from `main.tex` to `main.Rtex`.
 
-### `R` code written in the `LaTeX` file
+**Internal `R` code**: Insert `R` code inside `<<>>= ... @` chunks:
 
 ```latex
 <<>>=
@@ -185,14 +347,7 @@ For documents requiring dynamic data or analysis, Overleaf allows you to execute
 @
 ```
 
-- Chunks can have names, e.g.
-
-```latex
-<<chunk-name>>=
-# R code here
-@
-```
-- Standard `knitr` chunk options apply, such as `echo=TRUE` to show the code, `eval=FALSE` to not run the code, etc. For example:
+All `knitr` chunk options are available, e.g.
 
 ```latex
 <<chunk-name, echo=TRUE, eval=FALSE>>=
@@ -200,30 +355,21 @@ For documents requiring dynamic data or analysis, Overleaf allows you to execute
 @
 ```
 
-Refer to results with `\Sexpr{}`, e.g. `The result is \Sexpr{2 + 2}.` or `The result is \Sexpr{mean(x)}.` where `x` has been defined in a previous chunk.
+**In-line references**: Refer to results with `\Sexpr{}`, e.g. `The result is \Sexpr{2 + 2}.` or `The result is \Sexpr{mean(x)}.` where `x` has been defined in a previous chunk.
 
-### Inline R Code
+**External R scripts**: If you prefer to keep your R code in a separate `.R` file, you can import it into your `main.Rtex` document using the `read_chunk` function. 
 
-You can embed R results directly into your text without creating a full block. This is useful for citing specific statistics or variables.
-
-* **Syntax**: Use the `\Sexpr{}` command.
-* **Example**: "The mean value is `\Sexpr{mean(data)}`."
-
-### Managing External R Scripts
-
-If you prefer to keep your R code in a separate `.R` file, you can import it into your `main.Rtex` document using the `read_chunk` function.
-
-**Tag the Script**: In your `.R` file, identify chunks using a specific comment header: `## ---- chunk-label`. For example:
+You will need to format the script in a specific way. In your `.R` file, identify chunks using a specific comment header: `## - chunk-label`. For example:
 
 ```r
-## ---- chunk-name-1
+## - chunk-name-1
 # R code here
 
-## ---- chunk-name-2
+## - chunk-name-2
 # R code here
 ```
 
-**Load the File**: Read the script into your LaTeX document using a code chunk:
+Read the script into your LaTeX document using a code chunk:
 
 ```latex
 <<>>=
@@ -231,40 +377,41 @@ read_chunk("my_script.R")
 @
 ```
 
-The first chunk is automatically run.
+The first chunk is automatically run (`chunk-name-1` in the example above).
 
-**Reference the Label**: To display or run a specific part of that script later, use a LaTeX chunk with the matching label name. For example:
+Specify later chunks using their label name, e.g.
 
 ```latex
 <<chunk-name-2, echo=TRUE>>=
 @
 ```
 
-As you can see, a `knitr` chunk option was used. Any `knitr` chunk option is valid here.
+### Visualizing data
 
-### Visualizing Data
+Plots can be generated in this way:
 
-When you generate plots, `knitr` handles the figure environment and labeling automatically.
+```latex
+set.seed(2)
+hist(rnorm(100), main="Sample Histogram", xlab="Value")
+@
+```
 
-* **Labeling**: The name you give the chunk becomes the LaTeX label, automatically prefixed with `fig:`.
-* **Referencing**: You can reference a plot named `myplot` using `\ref{fig:myplot}`.
-* **Captions**: Use the `fig.cap` option within the chunk header to define the figure's title.
+Standard `knitr` chunk options work:
 
 ```latex
 <<histogram-plot, fig.pos="t", fig.height=4, fig.width=4, fig.cap="Standard Normal Distribution">>=
 set.seed(2)
 hist(rnorm(100), main="Sample Histogram", xlab="Value")
 @
-
-The figure \ref{fig:histogram-plot} shows a histogram of 100 random normal values.
 ```
-### The R Environment on Overleaf
 
-The R environment on Overleaf differs significantly from a local setup.
+The plot can be then be references with `\ref{fig:<chunk-name>}`, e.g. `\ref{fig:histogram-plot}`.
 
-* **R Version**: Overleaf currently uses R version 3.6.3. This version was released in 2020 and precedes major updates found in R 4.0 and later.
-* **Compatibility**: Features like the native pipe operator (`|>`) are unavailable, as they require R 4.1 or higher.
-* **Package Limitations**: You are limited to the packages pre-installed in the Overleaf `R` environment. You can get a full list by adding the following to your `main.Rtex` file:
+### `R` version and available packages
+
+On Overleaf, the `R` version is old (version 3.6.3) and the packages are limited to what Overleaf has already installed.
+
+You can view the installed `R` packages by adding this to an `.Rtex` file:
 
 ```latex
 <<>>=
@@ -276,6 +423,49 @@ sort(pkgVecNull)
 
 # Zotero
 
+A brief plug for my reference manager, Zotero (please follow this link for a discount: [link](https://www.arsenal.com)).
+Alternatives include Mendeley and EndNote, but I have ended up at Zotero for the following reasons:
+
+- At some point, both Mendeley and EndNote broke for me.
+- Zotero is free, unlike EndNote.
+- Zotero opens up very quickly.
+- Zotero has a good browser extension for quickly adding references from the web.
+- Zotero libraries can be kept cheaply in the cloud.
+  - Zotero itself offers 300MB free, which is a pittance, and the cheapest usable tier for me is \$60 year year for 6GB.
+  - It is very easy, however, to use `WebDAV` to sync your library on `koofr.net`, which offers 10GB free. I asked Gemini how to do it and it took me five minutes.
+
+
+To set up Zotero:
+
+- Create an account at www.zotero.org
+- Install Zotero:
+  - The Desktop app: https://www.zotero.org/support/installation
+    - This is where you add your references.
+  - Browser extension: Install the `Zotero Connector` browser extension for your browser.
+     - This allows you to add journal papers from their webpages.  
+- Set up syncing:
+  - Zotero help page: https://www.zotero.org/support/sync
+  - If you want to use Zotero's own cloud storage:
+    - It's easy to set up here: https://www.zotero.org/storage
+  - If you want to use `WebDAV` to sync with `koofr.net`:
+    - Create an account at `koofr.net`
+    - Generate an app password in `koofr.net`:
+      - Under `Preferences` > `Password` > `App passowrds`, click on `Generate` and copy the password.
+    - In Zotero, go to `Edit` > `Settings`:
+      - Enter your Zotero username and password in the `Data syncing` tab (whilst your files will be kept on koofr.net, the metadata and Zotero library is still kept in zotero.org)
+      - In the `File syncing` section, make your settings look like mine below, replacing the username with yours and the password with the app password you generated in `koofr.net`:
+
+![](img/koofr.png)
+
+- To add files to Zotero, you can do one of the following:
+  - Using the browser extension
+  - Drag and drop them into the desktop app
+- You can also import just the citations using `File > Import` in the desktop app. Useful if you don't have access to the PDF (paywall).
+
+- To export your library to a `.bib` file for use in `LaTeX`:
+  - In the desktop app, click `File > Export Library`, select `BibTeX` as the format, and save the file.
+  - To make the exported `.bib` file better, and in particular to make the citation keys more informative, see this guide: https://fishandwhistle.net/post/2020/getting-started-zotero-better-bibtex-rmarkdown. 
+
 # Overcoming Overleaf limitations
 
 ## Collaboration
@@ -283,7 +473,7 @@ sort(pkgVecNull)
 On the free plan, you can only have two editors per project.
 If you have more than two people, you have several options:
 
-- Paying \$ 10  per month or \$ 98 per year for the Student plan.
+- Pay \$10  per month or \$98 per year for the Student plan, which has many (unlimited?) collaborators.
 - Use a view link for all group members, and remove people not currently writing anything.
 
 ## Compile timeouts
@@ -297,187 +487,43 @@ Again, you have several options:
   - Compiling parts of the document separately and reading them with `\includepdf[pages=-]{file.pdf}`.
     - This will require fiddling with page numbers to make them follow on correctly.
   - Following other advice from Overleaf: https://docs.overleaf.com/troubleshooting-and-support/fixing-and-preventing-compile-timeouts#steps-to-resolve-compile-timeouts
+- Switching to Quarto/RMarkdown and compiling to PDF locally.
+  - To do this:
+    - Copy your preamble into a `preamble.tex` file and tell Quarto/RMarkdown to use it in the YAML frontmatter.
+    - Specify the output format as PDF.
+    - Copy the body of your document into the `.Rmd`/`.qmd` file.
+  - This should, in theory, simply work if you have `LaTeX` set up locally, but you may get difficulties because `Quarto` and `RMarkdown` specify their own premable, into which your preamble is merged/added.
+    - This can cause conflicts and change the point at which your preamble is inserted.
 
 # Presentations
 
-- beamerh
-- Staggering images in LaTeX
+Presentations in `LaTeX` are created using the `beamer` document class.
+Two minor changes follow from this:
 
-# Prompt
+- Specify document class as `beamer` in the preamble: `\documentclass{beamer}`
+- Instead of `\section{Slide title}`, use `\begin{frame}{Slide title}` and `\end{frame}` to define each slide.
 
-# Collaboration
+For example:
 
-- If more than two people:
-  - View link for all group members
-  - Delete person who isn't writing anything
+```latex
+\documentclass{beamer}
 
-# Quarto/RMarkdown versus Overleaf
+% Choose a theme
+\usetheme{Madrid} 
 
-- You control the `R` environment fully, so can install packages, use any version of `R`, etc.
-- No compile time limit. 
-- Will need to set up `LaTeX` locally.
-- Easiest to do this with the `tinytex` package in `R`, which provides a lightweight distribution of `LaTeX` that is easy to install and manage:
+\begin{document}
 
-```{r}
-#| eval: false
-install.packages("tinytex")
-tinytex::install_tinytex()
+\begin{frame}{Slide Title}
+    This is a basic slide in Beamer.
+    \begin{itemize}
+        \item Everything inside the frame environment appears on this slide.
+    \end{itemize}
+\end{frame}
+
+\end{document}
 ```
 
-# Math
+To avoid the entire slide appearing at once, you can use the `\pause` command (please make use of this).
+`LaTeX` essentially creates "two slides" at each `\pause`: one with the content before the `\pause`, and one with the content after the `\pause`.
 
-Q&A
-Custom Gem
-Gemini said
-Beyond basic alignment with amsmath, there are several "pro-tier" behaviors and alternative environments you'll likely run into when your math gets more complex.
 
-1. The "Star" Versions (Unnumbered Equations)
-By default, environments like equation and align automatically number your math on the right side of the page.
-
-How to hide numbers: Append an asterisk (*) to the environment name, like \begin{align*} ... \end{align*}.
-
-The amsmath benefit: While standard LaTeX has a displaymath environment, using equation* is generally preferred because it handles spacing more consistently.
-
-2. The cases Environment
-If you need to define a function that changes based on a condition (like an absolute value or a piecewise function), cases is the easiest tool.
-
-f(x)={ 
-x
-−x
-​
-  
-if x≥0
-if x<0
-​
- 
-3. Matrices and Grouping
-The amsmath package provides specialized environments for matrices that handle the brackets for you:
-
-matrix: Plain numbers.
-
-pmatrix: Parentheses (…).
-
-bmatrix: Square brackets […].
-
-vmatrix: Determinant bars ∣…∣.
-
-4. Text inside Math
-If you type "if" or "where" inside a math environment, LaTeX treats it as a string of variables and removes all spacing (looking like if). Use the \text{...} command to insert normal text with proper spacing inside your equations.
-
-/QA [Advanced LaTeX Math and amsmath]
-Source Text: The amsmath package offers extended math functionality. Starred environments, such as align*, suppress automatic equation numbering. The cases environment is used for piecewise functions, while pmatrix and bmatrix handle matrices with different bracket styles. To include readable text within math environments, the \text{} command is required to prevent LaTeX from formatting words as italicized variables.
-
-Advanced Math Facts
-What symbol suppresses equation numbering?
-
-Asterisk (*)
-
-Which environment is used for piecewise functions?
-
-cases
-
-What does the pmatrix environment add?
-
-Parentheses
-
-What does the bmatrix environment add?
-
-Square brackets
-
-What does the vmatrix environment add?
-
-Vertical bars
-
-How does LaTeX format plain text inside math?
-
-Italicized variables
-
-What command inserts normal text into math?
-
-\text{}
-
-Does \text{} preserve standard spacing?
-
-Yes
-
-Which package provides these environments?
-
-amsmath
-
-Would you like me to show you how to use \label and \eqref to automatically link to your numbered equations in your text?
-
-You said
-Show me how to use the cases environment, and is that part of amsmath? Is amsmath the only math package you "by deafult" need to load?
-
-Q&A
-Custom Gem
-Gemini said
-Yes, the cases environment is a core feature of the amsmath package. While amsmath is the "must-have" foundation for almost any technical document, it is usually part of a small "starter pack" of math packages you'll want to load by default.
-
-1. Using the cases Environment
-The cases environment is used for piecewise functions. It automatically adds a large left brace and handles the internal alignment.
-
-Syntax Example:
-
-Code snippet
-\[
-f(x) = 
-\begin{cases} 
-  \frac{1}{x} & \text{if } x \neq 0 \\
-  0           & \text{if } x = 0 
-\end{cases}
-\]
-The & symbol: Used to align the conditions (like the "if" statements).
-
-The \\ command: Used to start a new line within the brace.
-
-The \text{} command: Essential for writing the "if" part so it doesn't look like italicized variables.
-
-2. Is amsmath the only package you need?
-While amsmath is the most important, most users load a "Big Three" set of packages to cover all bases:
-
-amsmath: For the logic, environments (like align, cases), and basic symbols.
-
-amssymb: Provides a massive library of mathematical symbols (like R for real numbers or ℏ).
-
-amsfonts: Provides specialized fonts, such as "blackboard bold" used in set theory.
-
-The Modern Pro-Tip: Many power users now load mathtools instead of amsmath. It automatically loads amsmath but adds fixes for spacing and extra commands like \xRightarrow or better vertical alignment for matrices.
-
-/QA [The cases Environment and Math Packages]
-Source Text: The cases environment is part of the amsmath package and is used for piecewise functions. It utilizes the & symbol for alignment and \\ for line breaks. For a complete math setup, users often load amsmath, amssymb, and amsfonts. The mathtools package is a common alternative that includes amsmath while providing additional formatting fixes.
-
-LaTeX Math Package Facts
-What package contains the cases environment?
-
-amsmath
-
-What does the cases environment display?
-
-Piecewise functions
-
-What symbol aligns conditions in a case?
-
-Ampersand (&)
-
-What command starts a new line in a case?
-
-Double backslash (\\)
-
-Which package provides extra math symbols?
-
-amssymb
-
-Which package provides blackboard bold fonts?
-
-amsfonts
-
-What modern package loads and improves amsmath?
-
-mathtools
-
-Is \text{} required for words inside math?
-
-Yes
-
-Would you like me to show you how to use the amssymb pack
