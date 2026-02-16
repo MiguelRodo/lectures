@@ -1,0 +1,13 @@
+_raw_data/**
+_tmp/**
+_output/**
+docs/**
+
+# Start of projr section: do not edit by hand (update with projr_ignore_auto())
+DataTidy_files/**
+DataTidy.html/**
+DataTidyExam2024_files/**
+DataTidyExam2024.html/**
+_archive/**
+# End of projr section
+

@@ -1,0 +1,228 @@
+---
+title: Tidy data for 2024 MSc exam
+author: Miguel Rodo
+format:
+  html:
+    embed-resources: true
+    table-of-contents: false
+---
+
+```{r}
+#| include: false
+library(ggplot2)
+library(tibble)
+```
+
+# Luminex data
+
+```{r}
+fn_vec <- list.files(
+  projr::projr_path_get_dir("raw-data", "data", "luminex"),
+  full.names = TRUE,
+  recursive = TRUE
+)
+fn_vec_rel <- fs::path_rel(
+  fn_vec,
+  projr::projr_path_get_dir("raw-data", "data", "luminex")
+) |>
+  as.character()
+for (x in fn_vec_rel) {
+  path_to <- projr::projr_path_get("output-inst", "luminex", x)
+  if (!dir.exists(dirname(path_to))) {
+    dir.create(dirname(path_to), recursive = TRUE)
+  }
+  file.copy(
+    file.path(
+      projr::projr_path_get_dir("raw-data", "data", "luminex"),
+      x
+    ),
+    path_to
+  )
+}
+```
+
+# FCS data
+
+The single FCS file is found in `<data-raw>/data/cytof`.
+
+## Expression data
+
+### Reading in, transforming and formatting
+
+```{r}
+cs <- flowWorkspace::load_cytoset_from_fcs(
+  files = list.files(
+    projr::projr_path_get_dir("raw-data", "data", "cytof"),
+    pattern = "fcs$", full.names = TRUE
+  )
+)
+
+gs <- flowWorkspace::GatingSet(cs)
+forwardTransform <- function(x) {
+  asinh(x / 5)
+}
+backTransform <- function(x) {
+  5 * sinh(x)
+}
+round(2.3, 10) == round(backTransform(forwardTransform(2.3)), 10)
+round(2.3, 10) == round(forwardTransform(backTransform(2.3)), 10)
+trans.obj <- flowWorkspace::flow_trans(
+  "asinh",
+  trans.fun = forwardTransform, inverse.fun = backTransform
+)
+trans <- flowWorkspace::transformerList(
+  c(
+    "Dy161Di", "Dy162Di", "Dy163Di", "Dy164Di", "Er166Di", "Er167Di",
+    "Er168Di", "Er170Di", "Eu151Di", "Eu153Di", "Gd155Di", "Gd156Di",
+    "Gd158Di", "Gd160Di", "Ho165Di", "Lu175Di", "Lu176Di", "Nd142Di",
+    "Nd143Di", "Nd144Di", "Nd145Di", "Nd146Di", "Nd148Di", "Nd150Di",
+    "Pr141Di", "Sm147Di", "Sm149Di", "Sm152Di", "Sm154Di", "Tb159Di",
+    "Tm169Di", "Yb171Di", "Yb172Di", "Yb173Di", "Yb174Di"
+  ),
+  trans.obj
+)
+```
+
+```{r}
+fr <- flowWorkspace::gh_pop_get_data(gs[[1]])
+ex_tbl <- flowCore::exprs(fr)
+set.seed(2106)
+n_cell <- nrow(ex_tbl)
+sample_vec <- sample(
+  seq_len(n_cell),
+  size = 1e4,
+  replace = FALSE
+)
+ex_tbl <- ex_tbl[sample_vec, ]
+a_df <- flowCore::parameters(fr)
+chnl_to_marker <- stats::setNames(
+  a_df@data$desc,
+  a_df@data$name
+)
+chnl_to_marker <- gsub(
+  "\\-beads$", "", tolower(chnl_to_marker)
+)
+chnl_vec <- c(
+  "Dy161Di", "Dy162Di", "Dy163Di", "Dy164Di", "Er166Di", "Er167Di",
+  "Er168Di", "Er170Di", "Eu151Di", "Eu153Di", "Gd155Di", "Gd156Di",
+  "Gd158Di", "Gd160Di", "Ho165Di", "Lu175Di", "Lu176Di", "Nd142Di",
+  "Nd143Di", "Nd144Di", "Nd145Di", "Nd146Di", "Nd148Di", "Nd150Di",
+  "Pr141Di", "Sm147Di", "Sm149Di", "Sm152Di", "Sm154Di", "Tb159Di",
+  "Tm169Di", "Yb171Di", "Yb172Di", "Yb173Di", "Yb174Di"
+)
+ex_tbl <- ex_tbl[, chnl_vec]
+colnames(ex_tbl) <- chnl_to_marker[chnl_vec]
+colnames(ex_tbl) <- gsub("\\-igd", "", colnames(ex_tbl))
+colnames(ex_tbl) <- gsub("hla\\-dr", "hladr", colnames(ex_tbl))
+colnames(ex_tbl) <- gsub("tcrgd\\-", "", colnames(ex_tbl))
+colnames(ex_tbl) <- gsub("va7\\.2", "va72", colnames(ex_tbl))
+ex_tbl <- tibble::as_tibble(ex_tbl)
+ex_tbl <- ex_tbl[, sort(colnames(ex_tbl))]
+ex_tbl <- ex_tbl |> dplyr::mutate(cell_id = paste0("cell_", seq_len(dplyr::n())))
+```
+
+### Plot per-marker density
+
+```{r}
+plot_tbl <- ex_tbl |>
+  tidyr::pivot_longer(
+    cols = -cell_id,
+    names_to = "marker",
+    values_to = "value"
+  )
+p_density <- ggplot(
+  plot_tbl |>
+    dplyr::group_by(marker) |>
+    dplyr::filter(value > min(value)) |>
+    dplyr::ungroup(),
+  aes(x = value, fill = marker)
+) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~marker, scales = "free_y", ncol = 4) +
+  cowplot::theme_cowplot() +
+  theme(
+    legend.position = "none"
+  ) +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
+  )
+path_p_density <-
+  projr::projr_path_get(
+    "output", "fig", "cytof", "p-density-all-all.png"
+  )
+cowplot::ggsave2(
+  path_p_density,
+  p_density,
+  width = 18,
+  height = 28,
+  units = "cm"
+)
+```
+
+### Choose only 1000 cells
+
+```{r}
+set.seed(4)
+data_tidy_cell <- ex_tbl |>
+  dplyr::sample_n(1000)
+```
+
+## Extract and save lineage data
+
+Extract:
+
+```{r}
+marker_vec_lineage <- c(
+  "cd3", "cd4", "cd8",
+  "cd16", "cd19", "cd33"
+)
+data_tidy_cell_lineage <- data_tidy_cell[, c("cell_id", marker_vec_lineage)]
+path_data_save <- projr::projr_path_get(
+  "output-inst", "cytof", "data", "data_tidy_cell_lineage.csv"
+)
+readr::write_csv(
+  data_tidy_cell_lineage,
+  path_data_save
+)
+projr::projr_use_data(data_tidy_cell_lineage, overwrite = TRUE)
+```
+
+Plot:
+
+```{r}
+plot_tbl <- data_tidy_cell_lineage |>
+  tidyr::pivot_longer(
+    cols = -cell_id,
+    names_to = "marker",
+    values_to = "value"
+  )
+p_density <- ggplot(
+  plot_tbl |>
+    dplyr::group_by(marker) |>
+    dplyr::filter(value > min(value)) |>
+    dplyr::ungroup(),
+  aes(x = value, fill = marker)
+) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~marker, scales = "free_y", ncol = 4) +
+  cowplot::theme_cowplot() +
+  theme(
+    legend.position = "none"
+  ) +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
+  )
+path_p_density <-
+  projr::projr_path_get(
+    "output", "fig", "cytof", "p-density-all-lineage.png"
+  )
+cowplot::ggsave2(
+  path_p_density,
+  p_density,
+  width = 15,
+  height = 12,
+  units = "cm"
+)
+```

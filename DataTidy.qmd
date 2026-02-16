@@ -1,0 +1,340 @@
+---
+title: Tidy data for analysis for STA5069Z course
+format:
+  html:
+    embed-resources: true
+---
+
+# Introduction
+
+```{r}
+#| include: false
+library(tibble)
+```
+
+
+## MDS
+
+### Morse code data
+
+```{r}
+data_raw_morse <- readr::read_csv(
+  projr::projr_path_get("raw-data", "morse.code.csv")
+)
+data_tidy_morse <- data_raw_morse
+projr::projr_use_data(data_tidy_morse, overwrite = TRUE)
+```
+
+### SA distance data
+
+```{r}
+data_raw_sa_distance <- openxlsx::read.xlsx(
+  projr::projr_path_get("raw-data", "SAdistances.xlsx"),
+  sheet = 2
+) |>
+  tibble::as_tibble()
+data_tidy_sa_distance <- data_raw_sa_distance
+colnames(data_tidy_sa_distance)[which(colnames(data_tidy_sa_distance) == "CapeTOwn")] <- "CapeTown"
+projr::projr_use_data(data_tidy_sa_distance, overwrite = TRUE)
+```
+
+## Cluster analysis
+
+### Food
+
+```{r}
+data_raw_food <- readr::read_table(
+  projr::projr_path_get("raw-data", "food.txt")
+)
+data_tidy_food <- data_raw_food
+ugly_to_display_vec <- ugly_to_display_vec <- c(
+  "\"Fat.grams\"" = "fat_grams",
+  "\"Food.energy.calories\"" = "food_energy_calories",
+  "\"Carbohydrates.grams\"" = "carbohydrates_grams",
+  "\"Protein.grams\"" = "protein_grams",
+  "\"Cholesterol.mg\"" = "cholesterol_mg",
+  "\"weight.grams\"" = "weight_grams",
+  "\"Saturated.fat.grams\"" = "saturated_fat_grams",
+  "\"cluster.id\"" = "cluster_id",
+  "\"Fat2.grams\"" = "fat2_grams",
+  "\"Food.energy2.calories\"" = "food_energy2_calories",
+  "\"Carbohydrates2.grams\"" = "carbohydrates2_grams",
+  "\"Protein2.grams\"" = "protein2_grams",
+  "\"Cholesterol2.mg\"" = "cholesterol2_mg",
+  "\"Saturated.fat2.grams\"" = "saturated_fat2_grams"
+)
+colnames(data_tidy_food) <- ugly_to_display_vec[colnames(data_tidy_food)]
+projr::projr_use_data(data_tidy_food, overwrite = TRUE)
+```
+
+## Example 12.3.4
+
+```{r}
+data_raw_example_12_3_4 <- readr::read_csv(
+  projr::projr_path_get("raw-data", "Ex12.3.4.csv")
+)
+data_tidy_example_12_3_4 <- data_raw_example_12_3_4
+projr::projr_use_data(data_tidy_example_12_3_4, overwrite = TRUE)
+```
+
+## Primate scapulae
+
+```{r}
+data_raw_primate <- readr::read_csv(
+  projr::projr_path_get("raw-data", "primate.scapulae.csv")
+)
+data_tidy_primate <- data_raw_primate |>
+  dplyr::rename(
+    genus = "genus",
+    AD_BD = "AD.BD",
+    AD_CD = "AD.CD",
+    EA_CD = "EA.CD",
+    Dx_CD = "Dx.CD",
+    SH_ACR = "SH.ACR",
+    EAD = "EAD",
+    beta = "beta",
+    gamma = "gamma",
+    class = "class",
+    classdigit = "classdigit"
+  )
+projr::projr_use_data(data_tidy_primate, overwrite = TRUE)
+```
+
+## Satellite images
+
+```{r}
+data_raw_satellite <- readr::read_table(
+  projr::projr_path_get("raw-data", "satimage.txt")
+)
+data_tidy_satellite <- data_raw_satellite
+colnames(data_tidy_satellite) <- gsub("\"", "", colnames(data_tidy_satellite))
+projr::projr_use_data(data_tidy_satellite, overwrite = TRUE)
+```
+
+## T11-5
+
+```{r}
+data_raw_t11_5 <- readr::read_table(
+  projr::projr_path_get("raw-data", "T11-5.DAT"),
+  col_names = FALSE
+)
+data_tidy_t11_5 <- data_raw_t11_5
+projr::projr_use_data(data_tidy_t11_5, overwrite = TRUE)
+```
+
+## Linear dimensionality reduction
+
+### Financial data
+
+Hirschey and Wichern (referenced in Johnson and Wichern) investigate the consistency, determinants and uses of accounting and market-value measures of profitability.
+
+The correlation matrix of accounting historical, accounting replacement and market-value measures of profitability for a sample of firms operating in 1977 is as follows:
+
+```{r}
+#| results: asis
+#| echo: false
+var_vec <- c(
+  "Historical return on assets (HRA)",
+  "Historical return on equity (HRE)",
+  "Historical return on sales (HRS)",
+  "Replacement return on assets (RA)",
+  "Replacement return on equity (RRE)",
+  "Replacement return on sales (RRS)",
+  "Market Q ratio (Q)",
+  "Market relative excess value (REV)"
+  )
+hra_vec <- c(1, 0.738, 0.731, 0.828, 0.681, 0.712, 0.625, 0.604)
+hre_vec <- c(NA_real_, 1, 0.52, 0.688, 0.831, 0.543, 0.322, 0.303)
+hrs_vec <- c(NA_real_, NA_real_, 1, 0.652, 0.5113, 0.826, 0.579, 0.617)
+rra_vec <- c(NA_real_, NA_real_, NA_real_, 1, 0.887, 0.867, 0.639, 0.563)
+rre_vec <- c(NA_real_, NA_real_, NA_real_, NA_real_, 1, 0.692, 0.419, 0.352)
+rrs_vec <- c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, 1, 0.608, 0.610)
+q_vec <- c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, 1, 0.937)
+rev_vec <- c(NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, NA_real_, 1)
+corr_tbl <- tibble::tibble(
+  Variable = var_vec,
+  HRA = hra_vec,
+  HRE = hre_vec,
+  HRS = hrs_vec,
+  RRA = rra_vec,
+  RRE = rre_vec,
+  RRS = rrs_vec,
+  Q = q_vec,
+  REV = rev_vec
+)
+knitr::kable(corr_tbl)
+```
+
+```{r}
+#| echo: false
+corr_mat <- matrix(c(
+  HRA = hra_vec,
+  HRE = hre_vec,
+  HRS = hrs_vec,
+  RRA = rra_vec,
+  RRE = rre_vec,
+  RRS = rrs_vec,
+  Q = q_vec,
+  REV = rev_vec
+), nrow = 8, byrow = FALSE)
+for (i in seq_len(nrow(corr_mat))) {
+  for (j in seq_len(nrow(corr_mat))) {
+    if (is.na(corr_mat[i, j])) corr_mat[i, j] <- corr_mat[j, i]
+  }
+}
+```
+
+The correlation matrix is saved as `data_tidy_profit`.
+
+```{r}
+#| eval: true
+#| echo: true
+data_tidy_profit <- corr_mat
+projr::projr_use_data(data_tidy_profit, overwrite = TRUE)
+```
+
+### Luminex data
+
+```{r}
+#| echo: true
+#| results: hide
+#| message: false
+#| warning: false
+lum_tbl <- openxlsx::read.xlsx(
+  projr::projr_path_get("raw-data", "age_inflammation_data.xlsx"),
+  sheet = "luminex"
+) |>
+  tibble::as_tibble()
+lum_tbl <- lum_tbl |>
+  dplyr::rename(
+    pid = `Donor.ID`,
+    stim = `Stim.condition`
+  )
+colnames(lum_tbl) <- gsub("\\(\\d+\\)", "", colnames(lum_tbl))
+colnames(lum_tbl) <- gsub("\\.|\\-", "", colnames(lum_tbl))
+lum_tbl <- lum_tbl |>
+  dplyr::mutate(
+    dplyr::across(IFNa2:DDimer, as.numeric)
+  )
+(lum_tbl[,1:2]) |> UtilsDataRSV::view_cols()
+(lum_tbl) |> UtilsDataRSV::view_cols()
+lum_tbl <- lum_tbl |>
+  tidyr::pivot_longer(
+    -c(pid, stim),
+    names_to = "protein",
+    values_to = "response"
+  ) |>
+  dplyr::mutate(
+    response = log(response)
+  ) |>
+  dplyr::group_by(
+    protein, pid
+  ) |>
+  dplyr::filter(
+    stim %in% c("Unstim", "H37Rv")
+  ) |>
+  dplyr::summarise(
+    response = response[stim == "H37Rv"] - response[stim == "Unstim"]
+  ) |>
+  dplyr::ungroup()
+if (FALSE) {
+  p <- ggplot(lum_tbl, aes(y = response, x = protein, fill = protein)) +
+    geom_boxplot()
+  ggplot2::ggsave(
+    filename = projr_path_get("cache", "test", "p-lum.pdf")
+  )
+}
+lum_tbl <- lum_tbl |>
+  tidyr::pivot_wider(
+    names_from = "protein",
+    values_from = "response"
+  )
+meta_data_tbl <- openxlsx::read.xlsx(
+  projr::projr_path_get("raw-data", "age_inflammation_data.xlsx"),
+  sheet = "metadata"
+) |>
+  tibble::as_tibble()
+meta_data_tbl <- meta_data_tbl |>
+  dplyr::rename(
+    pid = `Donor.ID`,
+    infxn = `QFT.status`,
+    age = Age,
+    sex = Gender,
+    ethnicity = Ethnicity
+  )
+# remove all observations from meta_data_tbl
+# that are not in lum_tbl
+meta_data_tbl <- meta_data_tbl |>
+  dplyr::semi_join(lum_tbl, by = "pid")
+projr::projr_use_data(lum_tbl, overwrite = TRUE)
+projr::projr_use_data(meta_data_tbl, overwrite = TRUE)
+```
+
+## Mtb-specific T cell response data
+
+```{r}
+#| results: hide
+#| message: false
+#| warning: false
+if (!requireNamespace("VaccCompData", quietly = TRUE)) {
+  remotes::install_github("MiguelRodo/VaccCompData")
+}
+data("tmaxSub17ExcTbl", package = "VaccCompData")
+data("bl17ExcTbl", package = "VaccCompData")
+
+tcell_response_data_memory <- tmaxSub17ExcTbl |>
+  tibble::as_tibble() |>
+  dplyr::filter(cd == "4") |>
+  dplyr::mutate(
+    cytCombo = gsub("^CD4", "", cytCombo)
+  ) |>
+  dplyr::select(-c(cd, timePoint, prid)) |>
+  dplyr::filter(vaccine != "8")
+
+chr_to_vacc_vec <- c(
+  "1" = "Aeras402",
+  "2" = "H56:IC31",
+  "3" = "M72:AS01E",
+  "4" = "MVA85A",
+  "5" = "H1:IC31",
+  "6" = "ID93:GLA-SE",
+  "7" = "BCG",
+  "8" = "Megapool"
+)
+
+tcell_response_data_memory <- tcell_response_data_memory |>
+  dplyr::mutate(
+    vaccine = chr_to_vacc_vec[vaccine]
+  )
+
+# tcell_response_data_memory |>
+#   dplyr::group_by(vaccine, ptid) |>
+#   dplyr::slice(1) |>
+#   dplyr::ungroup() |>
+#   dplyr::group_by(vaccine) |>
+#   dplyr::summarise(count = dplyr::n())
+
+tcell_response_data_baseline <- bl17ExcTbl |>
+  tibble::as_tibble() |>
+  dplyr::filter(cd == "4") |>
+  dplyr::mutate(
+    cytCombo = gsub("^CD4", "", cytCombo)
+  ) |>
+  dplyr::select(-c(cd, timePoint, prid)) |>
+  dplyr::filter(vaccine != "8")
+tcell_response_data_baseline <- tcell_response_data_baseline |>
+  dplyr::mutate(
+    vaccine = chr_to_vacc_vec[vaccine]
+  )
+
+pid_vec <- intersect(
+  tcell_response_data_baseline$ptid,
+  tcell_response_data_memory$ptid
+)
+tcell_response_data_baseline <- tcell_response_data_baseline |>
+  dplyr::filter(ptid %in% pid_vec)
+tcell_response_data_memory <- tcell_response_data_memory |>
+  dplyr::filter(ptid %in% pid_vec)
+projr::projr_use_data(tcell_response_data_baseline, overwrite = TRUE)
+projr::projr_use_data(tcell_response_data_memory, overwrite = TRUE)
+```

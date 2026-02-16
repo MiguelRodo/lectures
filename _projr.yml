@@ -1,0 +1,28 @@
+directories:
+  raw-data:
+    path: _raw_data
+  cache:
+    path: _tmp
+  output:
+    path: _output
+  output-inst:
+    path: inst/extdata
+    ignore: no
+  docs:
+    path: docs
+build:
+  git: yes
+  github:
+    latest:
+      content:
+      - raw-data
+      - output
+      - output-inst
+      - docs
+    archive:
+      content:
+      - raw-data
+      - output
+      - output-inst
+      structure: archive
+
