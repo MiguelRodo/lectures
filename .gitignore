@@ -2,8 +2,18 @@ _raw_data/**
 _tmp/**
 _output/**
 docs/**
+SlidesL1MDS_files/**
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-_archive/**
+_reference/**
+_raw/img/**
+_raw/data/**
+_raw/other/**
+_tmp/**
+_output/**
+docs/**
+NotesL1MDS_files/**
+NotesL1MDS.html/**
+SlidesL1MDS.pdf/**
 # End of projr section
 

@@ -1,0 +1,52 @@
+
+
+## The Equivalence of PCA and Classical MDS
+
+The relationship between Principal Component Analysis (PCA) and Classical Multidimensional Scaling (MDS) can be demonstrated through the Singular Value Decomposition (SVD) of the centered data matrix .
+
+### 1. The PCA Perspective (Covariance)
+
+Let  be an  matrix of centered data. In PCA, we analyze the  covariance matrix (ignoring the  scaling):
+
+
+
+Where  is the matrix of eigenvectors (**loadings**) and  are the eigenvalues. To get the **PC scores** (), we project the data onto these eigenvectors:
+
+
+Using the SVD of , we substitute for :
+
+
+
+Thus, the PC scores are the left singular vectors scaled by the singular values.
+
+### 2. The Classical MDS Perspective (Inner Products)
+
+In Classical Scaling, we begin with a dissimilarity matrix. Through **double centering**, we transform the squared dissimilarities into an  matrix of inner products .
+Each element  represents the dot product of the -th and -th observations centered at the origin.
+
+From the SVD of :
+
+
+The eigenvectors of  are , and the eigenvalues are the diagonal elements of . To recover the coordinates () that generated these inner products, we solve for  in :
+
+
+### 3. Dimensionality Reduction
+
+In both cases, we approximate the structure by retaining only the first  dimensions:
+
+* In **PCA**, we take the first  columns of .
+* In **Classical MDS**, we take the first  columns of  (associated with the  largest eigenvalues of ).
+
+Because  from the inner product matrix is identical to  from the covariance matrix, the **Classical MDS coordinates are exactly the Principal Component scores.**
+
+---
+
+### Key Takeaways
+
+| Feature | PCA | Classical MDS |
+| --- | --- | --- |
+| **Input** |  (Raw Data) |  (Dissimilarities) |
+| **Matrix Analyzed** |  (Covariance) |  (Inner Products/B) |
+| **Eigenvectors** |  (Loadings) |  (Normalized Scores) |
+| **Result** |  |  |
+

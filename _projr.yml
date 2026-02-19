@@ -1,12 +1,31 @@
-# default directory settings:
 directories:
+  raw-reference:
+    path: _reference
+  raw-img:
+    path: _raw/img
   raw-data:
-    path: _raw_data
-    source:
-      github: archive
-  cache: 
+    path: _raw/data
+  raw-other:
+    path: _raw/other
+  cache:
     path: _tmp
-  output: 
+  output:
     path: _output
   docs:
     path: docs
+build:
+  git: yes
+  github:
+    latest-2025:
+      content:
+      - raw-img
+      - raw-other
+      structure: latest
+    slides-2025:
+      content: docs
+      structure: latest
+    archive-2025:
+      content:
+      - raw-img
+      - raw-other
+

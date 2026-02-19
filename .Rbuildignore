@@ -1,7 +1,15 @@
+^renv$
+^renv\.lock$
 ^LICENSE\.md$
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-^_raw_data/
-^_raw_data$
+^_reference/
+^_reference$
+^_raw/img/
+^_raw/img$
+^_raw/data/
+^_raw/data$
+^_raw/other/
+^_raw/other$
 ^_tmp/
 ^_tmp$
 ^_output/
@@ -9,8 +17,15 @@
 ^docs/
 ^docs$
 ^_projr\.yml$
+^NotesL1MDS\.qmd$
+^SlidesL1MDS\.qmd$
+^_dependencies\.R$
 ^LICENSE\.md$
-^_archive/
-^_archive$
+^NotesL1MDS_files/
+^NotesL1MDS_files$
+^NotesL1MDS\.html/
+^NotesL1MDS\.html$
+^SlidesL1MDS\.pdf/
+^SlidesL1MDS\.pdf$
 # End of projr section
 
