@@ -1,0 +1,166 @@
+---
+title: Answer Key
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 2
+---
+
+# MDS
+
+## Section 1: Measurement and Data Structures
+
+* Answer 1:
+  * Ratio: Time taken to complete a task.
+  * Interval: Difference from an arbitrary standard (as we had with degrees Celcius), e.g. calendar years, latitude and longitude.
+  * Ordinal: Ratings (cakes, movies, etc.).
+  * Nominal: Car brands or people's names (no greater/less than relationship).
+
+* **Answer 2:**
+  * **Proof:** For a ratio scale to hold, the ratio of two values must be preserved. The ratio of the original values is $x/y$. After adding the constant, the new ratio is $(x+c)/(y+c)$, which is not equal to $x/y$ (unless $c=0$ or $x=y$). Thus, the ratio scale is lost, and $A$ and $B$ operate on an interval scale. However, the difference between the new values is $A - B = (x + c) - (y + c) = x - y$. The arbitrary constant $c$ cancels out, exactly recovering the difference between the original ratio-scaled values. Therefore, the differences operate on a ratio scale.
+  * **Implication:** If a constant is added to all dissimilarities before mapping (shifting them to an interval scale), we cannot meaningfully compare the ratios of the resulting configuration distances (e.g., we cannot say Point 1 is "twice as far" from Point 2 as it is from Point 3). However, we *can* meaningfully compare the *differences* between distances (e.g., the difference in distance between Pair 1 and Pair 2 is twice as large as the difference between Pair 3 and Pair 4).
+
+* Answer 3:
+  We cannot attempt to get coordinates in Euclidean space such that points have a negative distance between them. 
+
+* Answer 4:
+  Let three points in 1D space be $x=0$, $y=1$, and $z=2$. The squared Euclidean distances are: $d(x,y) = (0-1)^2 = 1$; $d(y,z) = (1-2)^2 = 1$; and $d(x,z) = (0-2)^2 = 4$. According to the triangle inequality, $d(x,z)$ must be $\le d(x,y) + d(y,z)$. Since $4 \not\le 1 + 1$, squared Euclidean distance is not a valid distance metric.
+
+  More generally, one can show this by considering Pythagoras theorem and pulling the corner opposite the hypotenuse in (not needed for an answer).
+
+## Section 2: Classical Scaling vs. Least Squares
+
+* Answer 5:
+  Classical scaling does not directly approximate the dissimilarities themselves; instead, it approximates the centered inner products of the data.
+
+* Answer 6:
+  There are two main reasons:
+  1. We can simply ignore negative eigenvalues, or add positive constants to original dissimilarities.
+  2. The main reason, however, is practical - regardless of the underlying dissimilarity measure, we interpret points visually best when they are in Euclidean space.
+
+* Answer 7:
+  Let $X = U D V^T$. Then $B = XX^T = (UDV^T)(VD U^T) = U D^2 U^T$. The eigenvectors of $B$ are $U$, and the eigenvalues are $\Lambda = D^2$. Classical scaling computes coordinates as $Y = U_k \Lambda_k^{1/2} = U_k D_k$. PCA computes coordinates as $XV = (UDV^T)V = UD$. Thus, the first $k$ dimensions are identical.
+
+* Answer 8:
+  Classical scaling, in being equivalent to PCA, only considers coordinates in the low-dimensional space that are linear combinations of values in the high(er)-dimensional space. Least-squares scaling, by contrast, has no such restriction, and simply places points where they fit best as per the numerical optimiser.
+
+## Section 3: Least Squares Optimization & Transformations
+
+* Answer 9:
+  $\mathcal{L}(y_1, ..., y_n) = \sum_{i<j}^n (d_{ij} - \delta_{ij})^2$
+
+* Answer 10:
+  $\mathcal{L}_f = \sum_{i<j}^n w_{ij} \left( \sqrt{\sum_{k=1}^t (y_{ik} - y_{jk})^2} - f(\delta_{ij}) \right)^2$
+
+* Answer 11:
+  There are 2n parameters to select, which quickly becomes large. Moreover, the distance matrix has $n(n-1)/2$ elements, which becomes enormous to hold in memory as $n$ becomes very big.
+
+* Answer 12:
+  Logging pre-optimisation fixes the base without consideration of the data, whereas making the base a parameter to optimise means that it is selected based on the data.
+
+* Answer 13:
+  You should use Sammon mapping, which applies the weight $w_{ij} = 1 / (\delta_{ij} \sum_{i<j}\delta_{ij})$ to down-weight larger original distances.
+
+## Section 4: Interpretation and Diagnostics
+
+* Answer 14:
+  The same-size difference along the y-axis will appear to be smaller/larger than the same-size difference along the x-axis. It is very important in MDS that we have equal visual scaling of the axes.
+
+* Answer 15:
+  Map B is the one where the constant was added. Adding a constant $\alpha > 0$ effectively "pushes apart" all the dissimilarities, which affects the small dissimilarites more than large dissimilarites and so results in the relevant points being relatively further apart.
+
+* Answer 16:
+  The denominator in the provided formula normalizes by the square of the disparities ($\sum_{i<j} (\hat{d}_{ij})^2$). For Kruskal's Stress-1, the denominator must normalize by the square of the configuration distances, making the correct denominator $\sum_{i<j} (d_{ij})^2$.
+
+* Answer 17:
+  Number of dots/dashes the most critical factor (top-right vs bottom-left).
+  The original paper had another observation, but I can't remember what it was.
+
+* Answer 18:
+  * Start: $\{3, 1, 4, 2.5\}$
+  * Rank 1: $3$.
+  * Rank 2: $1$. Because $1 < 3$, we average them: $(3+1)/2 = 2$. Current state: $\{2, 2\}$.
+  * Rank 3: $4$. Because $4 > 2$, it is valid. Current state: $\{2, 2, 4\}$.
+  * Rank 4: $2.5$. Because $2.5 < 4$, we average the violating pair: $(4+2.5)/2 = 3.25$. 
+  * Final state: $\{2, 2, 3.25, 3.25\}$.
+
+# Clustering I
+
+## Section 1: Conceptual Foundations & Algorithm Choice
+
+* Answer 1:
+  Density-based clustering approaches do not explicitly define a probability distribution but rather group observations together that lie in regions that are sufficiently dense throughout.
+
+* Answer 2:
+  For $n$ observations to be allocated to $k$ clusters, the number of different ways of allocating observations to clusters is given by a very large combinatorial expression.
+
+* Answer 3:
+  A centroid is the mathematical mean vector of all points in a cluster (and rarely an actual data point itself). A medoid is a strictly actual, observed data point within the cluster that minimizes the average dissimilarity to all other points in that cluster.
+
+* Answer 4:
+  K-means is vastly computationally faster because updating a centroid requires only calculating a simple mean. K-medoids is highly robust to extreme outliers and flexible because it can handle any arbitrary pairwise dissimilarity matrix, not just squared Euclidean distance.
+
+## Section 2: K-Means & Partitioning Mechanics
+
+* Answer 5:
+  Let the within-cluster sum of squares for a cluster $C$ with $n_c$ points and prototype $c$ be $J(c) = \sum_{x \in C} ||x - c||^2$. Taking the derivative with respect to $c$ and setting it to zero: $\frac{\partial J}{\partial c} = -2 \sum_{x \in C} (x - c) = 0$. This implies $\sum x - n_c c = 0$, leading to $c = \frac{1}{n_c} \sum x$. Thus, the mathematical mean minimizes the function.
+
+* Answer 6:
+  The length of a vector is the same as its distance from the origin. Its length squared is equal to the dot product of the vector with itself. So, if we think of the vector as a difference vector (e.g., $x-y$), then its squared length $||x-y||^2$ is equal to its dot product with itself. Therefore, we can write the inner summand for the K-means objective function as either the squared length of the difference vector or its dot product with itself.
+
+* Answer 7:
+  No, K-means only guarantees convergence to a *local* optimum. Because both the assignment step and the update step monotonically decrease the within-cluster sum of squares, the algorithm will stop when it hits a local valley, but it cannot jump out of that valley to find the global optimum.
+
+* Answer 8:
+  Mini-batch K-means can be used, which takes random subsamples of the data to update centroids instead of waiting to evaluate every single point, vastly speeding up iteration time on large datasets.
+
+* Answer 9:
+  In each iteration, PAM tests swapping every medoid ($k$) with every non-medoid ($n-k$). Therefore, it evaluates $k(n-k)$ swaps. This value is maximized (worst-case performance) when $k = n/2$, yielding $n^2 / 4$ evaluations.
+
+<!--
+
+* Answer 10:
+  CLARA draws a small sample of size $s$ and runs PAM only on that sample. The complexity of PAM is $\mathcal{O}(k(n-k)^2)$, while CLARA's internal PAM step is $\mathcal{O}(k(s-k)^2)$. Their ratio is approximately 
+  Therefore, CLARA is roughly $(n/s)^2$ times faster for a given $k$.
+
+!-->
+
+## Section 3: Hierarchical Clustering (AGNES & DIANA)
+
+* Answer 11:
+  AGNES and DIANA never reassign points.
+
+* Answer 12:
+  For a 3x3 matrix, you compute the initial distances ($\binom{3}{2} = 3$). After one merge, you have 2 clusters, requiring 1 distance computation between them. Total = 4. For an $n \times n$ matrix, calculating the initial pairwise distances takes $\frac{n(n-1)}{2}$ computations.
+
+<!--
+
+* Answer 13:
+  To find the initial "splinter" point in DIANA, you must calculate the average dissimilarity of every point to all other points within its current cluster, requiring $\mathcal{O}(n_c^2)$ operations (where $n_c$ is the number of points in the cluster).
+
+!-->
+
+* Answer 14:
+  For single linkage, the height is the largest nearest-neighbour distance.
+  For complete linkage, the height is the largest distance.
+  Therefore, for single linkage the merge heights before the final merge are compared visually to a lower value (the nearest-neighbour distance) than for complete linkage (largest distance).
+  As the agglomerative coefficient is dependent on this ratio, it is heavily dependent in absolute terms on the linkage chosen. 
+
+* Answer 15:
+  * Single Linkage: Excels at finding elongated, non-spherical shapes (like concentric rings). Fails terribly when there is background noise, causing "chaining" where distinct clusters are merged by a single bridge of noise points.
+  * Complete Linkage: Excels at finding compact, spherical clusters of roughly equal diameter. Fails when underlying clusters naturally have vastly different variances/diameters, as it will break up large clusters prematurely.
+
+## Section 4: Clustering Diagnostics & Metrics
+
+* Answer 16:
+  In the elbow method, we choose the number of clusters such that after that point the within-cluster dispersion stops dropping rapidly. The gap statistic formalises this by calculating how much better than random the within-cluster dispersion is for each $k$, which will tend to select points near the elbow (for conservative gap-stat criteria for $k$) as after that point the increasingly-small reductions in within-cluster dispersion are unlikely to outweigh the increased flexibility from more clusters.
+
+* Answer 17:
+  The PCs will take into account correlation between original features, ensuring better alignment with the actual data.
+
+* Answer 18:
+  It captures the natural variability in the within-cluster dispersion under the null scenario of no clusters.
+
+* Answer 19:
+  Long clusters with a region of very low density between them. 

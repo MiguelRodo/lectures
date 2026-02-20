@@ -16,16 +16,20 @@ directories:
 build:
   git: yes
   github:
-    latest-2025:
+    latest-2026:
       content:
       - raw-img
       - raw-other
       structure: latest
-    slides-2025:
+    slides-2026:
       content: docs
       structure: latest
-    archive-2025:
+    archive-2026:
       content:
       - raw-img
       - raw-other
+dev:
+  scripts:
+  - QuestionBankAnswers.qmd
+  - QuestionBankQuestions.qmd
 

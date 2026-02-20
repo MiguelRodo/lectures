@@ -18,6 +18,8 @@
 ^docs$
 ^_projr\.yml$
 ^NotesL1MDS\.qmd$
+^QuestionBankAnswers\.qmd$
+^QuestionBankQuestions\.qmd$
 ^SlidesL1MDS\.qmd$
 ^_dependencies\.R$
 ^LICENSE\.md$
@@ -25,6 +27,16 @@
 ^NotesL1MDS_files$
 ^NotesL1MDS\.html/
 ^NotesL1MDS\.html$
+^QuestionBankAnswers_files/
+^QuestionBankAnswers_files$
+^QuestionBankAnswers\.html/
+^QuestionBankAnswers\.html$
+^QuestionBankQuestions_files/
+^QuestionBankQuestions_files$
+^QuestionBankQuestions\.html/
+^QuestionBankQuestions\.html$
+^SlidesL1MDS_files/
+^SlidesL1MDS_files$
 ^SlidesL1MDS\.pdf/
 ^SlidesL1MDS\.pdf$
 # End of projr section
