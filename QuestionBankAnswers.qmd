@@ -164,3 +164,91 @@ format:
 
 * Answer 19:
   Long clusters with a region of very low density between them. 
+
+  # Answer Key: The EM Algorithm for Mixture Models
+
+## Section 1: Optimization and Lagrange Multipliers
+
+**1. Optimization with and without constraints**
+* **a.** The unconstrained function is $f(x, y) = x^2 + x + y$. Taking partial derivatives and setting to zero: $\frac{\partial f}{\partial x} = 2x + 1 = 0 \implies x = -0.5$. However, $\frac{\partial f}{\partial y} = 1 \neq 0$. There is no critical point where the derivative with respect to $y$ is zero. This function represents a surface that continues upward infinitely in the $y$ direction, meaning it has no global or local maximum.
+* **b.** The Lagrangian is $\mathcal{L}(x, y, \lambda) = x^2 + x + y - \lambda(x^2 + y^2 - 1)$. 
+  Taking partial derivatives:
+  1. $\frac{\partial \mathcal{L}}{\partial x} = 2x + 1 - 2\lambda x = 0 \implies x(2 - 2\lambda) = -1$
+  2. $\frac{\partial \mathcal{L}}{\partial y} = 1 - 2\lambda y = 0 \implies y = \frac{1}{2\lambda}$
+  3. $\frac{\partial \mathcal{L}}{\partial \lambda} = -(x^2 + y^2 - 1) = 0 \implies x^2 + y^2 = 1$
+  By substituting equations 1 and 2 into equation 3, we can solve for $\lambda$, which yields the maximizing coordinates $(x,y)$.
+* **c.** An inequality constraint, such as $x^2 + y^2 \leq 1$. Standard Lagrange multipliers only handle equality constraints; inequalities require the Karush-Kuhn-Tucker (KKT) conditions.
+
+## Section 2: Deriving the M-Step
+
+**2. Poisson Mixture Model**
+The weighted log-likelihood term for component $k$ in the $Q$-function is:
+$$Q(\lambda_k) = \sum_{i=1}^n \gamma_{ik} (x_i \log(\lambda_k) - \lambda_k - \log(x_i!))$$
+Take the derivative with respect to $\lambda_k$ and set to zero:
+$$\frac{\partial Q}{\partial \lambda_k} = \sum_{i=1}^n \gamma_{ik} \left( \frac{x_i}{\lambda_k} - 1 \right) = 0$$
+$$\sum_{i=1}^n \gamma_{ik} \frac{x_i}{\lambda_k} = \sum_{i=1}^n \gamma_{ik}$$
+$$\lambda_k = \frac{\sum_{i=1}^n \gamma_{ik} x_i}{\sum_{i=1}^n \gamma_{ik}}$$
+The MLE is simply the responsibility-weighted sample mean.
+
+**3. Gaussian Mixture Model with Common Variance**
+If all components share a single variance $\sigma^2$, the term in the $Q$-function involves a sum over all components $k$:
+$$Q(\sigma^2) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2}\log(2\pi\sigma^2) - \frac{(x_i - \mu_k)^2}{2\sigma^2} \right)$$
+Taking the derivative with respect to $\sigma^2$ (let $v = \sigma^2$) and setting to zero:
+$$\frac{\partial Q}{\partial v} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2v} + \frac{(x_i - \mu_k)^2}{2v^2} \right) = 0$$
+Multiplying by $2v^2$ and rearranging:
+$$v \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2$$
+Since $\sum_{k=1}^K \gamma_{ik} = 1$ for every observation, the sum on the left simplifies to $n$:
+$$\sigma^2 = \frac{1}{n} \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2$$
+Unlike component-specific variances, this pools the squared deviations from *all* groups, weighted by their respective responsibilities, and divides by the total sample size $n$.
+
+**4. Partially Known Parameters**
+* **a.** In the E-step, $\gamma_{i1}$ is calculated using the known, fixed $\mu_1$ inside the density function $f_1(x_i)$. The responsibilities $\gamma_{i2}$ and $\gamma_{i3}$ use the iteratively updated estimates $\mu_2^{(t)}$ and $\mu_3^{(t)}$.
+* **b.** The M-step formulas for $\mu_2$ and $\mu_3$ are completely unaffected; they remain the responsibility-weighted means for their respective groups. The parameter $\mu_1$ is not updated at all.
+* **c.** The common variance uses the fixed $\mu_1$ alongside the newly updated $\mu_2$ and $\mu_3$:
+$$\sigma^2 = \frac{1}{n} \left[ \sum_{i=1}^n \gamma_{i1}(x_i - \mu_1)^2 + \sum_{i=1}^n \gamma_{i2}(x_i - \mu_2)^2 + \sum_{i=1}^n \gamma_{i3}(x_i - \mu_3)^2 \right]$$
+
+## Section 3: Conceptual Foundations
+
+**5. The "Log of a Sum" Problem**
+Because the sum over the $K$ mixture components occurs *inside* the logarithm ($\log(\sum \pi_k f_k(x))$), the log cannot be distributed to the exponential terms of the component densities. Consequently, taking partial derivatives results in deeply entangled equations with no closed-form analytical solutions.
+
+**6. Latent Variables**
+$Z_{ik}$ is an unobserved indicator variable equal to 1 if observation $i$ truly belongs to component $k$, and 0 otherwise. Introducing it allows us to rewrite the likelihood as a product rather than a sum ($\prod f_k(x_i)^{Z_{ik}}$). When we take the log, the exponent $Z_{ik}$ drops down, turning the log of a product into a sum of logs, effectively breaking the "log of a sum" mathematical deadlock.
+
+**7. Responsibilities**
+Conceptually, $\gamma_{ik}$ is the posterior probability that observation $i$ belongs to group $k$, given the data and current parameter estimates. By Bayes' Theorem, it is the probability of observing the data from group $k$ (prior weight $\times$ component density) divided by the total marginal probability of observing the data across all groups. Mathematically, it is the expected value of the latent variable $Z_{ik}$.
+
+**8. Mixing Proportions Constraint**
+The Lagrangian is:
+$$\mathcal{L}(\boldsymbol{\pi}, \lambda) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(\pi_k) + \lambda \left( 1 - \sum_{k=1}^K \pi_k \right)$$
+Taking the partial derivative with respect to $\pi_k$ and setting to zero:
+$$\frac{\partial \mathcal{L}}{\partial \pi_k} = \sum_{i=1}^n \frac{\gamma_{ik}}{\pi_k} - \lambda = 0 \implies \sum_{i=1}^n \gamma_{ik} = \lambda \pi_k$$
+Summing both sides over $k$:
+$$\sum_{k=1}^K \sum_{i=1}^n \gamma_{ik} = \lambda \sum_{k=1}^K \pi_k$$
+Because $\sum_k \gamma_{ik} = 1$ for each of the $n$ observations, the left side equals $n$. Because of our constraint, $\sum_k \pi_k = 1$. Therefore, $\lambda = n$.
+Substituting $\lambda = n$ back in gives $\pi_k = \frac{1}{n} \sum_{i=1}^n \gamma_{ik}$.
+
+## Section 4: Practical Implementations and Limits
+
+**9. Intractable Component MLEs**
+We can use derivative-free or gradient-based numerical optimization algorithms (such as Nelder-Mead, Newton-Raphson, or BFGS) within the M-step to maximize the responsibility-weighted log-likelihood for that specific component. 
+
+**10. Algorithm Initialization**
+
+Initialization is crucial because the EM algorithm only guarantees convergence to a *local* maximum, not the global maximum. Poor initialization can lead to suboptimal clustering. Common strategies include:
+* Running K-means first and using its cluster centers and variances as the starting parameters.
+* Randomly assigning starting responsibilities to all data points and proceeding directly to the first M-step.
+
+**11. Stopping Criteria**
+The most common criterion is checking the change in the observed-data log-likelihood between iterations. Iterations stop when $\ell^{(t+1)} - \ell^{(t)} < \epsilon$, where $\epsilon$ is a predefined small tolerance value.
+
+**12. The K-Means Limit**
+As $\sigma^2 \to 0$, the component density $f_k(\mathbf{x}_i)$ for the closest mean becomes infinitely larger than the densities for all other means. Consequently, the responsibility $\gamma_{ik}$ approaches exactly 1 for the closest cluster and 0 for all others. This "hard" assignment completely eliminates the uncertainty of the "soft" probabilities, making the algorithm mathematically equivalent to K-means clustering.
+
+## Section 5: Geometric Covariance Decompositions (mclust)
+
+**13. Eigenvalue Decomposition of Covariance**
+* **a.** $\lambda_k$ is a scalar controlling the overall **volume** of the cluster. $D_k$ is an orthogonal matrix of eigenvectors controlling the **orientation** of the cluster in space. $\Lambda_k$ is a diagonal matrix of eigenvalues (normalized so its determinant is 1) controlling the geometric **shape**.
+* **b.** We force the volume parameter to be identical across all groups ($\lambda_k = \lambda$) but allow the shape matrices ($\Lambda_k$) to vary independently for each $k$.
+* **c.** No, the geometry is not different. If $\Lambda_k$ has identical diagonal entries (e.g., $\Lambda_k = c\mathbf{I}$), the cluster is perfectly spherical. Applying an orthogonal rotation ($D_k$) to a perfect sphere does not change its geometry. Therefore, estimating a flexible $D_k$ for a spherical shape is mathematically redundant and yields the exact same spatial result as restricting $D_k = \mathbf{I}$.
+* **d.** We constrain all elements to be identical across components: $\lambda_k = \lambda$, $D_k = D$, and $\Lambda_k = \Lambda$ (this is the "EEE" model in `mclust`). To allow the volume to be something other than 1, we simply leave $\lambda$ as a free parameter to be estimated via Maximum Likelihood from the data, rather than fixing it to a constant scalar of 1.

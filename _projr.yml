@@ -29,7 +29,5 @@ build:
       - raw-img
       - raw-other
 dev:
-  scripts:
-  - QuestionBankAnswers.qmd
-  - QuestionBankQuestions.qmd
+  scripts: QuestionBankQuestions.qmd
 

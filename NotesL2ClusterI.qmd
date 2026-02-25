@@ -1,0 +1,208 @@
+---
+title: Cluster Analysis I
+subtitle: Additional notes
+author: Miguel Rodo
+format:
+  html:
+    embed-resources: true
+---
+
+# The EM Algorithm for Finite Mixture Models
+
+## 1. The Mixture Model PDF
+For a finite mixture model, the probability density function (PDF) for a vector $\mathbf{x} \in \mathbb{R}^p$ is a weighted sum of $K$ component densities. 
+
+$$f(\mathbf{x}) = \sum_{k=1}^K \pi_k f_k(\mathbf{x})$$
+
+Where $\pi_k$ are the mixing proportions ($\sum \pi_k = 1$) and $f_k(\mathbf{x})$ are the component PDFs.
+
+Here is a 1D example ($p=1$) with two groups (1/3 belonging to one, 2/3 to the other) to visualize how the overall PDF is constructed.
+
+```{r}
+library(ggplot2)
+library(cowplot)
+
+# Define the x-axis range
+x <- seq(-5, 10, length.out = 500)
+
+# 1/3 belongs to group 1, 2/3 to group 2
+y1 <- (1/3) * dnorm(x, mean = 0, sd = 1)
+y2 <- (2/3) * dnorm(x, mean = 5, sd = 1.5)
+df <- data.frame(x, y1, y2, y_total = y1 + y2)
+
+# Plotting with cowplot theme
+ggplot(df, aes(x = x)) +
+  geom_line(aes(y = y1), color = "dodgerblue", linewidth = 1) +
+  geom_line(aes(y = y2), color = "darkorange", linewidth = 1) +
+  geom_line(aes(y = y_total), color = "black", linetype = "dashed", linewidth = 0.8) +
+  labs(title = "1D Two-Group Mixture Model",
+       subtitle = "Dashed line is the overall mixture PDF",
+       x = "x", y = "Density") +
+  theme_cowplot()
+```
+
+## 2. The Likelihood and the "Log of a Sum" Problem
+Assuming $n$ independent observations, the likelihood function is the product of the marginal PDFs:
+
+$$L(\mathbf{\Theta}) = \prod_{i=1}^n \sum_{k=1}^K \pi_k f_k(\mathbf{x}_i)$$
+
+To find the maximizing values, we take the natural log to get the log-likelihood:
+
+$$
+\ell(\mathbf{\Theta}) = \sum_{i=1}^n \log \left(\sum_{k=1}^K \pi_k f_k(\mathbf{x}_i) \right),
+$$
+
+where $\mathbf{\Theta}$ is the object of the per-group weights $\pi_k$ and per-component parameters (e.g. $\mu_k$ and $\sigma^2$).
+
+This presents a serious problem: we have a **log of a sum**. 
+
+If we assume $f_k(\mathbf{x}_i)$ is a Multivariate Normal (MVN) distribution, plugging it into our log-likelihood gives:
+
+$$
+\ell(\mathbf{\Theta}) = \sum_{i=1}^n \log \left( \sum_{k=1}^K \pi_k \left[ (2\pi)^{-p/2} |\mathbf{\Sigma}_k|^{-1/2} \exp\left( -\frac{1}{2} (\mathbf{x}_i - \boldsymbol{\mu}_k)^T \mathbf{\Sigma}_k^{-1} (\mathbf{x}_i - \boldsymbol{\mu}_k) \right) \right] \right)
+$$
+
+Because the sum is trapped inside the logarithm, taking derivatives and setting them to zero yields equations with no analytical solution.
+We have $K \times (1 + r)$ parameters (where $r = p + p(p+1)/2$ is the number of free parameters per component) hopelessly tangled together.
+
+## 3. Disentangling the Problem: The EM Algorithm
+
+We break the optimization into two iterative steps:
+
+1. **E-step (Expectation):** Estimate the probability that each observation belongs to a particular group, conditional on its response. These are called *responsibilities* ($\gamma_{ik}$).
+2. **M-step (Maximization):** Estimate the MLEs for the parameters $\pi_k$ and $\mathbf{\Theta}_k$, conditional on the responsibilities.
+
+This disentangles the problem into $K+1$ entirely separate sub-problems. It guarantees descent on each iteration and makes computation mathematically tractable.
+
+## 4. Observed vs. Complete Data Log-Likelihood
+The log-likelihood above is the **observed-data log-likelihood**. If we actually knew which group the $i$-th observation belonged to, the probability of observing that data point from group $k$ would be:
+
+$$P(\mathbf{X}_i = \mathbf{x}_i, G_i = k) = \pi_k f_k(\mathbf{x}_i)$$
+
+Let $Z_{ik}$ be an indicator variable equal to 1 if observation $i$ belongs to group $k$, and 0 otherwise. Instead of a sum, we write the probability as a product:
+
+$$
+\prod_{k=1}^K (\pi_k f_k(\mathbf{x}_i))^{Z_{ik}}
+$$
+
+The **complete-data log-likelihood** across all $n$ observations then becomes:
+
+$$
+\ell_c(\mathbf{Z},\mathbf{\Theta}) = \sum_{i=1}^n \sum_{k=1}^K Z_{ik} \log(\pi_k f_k(\mathbf{x}_i))
+$$
+
+The sum is no longer trapped inside the log!
+
+## 5. The Expectation Step (The Q-Function)
+
+Whilst the sum is no longer inside the log, we still do not know the following:
+
+a. Per-observation group membership: $Z_{ik}$
+b. Per-group probabilities: $\pi_k$
+c. Per-component parameters: for example, $\mu_k$ and $\sigma^2$ if each component is normally distributed with the same variance
+
+We handle (a) in the $E$-step and (b) and (c) in the M-step.
+
+To handle not knowing $Z_{ik}$, we take the expectation of the complete log-likelihood with respect to $\symbf{Z}$:
+
+$$
+Q(\mathbf{\Theta} \mid \mathbf{\Theta}^{(t)}) = E[\ell_c(\mathbf{\Theta})] = \sum_{i=1}^n \sum_{k=1}^K E[Z_{ik}] \log(\pi_k f_k(\mathbf{x}_i))
+$$
+
+Note that it is conditional on $\mathbf{\Theta}^{(t)}$.
+In other words, we already have estimates of the parameters in $\mathbf{\Theta}^{(t)}$ from the previous step in the algorithmm.
+When we are just starting the algorithm, we may obtain these by allocating observations to clusters using another, fast clustering algorithm (e.g. k-means) and using the MLEs.
+
+We replace $E[Z_{ik}]$ by the posterior probability of observation $i$ belonging to group $k$ conditional on its response $\mathbf{x}_i$:
+
+$$
+\pi(G_i = k|\mathbf{x}_i) =
+  \frac{\pi_kf_k(\mathbf{x}_i)}{\sum_{j=1}^K\pi_j f_j(\mathbf{x}_i)}
+$$
+
+We denote this probability $\gamma_{ik}$, and term it the responsbility within the context of the EM algorithm. 
+
+## 6. The Maximization Step: Mixing Proportions ($\pi_k$)
+
+Substituting the responsibilties in gives the **Q-function**:
+
+\begin{align}
+Q(\mathbf{\Theta}) &= \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(\pi_kf_k(\mathbf{x}_i)), \\
+
+&= \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(\pi_k) + \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(f_k(\mathbf{x}_i)).
+\end{align}
+
+### Obtaining prior probabilities
+
+We must maximize the Q-function with respect to $\pi_k$ subject to the constraint $\sum_{k=1}^K \pi_k = 1$.
+We have a continuous objective with a continuous equality constraint, so we can use the function of the method of Lagrangue multipliers.
+
+Our Lagrangian is:
+
+$$
+\mathcal{L}(\boldsymbol{\pi}, \lambda) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(\pi_k) + \lambda \left( 1 - \sum_{k=1}^K \pi_k \right).
+$$
+
+Taking the derivative with respect to $\pi_k$, setting to zero, and summing over $k$ reveals that $\lambda = n$. Substituting back yields:
+
+$$
+\pi_k = \frac{\sum_{i=1}^n \gamma_{ik}}{n}.
+$$
+
+The estimated proportion is simply the average of the responsibilities for that group.
+
+### Obtaining per-component parameters
+
+In the $Q$ function, each component's density parameters only appear in one term, namely:
+
+$$\sum_{i=1}^n\gamma_{ik}\log(f_k(x_i))$$
+
+This is the "standard" log-likelihood weighted by the responsibilities. 
+
+For example, assuming that $X \mid G_i=k \sim \mathcal{N}(\mu_k, \sigma_k^2)$ (using a component-specific variance to be fully flexible), we have the log-density:
+
+$$
+\log(f_k(x_i)) = -\frac{1}{2}\log(2\pi) - \frac{1}{2}\log(\sigma_k^2) - \frac{(x_i - \mu_k)^2}{2\sigma_k^2}
+$$
+
+Substituting this into our weighted term gives:
+
+$$
+\sum_{i=1}^n \gamma_{ik} \log(f_k(x_i)) = \sum_{i=1}^n \gamma_{ik} \left( -\frac{1}{2}\log(2\pi) - \frac{1}{2}\log(\sigma_k^2) - \frac{(x_i - \mu_k)^2}{2\sigma_k^2} \right)
+$$
+
+To find the Maximum Likelihood Estimate (MLE) for the mean $\mu_k$, we take the partial derivative with respect to $\mu_k$ and set it to zero. The terms without $\mu_k$ drop away:
+
+$$
+\frac{\partial}{\partial \mu_k} \sum_{i=1}^n \gamma_{ik} \left( -\frac{(x_i - \mu_k)^2}{2\sigma_k^2} \right) = \sum_{i=1}^n \gamma_{ik} \frac{(x_i - \mu_k)}{\sigma_k^2} = 0
+$$
+
+Multiplying both sides by $\sigma_k^2$ and rearranging gives:
+
+$$
+\sum_{i=1}^n \gamma_{ik} x_i = \sum_{i=1}^n \gamma_{ik} \mu_k
+$$
+
+$$
+\mu_k = \frac{\sum_{i=1}^n \gamma_{ik} x_i}{\sum_{i=1}^n \gamma_{ik}}
+$$
+
+This gives us a highly intuitive result: the updated mean for component $k$ is just the weighted average of the data, using the E-step responsibilities as weights. 
+
+By applying the same process for the variance (taking the partial derivative with respect to $\sigma_k^2$ and setting it to zero), we get the responsibility-weighted variance:
+
+$$
+\sigma_k^2 = \frac{\sum_{i=1}^n \gamma_{ik} (x_i - \mu_k)^2}{\sum_{i=1}^n \gamma_{ik}}
+$$
+
+After this, we obtained updated $\gamma_{ik}$'s, after which we update the per-component parameters again, and so on until the objective function stops meaningfully improving.
+
+## 8. Summary Comparison
+
+The EM algorithm effectively replaces standard Maximum Likelihood Estimation formulas with their responsibility-weighted counterparts.
+
+| Parameter | Standard MLE (Single Component) | EM Algorithm M-Step MLE (Mixture Component $k$) |
+| :--- | :--- | :--- |
+| **Mixing Proportion** ($\pi_k$) | N/A (Assumed 100% of data) | $\frac{1}{n} \sum_{i=1}^n \gamma_{ik}$ |
+| **Mean** ($\boldsymbol{\mu}_k$) | $\frac{1}{n} \sum_{i=1}^n x_i$ | $\frac{\sum_{i=1}^n \gamma_{ik} x_i}{\sum_{i=1}^n \gamma_{ik}}$ |
+| **Covariance** ($\mathbf{\Sigma}_k$) |  $\frac{\sum_{i=1}^n (x_i - \mu_k)^2}{n}$ |  $\frac{\sum_{i=1}^n \gamma_{ik} (x_i - \mu_k)^2}{\sum_{i=1}^n \gamma_{ik}}$ |

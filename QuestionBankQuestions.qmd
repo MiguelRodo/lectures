@@ -21,41 +21,41 @@ format:
 
 ## Section 2: Classical Scaling vs. Least Squares
 
-* **Question 5:** The slides define MDS as representing dissimilarity data in a low-dimensional space. In what specific mathematical sense is this *not* strictly true for classical scaling?
+* **Question 1:** The slides define MDS as representing dissimilarity data in a low-dimensional space. In what specific mathematical sense is this *not* strictly true for classical scaling?
 
-* **Question 6:** Classical scaling derives the double-centered matrix $B = XX^T$ assuming the original coordinates exist in Euclidean space. Why does the algorithm still function effectively even if the dissimilarity measure is non-Euclidean, such as a Hamming distance?
+* **Question 2:** Classical scaling derives the double-centered matrix $B = XX^T$ assuming the original coordinates exist in Euclidean space. Why does the algorithm still function effectively even if the dissimilarity measure is non-Euclidean, such as a Hamming distance?
 
-* **Question 7:** Given that PCA principal coordinates are defined as the first $k$ columns of $XV$ (where $X = UDV^T$), prove that classical scaling yields identical coordinates when starting from the double-centered proximity matrix $B = XX^T$.
+* **Question 3:** Given that PCA principal coordinates are defined as the first $k$ columns of $XV$ (where $X = UDV^T$), prove that classical scaling yields identical coordinates when starting from the double-centered proximity matrix $B = XX^T$.
 
-* **Question 8:** The course material contrasts classical scaling and least-squares scaling in terms of flexibility. What does it mean conceptually when we say that classical scaling operates as a linear approach, whereas least-squares scaling does not?
+* **Question 4:** The course material contrasts classical scaling and least-squares scaling in terms of flexibility. What does it mean conceptually when we say that classical scaling operates as a linear approach, whereas least-squares scaling does not?
 
 ## Section 3: Least Squares Optimization & Transformations
 
-* **Question 9:** Write out the least-squares scaling objective function assuming constant weights and an identity dissimilarity transformation.
+* **Question 1:** Write out the least-squares scaling objective function assuming constant weights and an identity dissimilarity transformation.
 
-* **Question 10:** Write out the least-squares scaling objective function explicitly in terms of the original dissimilarities $\delta_{ij}$ and the coordinate vectors $y_i$ and $y_j$ in the transformed space.
+* **Question 2:** Write out the least-squares scaling objective function explicitly in terms of the original dissimilarities $\delta_{ij}$ and the coordinate vectors $y_i$ and $y_j$ in the transformed space.
 
-* **Question 11:** For least-squares scaling, explain why the numerical optimization problem is computationally intensive.
+* **Question 3:** For least-squares scaling, explain why the numerical optimization problem is computationally intensive.
 
-* **Question 12:** Contrast the approach of applying a logarithmic transformation to the dissimilarities *prior* to running the MDS model versus defining a transformation function $f(\delta_{ij})$ where the base exponent is estimated iteratively by the optimizer during the fitting process.
+* **Question 4:** Contrast the approach of applying a logarithmic transformation to the dissimilarities *prior* to running the MDS model versus defining a transformation function $f(\delta_{ij})$ where the base exponent is estimated iteratively by the optimizer during the fitting process.
 
-* **Question 13:** You are visualizing subjective consumer brand rankings. If you want to ensure that errors in approximating very large dissimilarities do not dominate the objective function, which weighting scheme should you apply, and what is this mapping called?
+* **Question 5:** You are visualizing subjective consumer brand rankings. If you want to ensure that errors in approximating very large dissimilarities do not dominate the objective function, which weighting scheme should you apply, and what is this mapping called?
 
 ## Section 4: Interpretation and Diagnostics
 
-* **Question 14:** Consider an MDS plot where the y-axis and x-axis use different scales. Explain how this visual distortion specifically impairs our ability to correctly interpret the proximities between the plotted entities.
+* **Question 1:** Consider an MDS plot where the y-axis and x-axis use different scales. Explain how this visual distortion specifically impairs our ability to correctly interpret the proximities between the plotted entities.
 
-* **Question 15:** Two least-squares MDS maps are generated from the same dataset containing one extreme outlier distance. In Map A, the regular points are heavily squashed together with the outlier far away. In Map B, the points are more evenly distributed. Assuming the only difference in methodology was that a constant term $\alpha > 0$ was added to all dissimilarities before mapping for one of the plots, which map is Map B? Explain your reasoning.
+* **Question 2:** Two least-squares MDS maps are generated from the same dataset containing one extreme outlier distance. In Map A, the regular points are heavily squashed together with the outlier far away. In Map B, the points are more evenly distributed. Assuming the only difference in methodology was that a constant term $\alpha > 0$ was added to all dissimilarities before mapping for one of the plots, which map is Map B? Explain your reasoning.
 
-* **Question 16:** Consider the following formula for Kruskal's Stress-1 provided in class:
+* **Question 3:** Consider the following formula for Kruskal's Stress-1 provided in class:
 
 $$S = \left[ \frac{\sum_{i<j} (d_{ij} - \hat{d}_{ij})^2}{\sum_{i<j} (\hat{d}_{ij})^2} \right]^{1/2}$$
 
 Identify and correct the specific mathematical error in the denominator of this formula.
 
-* **Question 17:** Analyze the provided Morse Code MDS plot. Given that the digits 1 and 2 denote dots and dashes respectively, what primary structural clustering pattern emerges along the first principal dimension?
+* **Question 4:** Analyze the provided Morse Code MDS plot. Given that the digits 1 and 2 denote dots and dashes respectively, what primary structural clustering pattern emerges along the first principal dimension?
 
-* **Question 18:** Suppose the first four ordered configuration distances in an isotonic regression algorithm are $\{3, 1, 4, 2\}$. Calculate the final disparities for these four ranks, showing your step-by-step averaging.
+* **Question 5:** Suppose the first four ordered configuration distances in an isotonic regression algorithm are $\{3, 1, 4, 2\}$. Calculate the final disparities for these four ranks, showing your step-by-step averaging.
 
 # Clustering I
 
@@ -71,15 +71,15 @@ Identify and correct the specific mathematical error in the denominator of this 
 
 ## Section 2: K-Means & Partitioning Mechanics
 
-* **Question 5:** Prove mathematically that the centroid in K-means acts as the optimal prototype point by minimizing the within-cluster sum of squared Euclidean distances.
+* **Question 1:** Prove mathematically that the centroid in K-means acts as the optimal prototype point by minimizing the within-cluster sum of squared Euclidean distances.
 
-* **Question 6:** Explain why K-means optimization can equally be described as minimizing the sum of squared Euclidean distances and minimizing the sum of dot products.
+* **Question 2:** Explain why K-means optimization can equally be described as minimizing the sum of squared Euclidean distances and minimizing the sum of dot products.
 
-* **Question 7:** Does the standard K-means algorithm guarantee convergence to a global optimum? Explain your reasoning.
+* **Question 3:** Does the standard K-means algorithm guarantee convergence to a global optimum? Explain your reasoning.
 
-* **Question 8:** Propose a bvariation of the standard K-means algorithm that would result in less frequent centroid recalculations.
+* **Question 4:** Propose a bvariation of the standard K-means algorithm that would result in less frequent centroid recalculations.
 
-* **Question 9:** For each iteration of the PAM algorithm, calculate how many times points must be reassigned when evaluating swaps. What is the worst possible value of $k$ for computational efficiency in this context?
+* **Question 5:** For each iteration of the PAM algorithm, calculate how many times points must be reassigned when evaluating swaps. What is the worst possible value of $k$ for computational efficiency in this context?
 
 <!--
 
@@ -89,25 +89,73 @@ Identify and correct the specific mathematical error in the denominator of this 
 
 ## Section 3: Hierarchical Clustering (AGNES & DIANA)
 
-* **Question 11:** Explain in what sense hierarchical clustering algorithms (like AGNES or DIANA) operate more "greedily" than K-means.
+* **Question 1:** Explain in what sense hierarchical clustering algorithms (like AGNES or DIANA) operate more "greedily" than K-means.
 
-* **Question 12:** For agglomerative hierarchical clustering applied to a 3x3 dissimilarity matrix, calculate exactly how many times distances must be computed. Generalize this calculation for an $n \times n$ matrix.
+* **Question 2:** For agglomerative hierarchical clustering applied to a 3x3 dissimilarity matrix, calculate exactly how many times distances must be computed. Generalize this calculation for an $n \times n$ matrix.
 
-<!--
+* **Question 3:** In hierarchical clustering, what values determine the numerical height of the dendrogram for single linkage and complete linkage? Show how this mapping can distort agglomerative coefficients and explain why it tends to "squash" or "stretch" dendrograms, thereby altering our visual impression of the number of clusters.
 
-* **Question 13:** For a single divisive step of the DIANA algorithm, calculate how many distance computations are required.
-!-->
-
-* **Question 14:** In hierarchical clustering, what values determine the numerical height of the dendrogram for single linkage and complete linkage? Show how this mapping can distort agglomerative coefficients and explain why it tends to "squash" or "stretch" dendrograms, thereby altering our visual impression of the number of clusters.
-
-* **Question 15:** Describe a specific spatial distribution of data where single linkage performs uniquely well, and another where it performs particularly poorly. Do the same for complete linkage.
+* **Question 4:** Describe a specific spatial distribution of data where single linkage performs uniquely well, and another where it performs particularly poorly. Do the same for complete linkage.
 
 ## Section 4: Clustering Diagnostics & Metrics
 
-* **Question 16:** Explain how the Gap statistic formalizes and automates the heuristic "elbow" approach for selecting the optimal number of clusters.
+* **Question 1:** Explain how the Gap statistic formalizes and automates the heuristic "elbow" approach for selecting the optimal number of clusters.
 
-* **Question 17:** When computing the Gap statistic, the bounding boxes for the reference distribution can be constructed based on raw variable ranges or Principal Component (PC) ranges. Explain why PC ranges are generally preferred.
+* **Question 2:** When computing the Gap statistic, the bounding boxes for the reference distribution can be constructed based on raw variable ranges or Principal Component (PC) ranges. Explain why PC ranges are generally preferred.
 
-* **Question 18:** Describe exactly what the standard error of the logged within-cluster sum of squared errors captures during the Gap statistic computation.
+* **Question 3:** Describe exactly what the standard error of the logged within-cluster sum of squared errors captures during the Gap statistic computation.
 
-* **Question 19:** Describe a specific data shape or cluster configuration where the silhouette statistic performs poorly.
+* **Question 4:** Describe a specific data shape or cluster configuration where the silhouette statistic performs poorly.
+
+## Section 4: Mixture models
+
+### Part A: Optimization and Lagrange Multipliers
+
+Consider the objective function $f(x, y) = x^2 + x + y$.
+
+* **Question 1:** Attempt to maximize this function in an unconstrained manner by finding its critical points. What happens, and what does this tell you about the function's maximum?
+
+* **Question 2:**  Now, maximize the function subject to the equality constraint $x^2 + y^2 = 1$ using the method of Lagrange multipliers. Show your working to find the maximizing coordinates $(x, y)$.
+
+### Part B: Deriving the M-Step
+
+* **Question 1:**
+Assume we are fitting a finite mixture model where each of the $K$ components follows a univariate Poisson distribution, $X \mid G_i=k \sim \text{Poisson}(\lambda_k)$. Starting from the Q-function, derive the M-step Maximum Likelihood Estimate (MLE) for the rate parameter $\lambda_k$. 
+
+* **Question 2:**
+Consider a univariate Gaussian mixture model where all $K$ components share a single, common variance $\sigma^2$, such that $X \mid G_i=k \sim \mathcal{N}(\mu_k, \sigma^2)$. Derive the M-step MLE for this shared variance $\sigma^2$. How does it differ from the formula for component-specific variances?
+
+* **Question 3:**
+Imagine a three-group univariate Gaussian mixture model where all groups share a common variance $\sigma^2$. Suppose prior research has given us the *exact, known* mean for the first group ($\mu_1$). We only need to estimate $\mu_2, \mu_3$, and $\sigma^2$.
+  * a. How does knowing $\mu_1$ affect the E-step update for the responsibilities $\gamma_{i1}, \gamma_{i2}, \gamma_{i3}$?
+  * b. How are the M-step formulas for the unknown means ($\mu_2, \mu_3$) affected?
+  * c. How is the M-step formula for the shared variance $\sigma^2$ updated to account for the known $\mu_1$?
+
+### Part C: Conceptual Foundations
+
+* **Question 1:** Explain why maximizing the observed-data log-likelihood directly using standard calculus is analytically intractable for finite mixture models. 
+
+* **Question 2:** In the context of a finite mixture model, what does the latent indicator variable $Z_{ik}$ represent? Explain mathematically why introducing this variable, even though it is unobserved, simplifies our likelihood function.
+
+* **Question 3:** Conceptually, what is a "responsibility" ($\gamma_{ik}$) calculated during the E-step? Explain its relationship to Bayes' Theorem and its specific connection to the latent variables $Z_{ik}$.
+
+* **Question 4:** Starting from the $Q$-function, use Lagrange multipliers to derive the M-step update equation for the mixing proportions $\pi_k$. Explicitly show how the constraint $\sum_{k=1}^K \pi_k = 1$ is enforced during the derivation.
+
+### Part D: Practical Implementations and Limits
+
+* **Question 1:** Suppose we are fitting a mixture model using a complex component density where we lack an analytic solution for the M-step parameter updates (i.e., we cannot isolate the parameters and set the derivative to zero). What alternative methods can we use within the M-step to update these parameters?
+
+* **Question 2:** Why is initialization crucial for the EM algorithm's success? Briefly describe two common strategies for initializing the parameters $\mathbf{\Theta}^{(0)}$ before the very first E-step.
+
+* **Question 3:** What is the most common mathematical criterion used in practice to determine when the EM algorithm has converged and iterations should stop?
+
+* **Question 4:** Consider a Gaussian mixture model where we assume all covariance matrices are spherical, such that $\Sigma_k = \sigma^2 \mathbf{I}$. What happens to the responsibilities $\gamma_{ik}$ in the E-step as we take the limit where the variance $\sigma^2 \to 0$ (note: zero, not infinity)? Relate this limiting behavior to the K-means clustering algorithm.
+
+### Part E: Geometric Covariance Decompositions (mclust)
+
+* **Question 1:** The `mclust` package in R parameterizes the covariance matrix for group $k$ using the eigenvalue decomposition: $\Sigma_k = \lambda_k D_k \Lambda_k D_k^T$.
+  * a. Explain the geometric role of each element in determining the cluster distribution: $\lambda_k$, $D_k$, and $\Lambda_k$.
+  * b. How do we constrain this specific formula to allow the clusters to have flexible, unique shapes, but force them to all have the same fixed volume?
+  * c. Suppose we force $\Lambda_k$ to have identical entries along its diagonal for all $k$ (i.e., $\Lambda_k = c\mathbf{I}$) but allow $D_k$ to be a fully flexible orthogonal matrix. Is the resulting spatial geometry different from simply restricting $D_k$ to be the identity matrix ($D_k = \mathbf{I}$)? Explain your reasoning.
+  * d. How do we constrain the parameter elements to enforce that all components have the exact same volume, shape, and orientation, but allow that common volume to be a value *other* than 1?
+
