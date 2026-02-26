@@ -11,7 +11,7 @@ format:
 
 ## Section 1: Measurement and Data Structures
 
-* Answer 1:
+* **Answer 1:**
   * Ratio: Time taken to complete a task.
   * Interval: Difference from an arbitrary standard (as we had with degrees Celcius), e.g. calendar years, latitude and longitude.
   * Ordinal: Ratings (cakes, movies, etc.).
@@ -21,63 +21,62 @@ format:
   * **Proof:** For a ratio scale to hold, the ratio of two values must be preserved. The ratio of the original values is $x/y$. After adding the constant, the new ratio is $(x+c)/(y+c)$, which is not equal to $x/y$ (unless $c=0$ or $x=y$). Thus, the ratio scale is lost, and $A$ and $B$ operate on an interval scale. However, the difference between the new values is $A - B = (x + c) - (y + c) = x - y$. The arbitrary constant $c$ cancels out, exactly recovering the difference between the original ratio-scaled values. Therefore, the differences operate on a ratio scale.
   * **Implication:** If a constant is added to all dissimilarities before mapping (shifting them to an interval scale), we cannot meaningfully compare the ratios of the resulting configuration distances (e.g., we cannot say Point 1 is "twice as far" from Point 2 as it is from Point 3). However, we *can* meaningfully compare the *differences* between distances (e.g., the difference in distance between Pair 1 and Pair 2 is twice as large as the difference between Pair 3 and Pair 4).
 
-* Answer 3:
+* **Answer 3:**
   We cannot attempt to get coordinates in Euclidean space such that points have a negative distance between them. 
 
-* Answer 4:
+* **Answer 4:**
   Let three points in 1D space be $x=0$, $y=1$, and $z=2$. The squared Euclidean distances are: $d(x,y) = (0-1)^2 = 1$; $d(y,z) = (1-2)^2 = 1$; and $d(x,z) = (0-2)^2 = 4$. According to the triangle inequality, $d(x,z)$ must be $\le d(x,y) + d(y,z)$. Since $4 \not\le 1 + 1$, squared Euclidean distance is not a valid distance metric.
-
   More generally, one can show this by considering Pythagoras theorem and pulling the corner opposite the hypotenuse in (not needed for an answer).
 
 ## Section 2: Classical Scaling vs. Least Squares
 
-* Answer 5:
+* **Answer 1:**
   Classical scaling does not directly approximate the dissimilarities themselves; instead, it approximates the centered inner products of the data.
 
-* Answer 6:
+* **Answer 2:**
   There are two main reasons:
   1. We can simply ignore negative eigenvalues, or add positive constants to original dissimilarities.
   2. The main reason, however, is practical - regardless of the underlying dissimilarity measure, we interpret points visually best when they are in Euclidean space.
 
-* Answer 7:
+* **Answer 3:**
   Let $X = U D V^T$. Then $B = XX^T = (UDV^T)(VD U^T) = U D^2 U^T$. The eigenvectors of $B$ are $U$, and the eigenvalues are $\Lambda = D^2$. Classical scaling computes coordinates as $Y = U_k \Lambda_k^{1/2} = U_k D_k$. PCA computes coordinates as $XV = (UDV^T)V = UD$. Thus, the first $k$ dimensions are identical.
 
-* Answer 8:
+* **Answer 4:**
   Classical scaling, in being equivalent to PCA, only considers coordinates in the low-dimensional space that are linear combinations of values in the high(er)-dimensional space. Least-squares scaling, by contrast, has no such restriction, and simply places points where they fit best as per the numerical optimiser.
 
 ## Section 3: Least Squares Optimization & Transformations
 
-* Answer 9:
-  $\mathcal{L}(y_1, ..., y_n) = \sum_{i<j}^n (d_{ij} - \delta_{ij})^2$
+* **Answer 1:**
+  $$\mathcal{L}(y_1, ..., y_n) = \sum_{i<j}^n (d_{ij} - \delta_{ij})^2$$
 
-* Answer 10:
-  $\mathcal{L}_f = \sum_{i<j}^n w_{ij} \left( \sqrt{\sum_{k=1}^t (y_{ik} - y_{jk})^2} - f(\delta_{ij}) \right)^2$
+* **Answer 2:**
+  $$\mathcal{L}_f = \sum_{i<j}^n w_{ij} \left( \sqrt{\sum_{k=1}^t (y_{ik} - y_{jk})^2} - f(\delta_{ij}) \right)^2$$
 
-* Answer 11:
+* **Answer 3:**
   There are 2n parameters to select, which quickly becomes large. Moreover, the distance matrix has $n(n-1)/2$ elements, which becomes enormous to hold in memory as $n$ becomes very big.
 
-* Answer 12:
+* **Answer 4:**
   Logging pre-optimisation fixes the base without consideration of the data, whereas making the base a parameter to optimise means that it is selected based on the data.
 
-* Answer 13:
+* **Answer 5:**
   You should use Sammon mapping, which applies the weight $w_{ij} = 1 / (\delta_{ij} \sum_{i<j}\delta_{ij})$ to down-weight larger original distances.
 
 ## Section 4: Interpretation and Diagnostics
 
-* Answer 14:
+* **Answer 1:**
   The same-size difference along the y-axis will appear to be smaller/larger than the same-size difference along the x-axis. It is very important in MDS that we have equal visual scaling of the axes.
 
-* Answer 15:
+* **Answer 2:**
   Map B is the one where the constant was added. Adding a constant $\alpha > 0$ effectively "pushes apart" all the dissimilarities, which affects the small dissimilarites more than large dissimilarites and so results in the relevant points being relatively further apart.
 
-* Answer 16:
+* **Answer 3:**
   The denominator in the provided formula normalizes by the square of the disparities ($\sum_{i<j} (\hat{d}_{ij})^2$). For Kruskal's Stress-1, the denominator must normalize by the square of the configuration distances, making the correct denominator $\sum_{i<j} (d_{ij})^2$.
 
-* Answer 17:
+* **Answer 4:**
   Number of dots/dashes the most critical factor (top-right vs bottom-left).
   The original paper had another observation, but I can't remember what it was.
 
-* Answer 18:
+* **Answer 5:**
   * Start: $\{3, 1, 4, 2.5\}$
   * Rank 1: $3$.
   * Rank 2: $1$. Because $1 < 3$, we average them: $(3+1)/2 = 2$. Current state: $\{2, 2\}$.
@@ -89,166 +88,187 @@ format:
 
 ## Section 1: Conceptual Foundations & Algorithm Choice
 
-* Answer 1:
+* **Answer 1:**
   Density-based clustering approaches do not explicitly define a probability distribution but rather group observations together that lie in regions that are sufficiently dense throughout.
 
-* Answer 2:
+* **Answer 2:**
   For $n$ observations to be allocated to $k$ clusters, the number of different ways of allocating observations to clusters is given by a very large combinatorial expression.
 
-* Answer 3:
+* **Answer 3:**
   A centroid is the mathematical mean vector of all points in a cluster (and rarely an actual data point itself). A medoid is a strictly actual, observed data point within the cluster that minimizes the average dissimilarity to all other points in that cluster.
 
-* Answer 4:
+* **Answer 4:**
   K-means is vastly computationally faster because updating a centroid requires only calculating a simple mean. K-medoids is highly robust to extreme outliers and flexible because it can handle any arbitrary pairwise dissimilarity matrix, not just squared Euclidean distance.
 
 ## Section 2: K-Means & Partitioning Mechanics
 
-* Answer 5:
+* **Answer 1:**
   Let the within-cluster sum of squares for a cluster $C$ with $n_c$ points and prototype $c$ be $J(c) = \sum_{x \in C} ||x - c||^2$. Taking the derivative with respect to $c$ and setting it to zero: $\frac{\partial J}{\partial c} = -2 \sum_{x \in C} (x - c) = 0$. This implies $\sum x - n_c c = 0$, leading to $c = \frac{1}{n_c} \sum x$. Thus, the mathematical mean minimizes the function.
 
-* Answer 6:
+* **Answer 2:**
   The length of a vector is the same as its distance from the origin. Its length squared is equal to the dot product of the vector with itself. So, if we think of the vector as a difference vector (e.g., $x-y$), then its squared length $||x-y||^2$ is equal to its dot product with itself. Therefore, we can write the inner summand for the K-means objective function as either the squared length of the difference vector or its dot product with itself.
 
-* Answer 7:
+* **Answer 3:**
   No, K-means only guarantees convergence to a *local* optimum. Because both the assignment step and the update step monotonically decrease the within-cluster sum of squares, the algorithm will stop when it hits a local valley, but it cannot jump out of that valley to find the global optimum.
 
-* Answer 8:
+* **Answer 4:**
   Mini-batch K-means can be used, which takes random subsamples of the data to update centroids instead of waiting to evaluate every single point, vastly speeding up iteration time on large datasets.
 
-* Answer 9:
+* **Answer 5:**
   In each iteration, PAM tests swapping every medoid ($k$) with every non-medoid ($n-k$). Therefore, it evaluates $k(n-k)$ swaps. This value is maximized (worst-case performance) when $k = n/2$, yielding $n^2 / 4$ evaluations.
-
-<!--
-
-* Answer 10:
-  CLARA draws a small sample of size $s$ and runs PAM only on that sample. The complexity of PAM is $\mathcal{O}(k(n-k)^2)$, while CLARA's internal PAM step is $\mathcal{O}(k(s-k)^2)$. Their ratio is approximately 
-  Therefore, CLARA is roughly $(n/s)^2$ times faster for a given $k$.
-
-!-->
 
 ## Section 3: Hierarchical Clustering (AGNES & DIANA)
 
-* Answer 11:
+* **Answer 1:**
   AGNES and DIANA never reassign points.
 
-* Answer 12:
+* **Answer 2:**
   For a 3x3 matrix, you compute the initial distances ($\binom{3}{2} = 3$). After one merge, you have 2 clusters, requiring 1 distance computation between them. Total = 4. For an $n \times n$ matrix, calculating the initial pairwise distances takes $\frac{n(n-1)}{2}$ computations.
 
-<!--
+* **Answer 3:**
+  For single linkage, the height is the largest nearest-neighbour distance. For complete linkage, the height is the largest distance. Therefore, for single linkage the merge heights before the final merge are compared visually to a lower value (the nearest-neighbour distance) than for complete linkage (largest distance). As the agglomerative coefficient is dependent on this ratio, it is heavily dependent in absolute terms on the linkage chosen. 
 
-* Answer 13:
-  To find the initial "splinter" point in DIANA, you must calculate the average dissimilarity of every point to all other points within its current cluster, requiring $\mathcal{O}(n_c^2)$ operations (where $n_c$ is the number of points in the cluster).
-
-!-->
-
-* Answer 14:
-  For single linkage, the height is the largest nearest-neighbour distance.
-  For complete linkage, the height is the largest distance.
-  Therefore, for single linkage the merge heights before the final merge are compared visually to a lower value (the nearest-neighbour distance) than for complete linkage (largest distance).
-  As the agglomerative coefficient is dependent on this ratio, it is heavily dependent in absolute terms on the linkage chosen. 
-
-* Answer 15:
+* **Answer 4:**
   * Single Linkage: Excels at finding elongated, non-spherical shapes (like concentric rings). Fails terribly when there is background noise, causing "chaining" where distinct clusters are merged by a single bridge of noise points.
   * Complete Linkage: Excels at finding compact, spherical clusters of roughly equal diameter. Fails when underlying clusters naturally have vastly different variances/diameters, as it will break up large clusters prematurely.
 
 ## Section 4: Clustering Diagnostics & Metrics
 
-* Answer 16:
+* **Answer 1:**
   In the elbow method, we choose the number of clusters such that after that point the within-cluster dispersion stops dropping rapidly. The gap statistic formalises this by calculating how much better than random the within-cluster dispersion is for each $k$, which will tend to select points near the elbow (for conservative gap-stat criteria for $k$) as after that point the increasingly-small reductions in within-cluster dispersion are unlikely to outweigh the increased flexibility from more clusters.
 
-* Answer 17:
+* **Answer 2:**
   The PCs will take into account correlation between original features, ensuring better alignment with the actual data.
 
-* Answer 18:
+* **Answer 3:**
   It captures the natural variability in the within-cluster dispersion under the null scenario of no clusters.
 
-* Answer 19:
-  Long clusters with a region of very low density between them. 
+* **Answer 4:**
+  Long clusters with a region of very low density between them.
 
-  # Answer Key: The EM Algorithm for Mixture Models
+## Section 4: Mixture models
 
-## Section 1: Optimization and Lagrange Multipliers
+### Part A: Optimization and Lagrange Multipliers
 
-**1. Optimization with and without constraints**
-* **a.** The unconstrained function is $f(x, y) = x^2 + x + y$. Taking partial derivatives and setting to zero: $\frac{\partial f}{\partial x} = 2x + 1 = 0 \implies x = -0.5$. However, $\frac{\partial f}{\partial y} = 1 \neq 0$. There is no critical point where the derivative with respect to $y$ is zero. This function represents a surface that continues upward infinitely in the $y$ direction, meaning it has no global or local maximum.
-* **b.** The Lagrangian is $\mathcal{L}(x, y, \lambda) = x^2 + x + y - \lambda(x^2 + y^2 - 1)$. 
+* **Answer 1:**
+  The unconstrained function is $f(x, y) = x^2 + x + y$. Taking partial derivatives and setting to zero: $\frac{\partial f}{\partial x} = 2x + 1 = 0 \implies x = -0.5$. However, $\frac{\partial f}{\partial y} = 1 \neq 0$. There is no critical point where the derivative with respect to $y$ is zero. This function represents a surface that continues upward infinitely in the $y$ direction, meaning it has no global or local maximum.
+
+* **Answer 2:**
+  The Lagrangian is $\mathcal{L}(x, y, \lambda) = x^2 + x + y - \lambda(x^2 + y^2 - 1)$. 
   Taking partial derivatives:
   1. $\frac{\partial \mathcal{L}}{\partial x} = 2x + 1 - 2\lambda x = 0 \implies x(2 - 2\lambda) = -1$
   2. $\frac{\partial \mathcal{L}}{\partial y} = 1 - 2\lambda y = 0 \implies y = \frac{1}{2\lambda}$
   3. $\frac{\partial \mathcal{L}}{\partial \lambda} = -(x^2 + y^2 - 1) = 0 \implies x^2 + y^2 = 1$
   By substituting equations 1 and 2 into equation 3, we can solve for $\lambda$, which yields the maximizing coordinates $(x,y)$.
-* **c.** An inequality constraint, such as $x^2 + y^2 \leq 1$. Standard Lagrange multipliers only handle equality constraints; inequalities require the Karush-Kuhn-Tucker (KKT) conditions.
+  I don't know how to do this analytically, so we can plug the resultant equation ($1/\lambda^2+1/(\lambda-1)^2-4=0$) into `optmimize`.
+  The function has asymptotes at 0 and 1, so we'll optimise within each section:
 
-## Section 2: Deriving the M-Step
+  ```{r}
+  root_fn <- function(lambda) 1/lambda^2 + 1/(lambda-1)^2 - 4
+  root_neg <- uniroot(root_fn, interval = c(-100, -0.01))$root
+  root_pos_01 <- try(uniroot(root_fn, interval = c(0.01, 0.99))$root)
+  root_pos_g1 <- uniroot(root_fn, interval = c(1.01, 100))$root
+  root_vec <- c("neg" = root_neg, "pos" = root_pos)
+  ```
 
-**2. Poisson Mixture Model**
-The weighted log-likelihood term for component $k$ in the $Q$-function is:
-$$Q(\lambda_k) = \sum_{i=1}^n \gamma_{ik} (x_i \log(\lambda_k) - \lambda_k - \log(x_i!))$$
-Take the derivative with respect to $\lambda_k$ and set to zero:
-$$\frac{\partial Q}{\partial \lambda_k} = \sum_{i=1}^n \gamma_{ik} \left( \frac{x_i}{\lambda_k} - 1 \right) = 0$$
-$$\sum_{i=1}^n \gamma_{ik} \frac{x_i}{\lambda_k} = \sum_{i=1}^n \gamma_{ik}$$
-$$\lambda_k = \frac{\sum_{i=1}^n \gamma_{ik} x_i}{\sum_{i=1}^n \gamma_{ik}}$$
-The MLE is simply the responsibility-weighted sample mean.
+  There is no root in [0, 1], so it errors out there.
 
-**3. Gaussian Mixture Model with Common Variance**
-If all components share a single variance $\sigma^2$, the term in the $Q$-function involves a sum over all components $k$:
-$$Q(\sigma^2) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2}\log(2\pi\sigma^2) - \frac{(x_i - \mu_k)^2}{2\sigma^2} \right)$$
-Taking the derivative with respect to $\sigma^2$ (let $v = \sigma^2$) and setting to zero:
-$$\frac{\partial Q}{\partial v} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2v} + \frac{(x_i - \mu_k)^2}{2v^2} \right) = 0$$
-Multiplying by $2v^2$ and rearranging:
-$$v \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2$$
-Since $\sum_{k=1}^K \gamma_{ik} = 1$ for every observation, the sum on the left simplifies to $n$:
-$$\sigma^2 = \frac{1}{n} \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2$$
-Unlike component-specific variances, this pools the squared deviations from *all* groups, weighted by their respective responsibilities, and divides by the total sample size $n$.
+  The roots were:
 
-**4. Partially Known Parameters**
-* **a.** In the E-step, $\gamma_{i1}$ is calculated using the known, fixed $\mu_1$ inside the density function $f_1(x_i)$. The responsibilities $\gamma_{i2}$ and $\gamma_{i3}$ use the iteratively updated estimates $\mu_2^{(t)}$ and $\mu_3^{(t)}$.
-* **b.** The M-step formulas for $\mu_2$ and $\mu_3$ are completely unaffected; they remain the responsibility-weighted means for their respective groups. The parameter $\mu_1$ is not updated at all.
-* **c.** The common variance uses the fixed $\mu_1$ alongside the newly updated $\mu_2$ and $\mu_3$:
-$$\sigma^2 = \frac{1}{n} \left[ \sum_{i=1}^n \gamma_{i1}(x_i - \mu_1)^2 + \sum_{i=1}^n \gamma_{i2}(x_i - \mu_2)^2 + \sum_{i=1}^n \gamma_{i3}(x_i - \mu_3)^2 \right]$$
+  ```{r}
+  root_vec
+  ```
 
-## Section 3: Conceptual Foundations
 
-**5. The "Log of a Sum" Problem**
-Because the sum over the $K$ mixture components occurs *inside* the logarithm ($\log(\sum \pi_k f_k(x))$), the log cannot be distributed to the exponential terms of the component densities. Consequently, taking partial derivatives results in deeply entangled equations with no closed-form analytical solutions.
+  ```{r}
+  x_fn <- function(lambda) 1 / 2 / (lambda - 1)
+  y_fn <- function(lambda) 1 / 2 / lambda
+  orig_fn <- function(x, y) x^2 + x + y
+  # for lambda in [-100, -0.01]:
+  x_neg <- x_fn(root_neg)
+  y_neg <- y_fn(root_neg)
+  x_neg^2 + y_neg^2
+  orig_fn(x_neg, y_neg)
+  # for lambda in [0.01, 100]:
+  x_pos <- x_fn(root_pos)
+  y_pos <- y_fn(root_pos)
+  x_pos^2 + y_pos^2 
+  orig_fn(x_pos, y_pos)
+  ```
 
-**6. Latent Variables**
-$Z_{ik}$ is an unobserved indicator variable equal to 1 if observation $i$ truly belongs to component $k$, and 0 otherwise. Introducing it allows us to rewrite the likelihood as a product rather than a sum ($\prod f_k(x_i)^{Z_{ik}}$). When we take the log, the exponent $Z_{ik}$ drops down, turning the log of a product into a sum of logs, effectively breaking the "log of a sum" mathematical deadlock.
+  We had a minimum for the point in the [-100, 0.01] interval and a maximum in the [0.01, 100] interval, so the maximising parameter values are `x=0.945` and `y=0.327` leading to a maximum of `2.16`.
 
-**7. Responsibilities**
-Conceptually, $\gamma_{ik}$ is the posterior probability that observation $i$ belongs to group $k$, given the data and current parameter estimates. By Bayes' Theorem, it is the probability of observing the data from group $k$ (prior weight $\times$ component density) divided by the total marginal probability of observing the data across all groups. Mathematically, it is the expected value of the latent variable $Z_{ik}$.
+  *Note*: I wouldn't ask you to do this in an actual written exam, of course. This is too time-consuming. I just didn't pick functions that led to a nice solution for the multiplier, $\lambda$.
 
-**8. Mixing Proportions Constraint**
-The Lagrangian is:
-$$\mathcal{L}(\boldsymbol{\pi}, \lambda) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(\pi_k) + \lambda \left( 1 - \sum_{k=1}^K \pi_k \right)$$
-Taking the partial derivative with respect to $\pi_k$ and setting to zero:
-$$\frac{\partial \mathcal{L}}{\partial \pi_k} = \sum_{i=1}^n \frac{\gamma_{ik}}{\pi_k} - \lambda = 0 \implies \sum_{i=1}^n \gamma_{ik} = \lambda \pi_k$$
-Summing both sides over $k$:
-$$\sum_{k=1}^K \sum_{i=1}^n \gamma_{ik} = \lambda \sum_{k=1}^K \pi_k$$
-Because $\sum_k \gamma_{ik} = 1$ for each of the $n$ observations, the left side equals $n$. Because of our constraint, $\sum_k \pi_k = 1$. Therefore, $\lambda = n$.
-Substituting $\lambda = n$ back in gives $\pi_k = \frac{1}{n} \sum_{i=1}^n \gamma_{ik}$.
+### Part B: Deriving the M-Step
 
-## Section 4: Practical Implementations and Limits
+* **Answer 1:**
+  The weighted log-likelihood term for component $k$ in the $Q$-function is:
+  $$Q(\lambda_k) = \sum_{i=1}^n \gamma_{ik} (x_i \log(\lambda_k) - \lambda_k - \log(x_i!))$$
+  Take the derivative with respect to $\lambda_k$ and set to zero:
+  $$\frac{\partial Q}{\partial \lambda_k} = \sum_{i=1}^n \gamma_{ik} \left( \frac{x_i}{\lambda_k} - 1 \right) = 0$$
+  $$\sum_{i=1}^n \gamma_{ik} \frac{x_i}{\lambda_k} = \sum_{i=1}^n \gamma_{ik}$$
+  $$\lambda_k = \frac{\sum_{i=1}^n \gamma_{ik} x_i}{\sum_{i=1}^n \gamma_{ik}}$$
+  The MLE is simply the responsibility-weighted sample mean.
 
-**9. Intractable Component MLEs**
-We can use derivative-free or gradient-based numerical optimization algorithms (such as Nelder-Mead, Newton-Raphson, or BFGS) within the M-step to maximize the responsibility-weighted log-likelihood for that specific component. 
+* **Answer 2:**
+  If all components share a single variance $\sigma^2$, the term in the $Q$-function involves a sum over all components $k$:
+  $$Q(\sigma^2) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2}\log(2\pi\sigma^2) - \frac{(x_i - \mu_k)^2}{2\sigma^2} \right)$$
+  Taking the derivative with respect to $\sigma^2$ (let $v = \sigma^2$) and setting to zero:
+  $$\frac{\partial Q}{\partial v} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2v} + \frac{(x_i - \mu_k)^2}{2v^2} \right) = 0$$
+  Multiplying by $2v^2$ and rearranging:
+  $$v \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2$$
+  Since $\sum_{k=1}^K \gamma_{ik} = 1$ for every observation, the sum on the left simplifies to $n$:
+  $$\sigma^2 = \frac{1}{n} \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2$$
+  Unlike component-specific variances, this pools the squared deviations from *all* groups, weighted by their respective responsibilities, and divides by the total sample size $n$.
 
-**10. Algorithm Initialization**
+* **Answer 3:**
+  * a. In the E-step, $\gamma_{i1}$ is calculated using the known, fixed $\mu_1$ inside the density function $f_1(x_i)$. The responsibilities $\gamma_{i2}$ and $\gamma_{i3}$ use the iteratively updated estimates $\mu_2^{(t)}$ and $\mu_3^{(t)}$.
+  * b. The M-step formulas for $\mu_2$ and $\mu_3$ are completely unaffected; they remain the responsibility-weighted means for their respective groups. The parameter $\mu_1$ is not updated at all.
+  * c. The common variance uses the fixed $\mu_1$ alongside the newly updated $\mu_2$ and $\mu_3$:
+    $$\sigma^2 = \frac{1}{n} \left[ \sum_{i=1}^n \gamma_{i1}(x_i - \mu_1)^2 + \sum_{i=1}^n \gamma_{i2}(x_i - \mu_2)^2 + \sum_{i=1}^n \gamma_{i3}(x_i - \mu_3)^2 \right]$$
 
-Initialization is crucial because the EM algorithm only guarantees convergence to a *local* maximum, not the global maximum. Poor initialization can lead to suboptimal clustering. Common strategies include:
-* Running K-means first and using its cluster centers and variances as the starting parameters.
-* Randomly assigning starting responsibilities to all data points and proceeding directly to the first M-step.
+### Part C: Conceptual Foundations
 
-**11. Stopping Criteria**
-The most common criterion is checking the change in the observed-data log-likelihood between iterations. Iterations stop when $\ell^{(t+1)} - \ell^{(t)} < \epsilon$, where $\epsilon$ is a predefined small tolerance value.
+* **Answer 1:**
+  Because the sum over the $K$ mixture components occurs *inside* the logarithm ($\log(\sum \pi_k f_k(x))$), the log cannot be distributed to the exponential terms of the component densities. Consequently, taking partial derivatives results in deeply entangled equations with no closed-form analytical solutions.
 
-**12. The K-Means Limit**
-As $\sigma^2 \to 0$, the component density $f_k(\mathbf{x}_i)$ for the closest mean becomes infinitely larger than the densities for all other means. Consequently, the responsibility $\gamma_{ik}$ approaches exactly 1 for the closest cluster and 0 for all others. This "hard" assignment completely eliminates the uncertainty of the "soft" probabilities, making the algorithm mathematically equivalent to K-means clustering.
+* **Answer 2:**
+  $Z_{ik}$ is an unobserved indicator variable equal to 1 if observation $i$ truly belongs to component $k$, and 0 otherwise. Introducing it allows us to rewrite the likelihood as a product rather than a sum ($\prod f_k(x_i)^{Z_{ik}}$). When we take the log, the exponent $Z_{ik}$ drops down, turning the log of a product into a sum of logs, effectively breaking the "log of a sum" mathematical deadlock.
 
-## Section 5: Geometric Covariance Decompositions (mclust)
+* **Answer 3:**
+  Conceptually, $\gamma_{ik}$ is the posterior probability that observation $i$ belongs to group $k$, given the data and current parameter estimates. By Bayes' Theorem, it is the probability of observing the data from group $k$ (prior weight $\times$ component density) divided by the total marginal probability of observing the data across all groups. Mathematically, it is the expected value of the latent variable $Z_{ik}$.
 
-**13. Eigenvalue Decomposition of Covariance**
-* **a.** $\lambda_k$ is a scalar controlling the overall **volume** of the cluster. $D_k$ is an orthogonal matrix of eigenvectors controlling the **orientation** of the cluster in space. $\Lambda_k$ is a diagonal matrix of eigenvalues (normalized so its determinant is 1) controlling the geometric **shape**.
-* **b.** We force the volume parameter to be identical across all groups ($\lambda_k = \lambda$) but allow the shape matrices ($\Lambda_k$) to vary independently for each $k$.
-* **c.** No, the geometry is not different. If $\Lambda_k$ has identical diagonal entries (e.g., $\Lambda_k = c\mathbf{I}$), the cluster is perfectly spherical. Applying an orthogonal rotation ($D_k$) to a perfect sphere does not change its geometry. Therefore, estimating a flexible $D_k$ for a spherical shape is mathematically redundant and yields the exact same spatial result as restricting $D_k = \mathbf{I}$.
-* **d.** We constrain all elements to be identical across components: $\lambda_k = \lambda$, $D_k = D$, and $\Lambda_k = \Lambda$ (this is the "EEE" model in `mclust`). To allow the volume to be something other than 1, we simply leave $\lambda$ as a free parameter to be estimated via Maximum Likelihood from the data, rather than fixing it to a constant scalar of 1.
+* **Answer 4:**
+  The Lagrangian is:
+  $$\mathcal{L}(\boldsymbol{\pi}, \lambda) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(\pi_k) + \lambda \left( 1 - \sum_{k=1}^K \pi_k \right)$$
+  Taking the partial derivative with respect to $\pi_k$ and setting to zero:
+  $$\frac{\partial \mathcal{L}}{\partial \pi_k} = \sum_{i=1}^n \frac{\gamma_{ik}}{\pi_k} - \lambda = 0 \implies \sum_{i=1}^n \gamma_{ik} = \lambda \pi_k$$
+  Summing both sides over $k$:
+  $$\sum_{k=1}^K \sum_{i=1}^n \gamma_{ik} = \lambda \sum_{k=1}^K \pi_k$$
+  Because $\sum_k \gamma_{ik} = 1$ for each of the $n$ observations, the left side equals $n$. Because of our constraint, $\sum_k \pi_k = 1$. Therefore, $\lambda = n$.
+  Substituting $\lambda = n$ back in gives $\pi_k = \frac{1}{n} \sum_{i=1}^n \gamma_{ik}$.
+
+### Part D: Practical Implementations and Limits
+
+* **Answer 1:**
+  We can use derivative-free or gradient-based numerical optimization algorithms (such as Nelder-Mead, Newton-Raphson, or BFGS) within the M-step to maximize the responsibility-weighted log-likelihood for that specific component. 
+
+* **Answer 2:**
+  Initialization is crucial because the EM algorithm only guarantees convergence to a *local* maximum, not the global maximum. Poor initialization can lead to suboptimal clustering. Common strategies include:
+  * Running K-means first and using its cluster centers and variances as the starting parameters.
+  * Randomly assigning starting responsibilities to all data points and proceeding directly to the first M-step.
+
+* **Answer 3:**
+  The most common criterion is checking the change in the observed-data log-likelihood between iterations. Iterations stop when $\ell^{(t+1)} - \ell^{(t)} < \epsilon$, where $\epsilon$ is a predefined small tolerance value.
+
+* **Answer 4:**
+  As $\sigma^2 \to 0$, the component density $f_k(\mathbf{x}_i)$ for the closest mean becomes infinitely larger than the densities for all other means. Consequently, the responsibility $\gamma_{ik}$ approaches exactly 1 for the closest cluster and 0 for all others. This "hard" assignment completely eliminates the uncertainty of the "soft" probabilities, making the algorithm mathematically equivalent to K-means clustering.
+
+### Part E: Geometric Covariance Decompositions (mclust)
+
+* **Answer 1:**
+  * a. $\lambda_k$ is a scalar controlling the overall **volume** of the cluster. $D_k$ is an orthogonal matrix of eigenvectors controlling the **orientation** of the cluster in space. $\Lambda_k$ is a diagonal matrix of eigenvalues (normalized so its determinant is 1) controlling the geometric **shape**.
+  * b. We force the volume parameter to be identical across all groups ($\lambda_k = \lambda$) but allow the shape matrices ($\Lambda_k$) to vary independently for each $k$.
+  * c. No, the geometry is not different. If $\Lambda_k$ has identical diagonal entries (e.g., $\Lambda_k = c\mathbf{I}$), the cluster is perfectly spherical. Applying an orthogonal rotation ($D_k$) to a perfect sphere does not change its geometry. Therefore, estimating a flexible $D_k$ for a spherical shape is mathematically redundant and yields the exact same spatial result as restricting $D_k = \mathbf{I}$.
+  * d. We constrain all elements to be identical across components: $\lambda_k = \lambda$, $D_k = D$, and $\Lambda_k = \Lambda$ (this is the "EEE" model in `mclust`). To allow the volume to be something other than 1, we simply leave $\lambda$ as a free parameter to be estimated via Maximum Likelihood from the data, rather than fixing it to a constant scalar of 1.

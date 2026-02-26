@@ -1,0 +1,314 @@
+---
+title: Lecture 3 - Clustering
+subtitle: Graph-based clustering
+bibliography: zotero.bib
+format:
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+---
+
+```{r}
+#| include: false
+library(mclust)
+library(ggplot2)
+library(tibble)
+library(igraph)
+```
+
+# Graph basics
+
+## What is a Graph?
+
+- Definition:  
+  A graph is a mathematical structure used to model pairwise relationships between objects. It consists of:
+  
+  - Nodes (Vertices):
+    Represent the individual objects or data points.
+    
+  - Edges:
+    Represent the connections or relationships between nodes. In our clustering context, an edge might indicate that two data points are similar or are neighbors.
+
+```{r}
+# Generate simulated data (if not already generated)
+set.seed(123)
+n_A <- 100
+mean_A <- c(0, 0)
+Sigma_A <- matrix(c(4, 0, 0, 1), nrow = 2)
+data_A <- MASS::mvrnorm(n = n_A, mu = mean_A, Sigma = Sigma_A)
+
+n_B <- 100
+mean_B <- c(3, 3)
+Sigma_B <- diag(2)
+data_B <- MASS::mvrnorm(n = n_B, mu = mean_B, Sigma = Sigma_B)
+
+data_sim <- rbind(data_A, data_B)
+
+# Compute the Euclidean distance matrix
+dist_matrix <- as.matrix(dist(data_sim))
+
+# Define a threshold to determine connectivity.
+# For example, choose a threshold at the 10th percentile of all distances.
+threshold <- quantile(dist_matrix, 0.1)
+
+# Create an adjacency matrix:
+# If the distance between two points is less than the threshold,
+# we consider them connected.
+adj_matrix <- (dist_matrix < threshold) * 1
+
+# Remove self-loops by setting the diagonal to zero
+diag(adj_matrix) <- 0
+
+# Build an undirected graph using the igraph package.
+library(igraph)
+g_distance <- graph_from_adjacency_matrix(
+  adj_matrix, mode = "undirected", weighted = TRUE
+)
+
+# Visualize the graph structure
+path_p_graph <- projr::projr_path_get(
+  "cache", "notes-l3-cluster", "p-graph.png"
+)
+png(path_p_graph, units = "cm", width = 12, height = 12, res = 300)
+plot(
+  g_distance, vertex.size = 5, vertex.label = NA,
+  main = "Graph Constructed from Distance Matrix"
+)
+dev.off()
+```
+
+::: {#fig-graph-construct}
+![](`r path_p_graph`)
+
+Example of a graph constructed from a distance matrix. Each point is connected to its nearest neighbors based on a distance threshold.
+
+:::
+
+## Types of graphs
+
+- Undirected graphs:  
+  The connections between nodes have no direction. This is the type of graph typically used for clustering because the relationship is mutual.
+  
+- Weighted graphs:  
+  Each edge has an associated weight that quantifies the strength or cost of the connection. For example, the weight might be the distance between two points. In our application:
+  
+  - In the k‑nearest neighbor graph, edge weights can be set as the Euclidean distance (or another distance metric) between data points.
+
+## Minimum spanning tree (MST)
+
+- Definition:  
+  A minimum spanning tree is a subgraph that connects all the nodes in a weighted graph with the minimum possible total edge weight, and without forming any cycles.
+  
+- Use in HDBSCAN:  
+  HDBSCAN builds a minimum spanning tree based on the mutual reachability distances between points. By constructing the MST, HDBSCAN captures the most important relationships in the data. It then removes long edges (those with high weights) to separate the tree into clusters.
+  
+- Key Points:  
+  - The MST provides a concise representation of the data's structure.
+  - It is used to identify natural divisions or clusters in the data by cutting edges that bridge distant regions.
+
+
+```{r}
+g_weighted <- graph_from_adjacency_matrix(
+  dist_matrix, mode = "undirected", weighted = TRUE, diag = FALSE
+)
+
+mst_graph <- mst(g_weighted, weights = E(g_weighted)$weight)
+```
+
+```{r}
+#| include: false
+# Visualize the MST
+path_p_mst <- projr::projr_path_get("cache", "notes-l3-cluster", "p-mst.png")
+png(path_p_mst, units = "cm", width = 12, height = 12, res = 300)
+plot(
+  mst_graph, vertex.size = 5, vertex.label = NA,
+  main = "Minimum Spanning Tree from Distance Graph"
+)
+dev.off()
+```
+
+::: {#fig-mst-construct}
+![](`r path_p_mst`)
+
+Example of a minimum spanning tree constructed from the distance graph. The MST connects all points with the minimum total edge weight.
+:::
+  
+## Constructing the graph for clustering
+
+- Graphs are useful in clustering for the following reasons:
+  - Focuses on local structure:  
+    Clustering often relies on local relationships between data points. Graphs naturally capture these relationships.
+  - Handles complex shapes:  
+    Graph-based methods can identify clusters of arbitrary shapes, unlike traditional methods like k-means, which assume spherical clusters.
+  - Sparsity and efficency:
+    - Graphs can be sparse, meaning they only connect points that are close to each other. This reduces computational complexity, and memory requirements.
+- $k$‑Nearest neighbour graph:  
+  Each data point is connected to its *k* nearest neighbors. This results in a graph where nodes represent data points and edges connect each point to its closest counterparts.
+- Distance graph:
+  - Constructed from a distance matrix, where edges are formed based on a distance threshold.
+
+## Graph-based clustering algorithms
+
+- DBSCAN is implicitly a graph-based algorithm, where the neighbours of a core point are those that are density-reachable.
+  - However, it's a little bit more complicated, as it's an asymmetric graph - border points cannot reach core points.
+- We'll discuss two explicit graph-based clustering algorithms:
+  - Leiden algorithm: 
+    - A community detection algorithm that optimizes modularity.
+  - HDBSCAN:
+    - A density-based clustering algorithm that builds on the concept of a minimum spanning tree (MST) to identify clusters.
+
+## Applying the Leiden algorithm
+
+### 2.1 Modularity
+
+Modularity is a measure that compares how many edges lie inside communities in a network versus how many edges would be expected to lie inside those communities if edges were placed at random (while preserving each node’s degree). In the **unweighted** setting, the formula can be written as:
+
+$$
+H = \frac{1}{2m} \sum_{c} \left( e_c \;-\; \frac{K_c^2}{2m} \right),
+$$
+
+where
+
+- $m$ is the total number of edges in the network,  
+- $e_c$ is the actual number of edges within community $c$,  
+- $K_c$ is the sum of the degrees of the nodes in community $c$.  
+
+This expression is summed over all communities $c$. A high modularity value indicates that there are more edges within communities than would be expected by chance, suggesting a strong community structure.
+
+### 2.1 Why Use the Leiden algorithm?
+
+- **Community detection:** The Leiden algorithm is a community detection method that seeks to maximize a quality function, often **modularity**, which measures how “clustered” a partition of the graph is compared to a random baseline.
+- **Better refinement than Louvain:** Leiden improves on the Louvain algorithm [@blondel_etal08a] by refining communities so that each detected community is guaranteed to be internally well-connected.
+
+### 2.3 The Leiden algorithm
+
+```{r}
+#| include: false
+path_img_leiden_alg <- projr::projr_path_get(
+  "raw-img", "traag_etal19-leiden_alg.png"
+)
+```
+
+
+::: {#fig-leiden-alg}
+![](`r path_img_leiden_alg`)
+
+The Leiden algorithm [@traag_etal19]
+:::
+
+### 2.4 Constructing a graph suited for Leiden
+
+Leiden typically expects **higher weights to indicate stronger connections** (i.e., more similarity). However, you currently have a *distance* matrix. You can do one of the following:
+
+1. **Use a similarity transformation** (e.g., $\exp(-\text{distance}^2 / (2\sigma^2))$) to turn distances into similarities.  
+2. **Invert distances** (e.g., $1 / (\text{distance} + \epsilon)$), or  
+3. **Use a threshold or k‑nearest neighbor approach** to form an adjacency matrix of similarities.
+
+For simplicity, below we’ll illustrate the k‑nearest neighbor approach, but you could adapt it to a direct distance-to-similarity transformation if desired.
+
+#### Example: k‑Nearest Neighbor Graph
+
+```{r}
+library(FNN)
+library(igraph)
+
+# Step 1: Build a k-nearest neighbor graph (choose k = 10 for example)
+k <- 5
+knn_result <- get.knn(data_sim, k = k)
+
+# Step 2: Build an edge list from kNN results
+edge_list <- do.call(rbind, lapply(1:nrow(data_sim), function(i) {
+  data.frame(from = i, to = knn_result$nn.index[i, ])
+}))
+
+# Step 3: Create an undirected graph (unweighted for simplicity)
+g_knn <- graph_from_data_frame(edge_list, directed = FALSE)
+g_knn <- simplify(g_knn)  # remove duplicate edges
+```
+
+### 2.5 Running the Leiden Algorithm
+
+```{r}
+
+# Use igraph's Leiden implementation
+# Note: If you want to specify edge weights, you can pass them in via the `weights` parameter.
+leiden_clusters <- cluster_leiden(
+  g_knn,
+  objective_function = "modularity",
+  resolution = 0.2
+)
+
+# Extract membership
+membership_vec <- membership(leiden_clusters)
+
+# Check how many clusters were found
+table(membership_vec)
+```
+
+#### Interpreting Modularity
+
+- A higher modularity ($Q$) indicates that the partition has denser intra-community edges compared to a random graph with the same degree distribution.
+- Typical modularity values range from around 0 to 1 in real networks, but anything above ~0.3 can already indicate a meaningful community structure (though this depends heavily on context).
+
+### 2.4 Visualizing the Clusters
+
+```{r}
+#| warning: false
+# We'll simply plot the raw X-Y coordinates, coloring by cluster
+df_plot <- as_tibble(data_sim)
+df_plot$cluster <- as.character(membership_vec)
+colnames(df_plot)[1:2] <- c("x", "y")
+
+path_p_leiden_clust_gg <- projr::projr_path_get(
+  "cache", "notes-l3-cluster", "p-leiden-clust-gg.png"
+)
+p <- ggplot(df_plot, aes(x = x, y = y, color = cluster)) +
+  geom_point(size = 2) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid() +
+  labs(x = "X", y = "Y") +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white")
+  ) +
+  theme(legend.position = "none")
+ggsave(
+  path_p_leiden_clust_gg, p, width = 12, height = 12, units = "cm"
+)
+```
+
+## Applying the HDBSCAN algorithm
+
+### 3.1 Introduction
+
+- HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise) is an extension of the DBSCAN algorithm that can find clusters of varying densities and shapes.
+
+### 3.2 Why use HDBSCAN?
+
+- Handles varying densities:  
+  Unlike DBSCAN, which requires a single density threshold, HDBSCAN can identify clusters of varying densities.
+- Robust to noise:  
+  HDBSCAN can effectively identify and handle noise points, labeling them as outliers.
+- No need to specify the number of clusters:  
+  HDBSCAN automatically determines the number of clusters based on the data.
+- No global density threshold needed to be specified:
+  HDBSCAN uses a hierarchical approach to identify clusters, allowing it to adapt to varying densities.
+
+### 3.1 The algorithm
+
+- The HDBSCAN algorithm essentially has three stages:
+  - Construct a minimum-spanning tree
+    - The distance is the mutual reachability distance:
+      $d_{MR}(p, q) = \max\{d(p, q), \text{reachability}(p), \text{reachability}(q)\}$.
+    - The reachability is the distance to the $m_{pts}$-nearest point.
+  - Generate clusters:
+    - The minimum spanning tree is then used to generate clusters by removing edges that exceed a certain threshold.
+    - The threshold is gradually reduced, and clusters are formed based on the remaining edges.
+    - The algorithm identifies clusters as connected components in the remaining graph.
+  - Select clusters:
+    - Each cluster is "scored" based on its stability, which is a measure of how well-defined the cluster is.
+    - The definition of stability for a cluster $C$ kis:
+      $MRD_C(Birth) - MRD_C(death)$.
+    - The algorithm selects clusters with high stability scores.
+    - Not all points are clust ered.

@@ -29,5 +29,7 @@ build:
       - raw-img
       - raw-other
 dev:
-  scripts: QuestionBankQuestions.qmd
+  scripts:
+  - NotesL3Cluster1DBSCAN.qmd
+  - NotesL3Cluster3Graph.qmd
 

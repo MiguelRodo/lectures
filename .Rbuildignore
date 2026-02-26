@@ -19,6 +19,8 @@
 ^_projr\.yml$
 ^NotesL1MDS\.qmd$
 ^NotesL2ClusterI\.qmd$
+^NotesL3Cluster1DBSCAN\.qmd$
+^NotesL3Cluster3Graph\.qmd$
 ^QuestionBankAnswers\.qmd$
 ^QuestionBankQuestions\.qmd$
 ^SlidesL1MDS\.qmd$
@@ -35,6 +37,14 @@
 ^NotesL2ClusterI_files$
 ^NotesL2ClusterI\.html/
 ^NotesL2ClusterI\.html$
+^NotesL3Cluster1DBSCAN_files/
+^NotesL3Cluster1DBSCAN_files$
+^NotesL3Cluster1DBSCAN\.html/
+^NotesL3Cluster1DBSCAN\.html$
+^NotesL3Cluster3Graph_files/
+^NotesL3Cluster3Graph_files$
+^NotesL3Cluster3Graph\.html/
+^NotesL3Cluster3Graph\.html$
 ^QuestionBankAnswers_files/
 ^QuestionBankAnswers_files$
 ^QuestionBankAnswers\.html/

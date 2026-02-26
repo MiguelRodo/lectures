@@ -16,6 +16,10 @@ NotesL1MDS_files/**
 NotesL1MDS.html/**
 NotesL2ClusterI_files/**
 NotesL2ClusterI.html/**
+NotesL3Cluster1DBSCAN_files/**
+NotesL3Cluster1DBSCAN.html/**
+NotesL3Cluster3Graph_files/**
+NotesL3Cluster3Graph.html/**
 QuestionBankAnswers_files/**
 QuestionBankAnswers.html/**
 QuestionBankQuestions_files/**
@@ -23,4 +27,6 @@ QuestionBankQuestions.html/**
 SlidesL1MDS_files/**
 SlidesL1MDS.pdf/**
 # End of projr section
+
+QuestionBankAnswers.html
 

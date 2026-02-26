@@ -1,0 +1,370 @@
+---
+title: Lecture 3 - Clustering
+subtitle: DBSCAN
+bibliography: zotero.bib
+format:
+  html:
+    self-contained: true
+    toc: true
+    toc-depth: 3
+---
+
+<!--
+Useful conversiations:
+- Cluster Analysis Questions
+  - Lot of discussion, fleshes out deciding on # of clusters
+- DBScan clustering overview:
+  - Discusses HDBSCAN
+!-->
+
+```{r}
+#| include: false
+library(mclust)
+library(ggplot2)
+library(tibble)
+library(dbscan)
+```
+
+# Fixed-shape and volume clustering can over-partition data
+
+Below, the data consist of two clusters of varying size and shape:
+
+- Cluster A (stretched along first dimension): $\mathbf{X} \sim \mathcal{N}\left(\begin{pmatrix} 0 \\ 0 \end{pmatrix}, \begin{pmatrix} 4 & 0 \\ 0 & 1 \end{pmatrix}\right)$.
+- Cluster B (spherical): $\mathbf{X} \sim \mathcal{N}\left(\begin{pmatrix} 3 \\ 3 \end{pmatrix}, \begin{pmatrix} 2 & 0 \\ 0 & 2 \end{pmatrix}\right)$.
+
+```{r}
+#| include: false
+set.seed(123)
+n_A <- 100
+mean_A <- c(0, 0)
+# Covariance matrix for Cluster A: Var1 = 2, Var2 = 1
+Sigma_A <- matrix(
+   c(4, 0, 0, 1),
+   nrow = 2
+)
+data_A <- MASS::mvrnorm(n = n_A, mu = mean_A, Sigma = Sigma_A)
+n_B <- 100
+mean_B <- c(3, 3)
+# Covariance matrix for Cluster B: unit variance for both variables
+Sigma_B <- diag(2)
+data_B <- MASS::mvrnorm(n = n_B, mu = mean_B, Sigma = Sigma_B)
+data_sim <- rbind(data_A, data_B)
+true_labels <- factor(rep(c("A", "B"), each = 100))
+# Fit overly simple model (EII)
+settings_vec <- c("EII", "VVI", "VVV")
+mclust_list <- lapply(settings_vec, function(x) {
+   Mclust(data_sim, G = 1:4, modelNames = x)
+}) |>
+   setNames(c("simple", "appropriate", "flexible"))
+path_vec <- NULL
+for (i in seq_along(mclust_list)) {
+   path_p <- projr::projr_path_get(
+     "cache", "notes-l3-cluster",
+     paste0("p-2b-", names(mclust_list)[i], ".png")
+   )
+   path_vec <- c(path_vec, path_p)
+   png(path_p, units = "cm", width = 8, height = 8, res = 300)
+   plot(mclust_list[[i]], what = "classification")
+   dev.off()
+}
+```
+
+::: {#fig-flexible}
+
+![EII (simple)](`r path_vec[[1]]`)
+
+![EEI (appropriate)](`r path_vec[[2]]`)
+
+![VVV (flexible)](`r path_vec[[3]]`)
+
+Classification results for each model.
+
+:::
+
+- K-means is a "hard" classification equivalent to EII (fixed shape, volume, and orientation), so the over-partitioning problem is not unique to Mclust.
+- The VVV model is sufficiently flexible, but:
+  - It requires up-front specification of the number of clusters.
+    - One can fit multiple models and select the best one, but this is computationally expensive.
+  - All points are clustered, even if they are noise.
+    - In the example below, we add a single outlier point to the data.
+    - All models assign this to a cluster, but only the simplest model regards it as a different cluster to cluster at (0, 0).
+
+```{r}
+#| include: false
+data_sim_noise <- data_sim |>
+  rbind(
+    matrix(c(-10, -10), nrow = 1)
+  )
+set.seed(123)
+mclust_list <- lapply(settings_vec, function(x) {
+   Mclust(data_sim_noise, G = 1:4, modelNames = x)
+}) |>
+   setNames(c("simple", "appropriate", "flexible"))
+path_vec <- NULL
+for (i in seq_along(mclust_list)) {
+   path_p <- projr::projr_path_get(
+     "cache", "notes-l3-cluster",
+     paste0("p-2b-", names(mclust_list)[i], "-noise.png")
+   )
+   path_vec <- c(path_vec, path_p)
+   png(path_p, units = "cm", width = 8, height = 8, res = 300)
+   plot(mclust_list[[i]], what = "classification")
+   dev.off()
+}
+```
+
+::: {#fig-flexible}
+
+![EII (simple)](`r path_vec[[1]]`)
+
+![EEI (appropriate)](`r path_vec[[2]]`)
+
+![VVV (flexible)](`r path_vec[[3]]`)
+
+Classification results for each model.
+
+:::
+
+# DBSCAN: Density-Based Spatial Clustering of Applications with Noise
+
+## 1. Overview
+
+- Definition:  
+  DBSCAN is a density-based clustering algorithm that groups together points that are closely packed (i.e., high density) and marks points in low-density regions as outliers or noise.
+
+- Key idea:  
+  Instead of requiring a pre-specified number of clusters (like k-means), DBSCAN defines clusters based on the density of data points.
+
+- Main reference:
+  @schubert_etal17
+
+## 2. Key concepts
+
+```{r}
+#| include: false
+path_img_dbscan_intro <- projr::projr_path_get(
+  "raw-img", "schubert_etal17-dbscan_points.png"
+)
+```
+
+::: {#fig-dbscan-points}
+
+![](`r path_img_dbscan_intro`)
+
+DBSCAN clustering example (Schubert et al., 2017)
+:::
+
+### 2.1 Core, border and noise points
+
+- Core point:  
+  A point is considered a core point if it has at least `minPts` points (including itself) within its neighborhood of radius `eps`.
+- Border point:  
+  A point that has fewer than `minPts` neighbors but is within the `eps` neighborhood of a core point.
+- Noise point:  
+  Any point that is neither a core point nor a border point; considered as outlier.
+
+### 2.2 Density reachability and connectivity
+
+- Direct density-reachability:  
+  A point $q$ is directly density-reachable from point $p$ if $q$ is within $eps$ of $p$ and $p$ is a core point.
+- Density-reachability:  
+  A point $q$ is density-reachable from $p$ if there is a chain of points $p, p_1, p_2, \dots, q$ where each point is directly density-reachable from the previous one.
+- Density-connectivity:  
+  Two points $p$ and $q$ are density-connected if there exists a point $o$ such that both $p$ and $q$ are density-reachable from $o$.
+
+## 3. Applied to the original and noisy data
+
+```{r}
+#| include: false
+path_p_knn_init <- projr::projr_path_get(
+  "cache", "notes-l3-cluster",
+  "p-dbscan-knn-init.png"
+)
+png(path_p_knn_init, units = "cm", width = 8, height = 8, res = 300)
+kNNdistplot(data_sim, k = 10)
+dev.off()
+```
+
+```{r}
+dbscan_obj <- dbscan(data_sim, eps = 0.8, minPts = 10)
+```
+
+```{r}
+#| include: false
+path_p_dbscan_noiseless <- projr::projr_path_get(
+  "cache", "notes-l3-cluster",
+  "p-dbscan-noiseless.png"
+)
+plot_tbl <- data_sim |>
+  as_tibble() 
+colnames(plot_tbl) <- c("x", "y")
+plot_tbl$cluster <- as.factor(dbscan_obj$cluster)
+p <- ggplot(
+  plot_tbl,
+  aes(x = x, y = y, color = cluster)
+) +
+  geom_point() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    plot.background = element_rect(fill = "white")
+  ) +
+  coord_equal() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+ggsave(
+  path_p_dbscan_noiseless,
+  plot = p,
+  width = 8, height = 8, units = "cm", dpi = 300
+)
+```
+
+::: {#fig-dbscan-noiseless}
+
+![](`r path_p_dbscan_noiseless`)
+
+DBSCAN clustering of noiseless data
+:::
+
+```{r}
+#| include: false
+path_p_knn_noisy <- projr::projr_path_get(
+  "cache", "notes-l3-cluster",
+  "p-dbscan-knn-noisy.png"
+)
+png(path_p_knn_noisy, units = "cm", width = 8, height = 8, res = 300)
+kNNdistplot(data_sim_noise, k = 10)
+dev.off()
+```
+
+```{r}
+#| warning: false
+dbscan_obj <- dbscan(data_sim_noise, eps = 0.8, minPts = 10)
+```
+
+```{r}
+#| include: false
+path_p_dbscan_noisy <- projr::projr_path_get(
+  "cache", "notes-l3-cluster",
+  "p-dbscan-noisy.png"
+)
+plot_tbl <- data_sim_noise |>
+  as_tibble()
+colnames(plot_tbl) <- c("x", "y")
+plot_tbl$cluster <- as.factor(dbscan_obj$cluster)
+p <- ggplot(
+  plot_tbl,
+  aes(x = x, y = y, color = cluster)
+) +
+  geom_point() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    plot.background = element_rect(fill = "white")
+  ) +
+  coord_equal() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank()
+  )
+ggsave(
+  path_p_dbscan_noisy,
+  plot = p,
+  width = 8, height = 8, units = "cm", dpi = 300
+)
+```
+
+::: {#fig-dbscan-noisy}
+
+![](`r path_p_dbscan_noisy`)
+
+DBSCAN clustering of noisy data
+:::
+
+## 4. The DBSCAN algorithm
+
+### 4.1 Pseudocode outline [@schubert_etal17]
+
+1. For each point $p$ in the dataset:
+   - If $p$ is already assigned to a cluster, skip it.
+   - Otherwise, get all points within distance $eps$ of $p$.
+   - If the number of neighbors < minPts:  
+     - Mark $p$ as noise, and continue.
+   - Else:
+     - Create a new cluster.
+     - Mark $p$ as part of this cluster.
+     - Recursively add all points that are density-reachable from $p$ to the cluster.
+2. Repeat until all points are processed.
+
+## 5. Parameters and their selection
+
+### 5.1 minPts
+
+- Definition:  
+  The minimum number of points required to form a dense region (including the core point itself).
+- Typical Values:
+  Often set to $2p$, but can be larger fo4r datasets with more noise or higher-dimensional.
+- Impact:
+  Higher values require denser clusters to be recognized; lower values might cause noise to be included in clusters.
+
+### 5.2 eps ($\epsilon$)
+
+- Definition:  
+  The maximum distance between two points for one to be considered as in the neighborhood of the other.
+- Selection Strategy:  
+  - k-NN distance plot:  
+    Plot the distance to the k-th nearest neighbor for all points (where $k = minPts$ for 2D data and $k=minPts+1$ for higher-dimensional data).
+    Look for an "elbow" in the sorted plot; set $eps$ just above this point.
+  - Rules of thumb:  
+    For low-dimensional data, a small percentage of the range of values might work. For higher dimensions, domain knowledge is crucial.
+- Impact:  
+  A small $eps$ may result in many points being labeled as noise; a large $eps$ might merge distinct clusters.
+
+```{r}
+#| eval: false
+kNNdistplot(data_sim, k = 10)
+```
+
+::: {#fig-dbscan-knn}
+
+![](`r path_p_knn_init`)
+
+k-NN distance plot for noiseless data
+:::
+
+
+### 5.3 Red flags for degenerate clustering results
+
+When evaluating DBSCAN outcomes, consider these two key red flag criteria:
+
+- **Number of clustered points vs noise:**
+
+  A good clustering result should cover a large part of the dataset while still detecting noise. Typically, the level of noise should be between 1% and 30% of the data. If too few points are labeled as noise, it may indicate that the $\epsilon$ value is set too high.
+
+- **Size of the largest component:**
+
+  If the largest cluster (component) contains more than 20% to 50% of the clustered points, it might be a sign that the clustering is degenerate. This can mean that $\epsilon$ was chosen too large, causing distinct clusters to merge. In such cases, either a hierarchical approach (like OPTICS or HDBSCAN*) should be considered, or DBSCAN should be rerun with a smaller $\epsilon$ value.
+
+While these criteria do not precisely quantify clustering quality, they serve as useful guidelines for spotting degenerate solutions and adjusting parameters. Increasing $\epsilon$ generally increases both the number of clustered points and the size of the largest cluster, while decreasing $\epsilon$ tends to produce more noise and smaller clusters.
+
+## 6. Advantages and limitations
+
+### 6.1 Advantages
+
+- No need to specify the number of clusters in advance.
+- Ability to discover clusters of arbitrary shape.
+- Effective handling of noise and outliers.
+- Intuitive parameter interpretation (eps and minPts).
+
+### 6.2 Limitations
+
+- Parameter sensitivity:  
+  The quality of clustering depends heavily on the choice of $eps$ and $minPts$.
+  Results can be erratic.
+- Varied densities:  
+  DBSCAN struggles with datasets where clusters have significantly different densities.
+- Scalability:  
+  While efficient with spatial indexing (e.g., kd-trees or R-trees), performance can degrade in very high-dimensional spaces.
+
