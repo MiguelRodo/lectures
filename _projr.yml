@@ -30,6 +30,6 @@ build:
       - raw-other
 dev:
   scripts:
-  - NotesL3Cluster1DBSCAN.qmd
-  - NotesL3Cluster3Graph.qmd
+  - QuestionBankQuestions.qmd
+  - QuestionBankAnswers.qmd
 

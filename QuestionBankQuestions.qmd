@@ -145,17 +145,22 @@ Imagine a three-group univariate Gaussian mixture model where all groups share a
 
 * **Question 1:** Suppose we are fitting a mixture model using a complex component density where we lack an analytic solution for the M-step parameter updates (i.e., we cannot isolate the parameters and set the derivative to zero). What alternative methods can we use within the M-step to update these parameters?
 
-* **Question 2:** Why is initialization crucial for the EM algorithm's success? Briefly describe two common strategies for initializing the parameters $\mathbf{\Theta}^{(0)}$ before the very first E-step.
+* **Question 2:**
+Why is initialization crucial for the EM algorithm's success? Briefly describe two common strategies for initializing the parameters $\mathbf{\Theta}^{(0)}$ before the very first E-step.
 
-* **Question 3:** What is the most common mathematical criterion used in practice to determine when the EM algorithm has converged and iterations should stop?
+* **Question 3:**
+What is the most common mathematical criterion used in practice to determine when the EM algorithm has converged and iterations should stop?
 
-* **Question 4:** Consider a Gaussian mixture model where we assume all covariance matrices are spherical, such that $\Sigma_k = \sigma^2 \mathbf{I}$. What happens to the responsibilities $\gamma_{ik}$ in the E-step as we take the limit where the variance $\sigma^2 \to 0$ (note: zero, not infinity)? Relate this limiting behavior to the K-means clustering algorithm.
+* **Question 4:** Consider a two-component univariate Gaussian mixture model with common variance across components. What happens to the responsibilities $\gamma_{ik}$ in the E-step as we take the limit where the variance $\sigma^2 \to 0$ (note: zero, not infinity)? Relate this limiting behavior to the K-means clustering algorithm.
 
 ### Part E: Geometric Covariance Decompositions (mclust)
 
 * **Question 1:** The `mclust` package in R parameterizes the covariance matrix for group $k$ using the eigenvalue decomposition: $\Sigma_k = \lambda_k D_k \Lambda_k D_k^T$.
   * a. Explain the geometric role of each element in determining the cluster distribution: $\lambda_k$, $D_k$, and $\Lambda_k$.
   * b. How do we constrain this specific formula to allow the clusters to have flexible, unique shapes, but force them to all have the same fixed volume?
-  * c. Suppose we force $\Lambda_k$ to have identical entries along its diagonal for all $k$ (i.e., $\Lambda_k = c\mathbf{I}$) but allow $D_k$ to be a fully flexible orthogonal matrix. Is the resulting spatial geometry different from simply restricting $D_k$ to be the identity matrix ($D_k = \mathbf{I}$)? Explain your reasoning.
+  * c. Suppose we force $\Lambda_k$ to have identical entries along its diagonal for all $k$ (i.e., $\Lambda_k = c\mathbf{I}$).
+  Does it make a difference whether or not we restrict $D_k$ to be the identity matrix? Explain your reasoning.
   * d. How do we constrain the parameter elements to enforce that all components have the exact same volume, shape, and orientation, but allow that common volume to be a value *other* than 1?
+
+# Clustering II
 

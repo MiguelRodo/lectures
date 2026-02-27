@@ -15,23 +15,552 @@ library(mclust)
 library(ggplot2)
 library(tibble)
 library(igraph)
+library(FNN)
+library(cowplot)
+library(RColorBrewer)
+library(patchwork)
+theme_bg <- function() {
+  cowplot::theme_cowplot() +
+    theme(
+      plot.background = element_rect(fill = "white", colour = NA),
+      panel.background = element_rect(fill = "white", colour = NA)
+    )
+}
+# Display individually
+path_tmp <- "_tmp/graph/"
+if (dir.exists(path_tmp)) {
+  unlink(path_tmp, recursive = TRUE)
+}
+dir.create(path_tmp, recursive = TRUE)
+path_p_init <- file.path(path_tmp, "p-init.png")
 ```
 
-# Graph basics
+# 1. Introduction: Graph Basics
 
-## What is a Graph?
+A graph models pairwise relationships. It consists of nodes (data points) and edges (connections, indicating similarity or neighborhood).
 
-- Definition:  
-  A graph is a mathematical structure used to model pairwise relationships between objects. It consists of:
-  
-  - Nodes (Vertices):
-    Represent the individual objects or data points.
-    
-  - Edges:
-    Represent the connections or relationships between nodes. In our clustering context, an edge might indicate that two data points are similar or are neighbors.
+A graph $G$ is formally defined as an ordered pair $G = (V, E)$:
+
+* $V$ is a set of vertices (or nodes). In clustering, these are your data points. $V = \{v_1, v_2, \dots, v_n\}$.
+* $E$ is a set of edges (or links). An edge connects two vertices. $E = \{(v_i, v_j) \mid v_i, v_j \in V\}$.
+
+To use graphs in algorithms, we translate $V$ and $E$ into data structures:
+
+* Adjacency Matrix ($A$): An $n \times n$ matrix where $A_{ij} = 1$ if there is an edge between $v_i$ and $v_j$, and $A_{ij} = 0$ otherwise.
+* Adjacency List: A list of length $n$ where the $i$-th element contains an array of all vertices connected to $v_i$. This is highly efficient for sparse graphs (like a 3-NN graph) because you don't store thousands of zeros.
+
+Let's simulate 15 points, connect them using a 3-Nearest Neighbour (3-NN) rule, and extract both the adjacency matrix and adjacency list for the first 5 points.
 
 ```{r}
-# Generate simulated data (if not already generated)
+# -------------------------------------------------------------------
+# Simulate 15 points and build a 3-NN graph
+# -------------------------------------------------------------------
+
+set.seed(42)
+n_pts <- 15
+
+# Generate 15 random points
+pts <- data.frame(
+  id = 1:n_pts,
+  x = runif(n_pts, 0, 10),
+  y = runif(n_pts, 0, 10)
+)
+
+# Find 3 nearest neighbors for each point
+knn_res <- FNN::get.knn(pts[, c("x", "y")], k = 3)
+
+# Build an edge list (from point i to its 3 neighbors)
+edges <- do.call(rbind, lapply(1:n_pts, function(i) {
+  data.frame(from = i, to = knn_res$nn.index[i, ])
+}))
+
+# We use simplify to remove duplicate edges (e.g., if A is a 3-NN of B, and B is a 3-NN of A)
+g_15 <- graph_from_data_frame(edges, directed = FALSE)
+g_15 <- simplify(g_15)
+
+# -------------------------------------------------------------------
+# Plotting the 3-NN Graph
+# -------------------------------------------------------------------
+
+# Extract edge coordinates for ggplot
+edge_df <- as_data_frame(g_15, what = "edges")
+edge_df$from <- as.numeric(edge_df$from)
+edge_df$to <- as.numeric(edge_df$to)
+
+edge_df$x <- pts$x[edge_df$from]
+edge_df$y <- pts$y[edge_df$from]
+edge_df$xend <- pts$x[edge_df$to]
+edge_df$yend <- pts$y[edge_df$to]
+
+p_15nn <- ggplot() +
+  geom_segment(data = edge_df, aes(x = x, y = y, xend = xend, yend = yend), color = "gray70") +
+  geom_point(data = pts, aes(x = x, y = y), size = 8, color = "steelblue") +
+  geom_text(data = pts, aes(x = x, y = y, label = id), color = "white", size = 3) +
+  theme_bg() +
+  labs(
+    title = "15 Points: 3-Nearest Neighbor Graph",
+    x = "X", y = "Y"
+  )
+
+# Display the plot
+path_tmp <- "_tmp/graph/"
+if (!dir.exists(path_tmp)) dir.create(path_tmp, recursive = TRUE)
+path_p_15nn <- file.path(path_tmp, "p-15nn.png")
+ggsave(path_p_15nn, p_15nn, units = "cm", height = 10, width = 12)
+
+# -------------------------------------------------------------------
+# Adjacency Matrix and List (First 5 points)
+# -------------------------------------------------------------------
+
+# 1. Adjacency Matrix
+adj_matrix_15 <- as.matrix(as_adjacency_matrix(g_15))
+print("Adjacency Matrix (Points 1 to 5):")
+print(adj_matrix_15[1:5, 1:5])
+
+# 2. Adjacency List
+adj_list_15 <- as_adj_list(g_15)
+print("Adjacency List (Points 1 to 5):")
+print(adj_list_15[1:5])
+```
+
+::: {#fig-graph-example}
+![](`r path_p_15nn`)
+
+Example of a graph constructed from a distance matrix.s-
+:::
+
+# 2. Geodesic vs. global distance
+
+As we have already seen, clusters are rarely perfect spheres; they often take on complex shapes, varying in both volume and orientation. Because of this, the global distance between two points (the straight-line, Euclidean distance) does not always reflect how far apart they "really" are within the context of the data.
+
+If two points lie on the same curved structure but are separated by an empty gap in space, a straight line might suggest they are close. To capture their true relationship, we must rely on the distance along the underlying shape of the data itself.
+This is captured by the **geodesic distance**.
+
+Geodesic distance is the shortest possible path between two points while strictly remaining on the underlying surface (or manifold) of the space they inhabit. 
+
+Unlike Euclidean distance, which measures the straight line between two points by cutting through empty space, geodesic distance respects the actual structural shape of the data. 
+
+A classic analogy is traveling between two cities on Earth: the Euclidean distance is a straight line tunneling directly through the planet's core. The geodesic distance is the actual flight path across the curved surface of the globe. 
+
+In graph-based clustering, we approximate this continuous geodesic distance by calculating the shortest path that hops from neighbor to neighbor along the discrete edges of our graph.
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+k_val <- 5
+
+# -------------------------------------------------------------------
+# 1. Simulate and Plot Two 2D Normals
+# -------------------------------------------------------------------
+
+set.seed(123)
+n_norm <- 400
+
+# Cluster 1 centered at (0, 0)
+norm1 <- data.frame(
+  x = rnorm(n_norm, mean = 0, sd = 1),
+  y = rnorm(n_norm, mean = 0, sd = 1),
+  cluster = as.factor("A")
+)
+
+# Cluster 2 centered at (4, 4)
+norm2 <- data.frame(
+  x = rnorm(n_norm, mean = 4, sd = 1),
+  y = rnorm(n_norm, mean = 4, sd = 1),
+  cluster = as.factor("B")
+)
+
+normals_data <- rbind(norm1, norm2)
+
+# Base Plot
+p_normals <- ggplot(normals_data, aes(x = x, y = y, color = cluster)) +
+  geom_point(alpha = 0.8, size = 1.5) +
+  scale_color_brewer(palette = "Set2", name = "True Cluster") +
+  theme_bg() +
+  labs(
+    title = "Two 2D Normals",
+    x = "X coordinate",
+    y = "Y coordinate"
+  )
+
+# k-NN Calculation
+knn_norm <- FNN::get.knn(normals_data[, c("x", "y")], k = k_val)
+edges_norm <- do.call(rbind, lapply(1:nrow(normals_data), function(i) {
+  data.frame(from = i, to = knn_norm$nn.index[i, ])
+}))
+edges_norm_df <- data.frame(
+  x = normals_data$x[edges_norm$from],
+  y = normals_data$y[edges_norm$from],
+  xend = normals_data$x[edges_norm$to],
+  yend = normals_data$y[edges_norm$to]
+)
+
+# k-NN Plot
+p_normals_knn <- ggplot() +
+  geom_segment(data = edges_norm_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray30", alpha = 0.8) +
+  geom_point(data = normals_data, aes(x = x, y = y, color = cluster), 
+             size = 1.5, alpha = 0.3) +
+  scale_color_brewer(palette = "Set2", name = "True Cluster") +
+  theme_bg() +
+  labs(
+    title = "Two 2D Normals (5-NN Graph)",
+    x = "X coordinate",
+    y = "Y coordinate"
+  )
+
+# -------------------------------------------------------------------
+# 2. Simulate and Plot the Swiss Roll
+# -------------------------------------------------------------------
+
+n_swiss <- 1500
+
+# The 't' variable represents the 1D position along the unrolled manifold
+t <- runif(n_swiss, 1.5 * pi, 4.5 * pi)
+
+# Generate 3D coordinates (x, y, z)
+x_swiss <- t * cos(t) + rnorm(n_swiss, 0, 0.5)
+y_swiss <- runif(n_swiss, 0, 20) 
+z_swiss <- t * sin(t) + rnorm(n_swiss, 0, 0.5)
+
+swiss_roll <- data.frame(x = x_swiss, y = y_swiss, z = z_swiss, t = t)
+
+# Base Plot
+p_swiss <- ggplot(swiss_roll, aes(x = x, y = z, color = t)) +
+  geom_point(alpha = 0.8, size = 1.5) +
+  scale_color_distiller(palette = "Spectral", name = "Manifold\nPosition") +
+  theme_bg() +
+  labs(
+    title = "Swiss Roll (2D Projection)",
+    x = "X coordinate",
+    y = "Z coordinate"
+  )
+
+# k-NN Calculation (Computed in 3D, plotted in 2D)
+knn_swiss <- FNN::get.knn(swiss_roll[, c("x", "y", "z")], k = k_val)
+edges_swiss <- do.call(rbind, lapply(1:nrow(swiss_roll), function(i) {
+  data.frame(from = i, to = knn_swiss$nn.index[i, ])
+}))
+edges_swiss_df <- data.frame(
+  x = swiss_roll$x[edges_swiss$from],
+  y = swiss_roll$z[edges_swiss$from], # Z on Y-axis
+  xend = swiss_roll$x[edges_swiss$to],
+  yend = swiss_roll$z[edges_swiss$to]
+)
+
+# k-NN Plot
+p_swiss_knn <- ggplot() +
+  geom_segment(data = edges_swiss_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray30", alpha = 0.8) +
+  geom_point(data = swiss_roll, aes(x = x, y = z, color = t), 
+             size = 1.5, alpha = 0.3) +
+  scale_color_distiller(palette = "Spectral", name = "Manifold\nPosition") +
+  theme_bg() +
+  labs(
+    title = "Swiss Roll (3D 5-NN Graph)",
+    x = "X coordinate",
+    y = "Z coordinate"
+  )
+
+# -------------------------------------------------------------------
+# 3. Simulate and Plot 3 Concentric Circles
+# -------------------------------------------------------------------
+
+n_circle <- 400
+radii <- c(2, 6, 10) 
+
+# Generate the circles
+circles_list <- lapply(seq_along(radii), function(i) {
+  r <- radii[i]
+  theta <- runif(n_circle, 0, 2 * pi)
+  x_circ <- r * cos(theta) + rnorm(n_circle, 0, 0.3)
+  y_circ <- r * sin(theta) + rnorm(n_circle, 0, 0.3)
+  data.frame(x = x_circ, y = y_circ, cluster = as.factor(i))
+})
+circles <- do.call(rbind, circles_list)
+
+# Base Plot
+p_circles <- ggplot(circles, aes(x = x, y = y, color = cluster)) +
+  geom_point(alpha = 0.8, size = 1.5) +
+  scale_color_brewer(palette = "Set1", name = "True Cluster") +
+  theme_bg() +
+  labs(
+    title = "Three Concentric Circles",
+    x = "X coordinate",
+    y = "Y coordinate"
+  )
+
+# k-NN Calculation
+knn_circ <- FNN::get.knn(circles[, c("x", "y")], k = k_val)
+edges_circ <- do.call(rbind, lapply(1:nrow(circles), function(i) {
+  data.frame(from = i, to = knn_circ$nn.index[i, ])
+}))
+edges_circ_df <- data.frame(
+  x = circles$x[edges_circ$from],
+  y = circles$y[edges_circ$from],
+  xend = circles$x[edges_circ$to],
+  yend = circles$y[edges_circ$to]
+)
+
+# k-NN Plot
+p_circles_knn <- ggplot() +
+  geom_segment(data = edges_circ_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray30", alpha = 0.8) +
+  geom_point(data = circles, aes(x = x, y = y, color = cluster), 
+             size = 1.5, alpha = 0.3) +
+  scale_color_brewer(palette = "Set1", name = "True Cluster") +
+  theme_bg() +
+  labs(
+    title = "Three Concentric Circles (5-NN Graph)",
+    x = "X coordinate",
+    y = "Y coordinate"
+  )
+
+# -------------------------------------------------------------------
+# 4. Display the Plots
+# -------------------------------------------------------------------
+
+path_tmp <- "_tmp/graph/"
+if (!dir.exists(path_tmp)) {
+  dir.create(path_tmp, recursive = TRUE)
+}
+path_p_init <- file.path(path_tmp, "p-init.png")
+
+# Combine plots into a 3x2 grid
+# Column 1: Base plots | Column 2: k-NN plots
+p_grid <- cowplot::plot_grid(
+  p_normals,
+  p_swiss,
+  p_circles,
+  ncol = 1,
+  nrow = 3
+) +
+  theme_bg()
+
+# Increased width to accommodate 2 columns side-by-side
+ggsave(
+  path_p_init,
+  p_grid,
+  units = "cm",
+  height = 25, 
+  width = 15
+)
+```
+
+::: {#fig-nonlinear}
+![](`r path_p_init`)
+
+Example spaces.
+:::
+
+# 3. Capturing geodesic distances in graphs
+
+We can formalize our continuous spaces into discrete graphs by linking each point to its $k$ nearest neighbors.
+Here we use $k = 5$ for all three datasets.
+We then use an algorithm to place the points in two-dimensional space such that their geodesic distance is optimally represented.
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+
+k_val <- 5
+
+# -------------------------------------------------------------------
+# 1. Simulate and Plot Two 2D Normals
+# -------------------------------------------------------------------
+
+set.seed(123)
+n_norm <- 150 # Reduced for visual clarity
+
+norm1 <- data.frame(x = rnorm(n_norm, 0, 1), y = rnorm(n_norm, 0, 1), cluster = as.factor("A"))
+norm2 <- data.frame(x = rnorm(n_norm, 4, 1), y = rnorm(n_norm, 4, 1), cluster = as.factor("B"))
+normals_data <- rbind(norm1, norm2)
+
+knn_norm <- FNN::get.knn(normals_data[, c("x", "y")], k = k_val)
+edges_norm <- do.call(rbind, lapply(1:nrow(normals_data), function(i) {
+  data.frame(from = i, to = knn_norm$nn.index[i, ])
+}))
+
+edges_norm_df <- data.frame(
+  x = normals_data$x[edges_norm$from], y = normals_data$y[edges_norm$from],
+  xend = normals_data$x[edges_norm$to], yend = normals_data$y[edges_norm$to]
+)
+
+# LEFT: Spatial k-NN
+p_normals_left <- ggplot() +
+  geom_segment(data = edges_norm_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray50", alpha = 0.3) +
+  geom_point(data = normals_data, aes(x = x, y = y, color = cluster), size = 1.5) +
+  scale_color_brewer(palette = "Set2") +
+  theme_bg() + theme(legend.position = "none") +
+  labs(title = "Two 2D Normals (Spatial)", x = "X", y = "Y")
+
+# RIGHT: Topological Layout (Kamada-Kawai)
+g_norm <- graph_from_data_frame(edges_norm, directed = FALSE)
+g_norm <- simplify(g_norm)
+lay_norm <- layout_components(g_norm, layout = layout_with_kk)
+normals_data$lay_x <- lay_norm[, 1]
+normals_data$lay_y <- lay_norm[, 2]
+
+edges_norm_lay_df <- data.frame(
+  x = normals_data$lay_x[edges_norm$from], y = normals_data$lay_y[edges_norm$from],
+  xend = normals_data$lay_x[edges_norm$to], yend = normals_data$lay_y[edges_norm$to]
+)
+
+p_normals_right <- ggplot() +
+  geom_segment(data = edges_norm_lay_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray60", alpha = 0.3) +
+  geom_point(data = normals_data, aes(x = lay_x, y = lay_y, color = cluster), size = 1.5) +
+  scale_color_brewer(palette = "Set2") +
+  theme_bg() + theme(legend.position = "none", axis.text = element_blank(), axis.ticks = element_blank()) +
+  labs(title = "Topological Layout", x = "", y = "")
+
+
+# -------------------------------------------------------------------
+# 2. Simulate and Plot the Swiss Roll
+# -------------------------------------------------------------------
+
+n_swiss <- 600 # Reduced for visual clarity
+t <- runif(n_swiss, 1.5 * pi, 4.5 * pi)
+x_swiss <- t * cos(t) + rnorm(n_swiss, 0, 0.5)
+y_swiss <- runif(n_swiss, 0, 3) 
+z_swiss <- t * sin(t) + rnorm(n_swiss, 0, 0.5)
+swiss_roll <- data.frame(x = x_swiss, y = y_swiss, z = z_swiss, t = t)
+
+knn_swiss <- FNN::get.knn(swiss_roll[, c("x", "y", "z")], k = k_val)
+edges_swiss <- do.call(rbind, lapply(1:nrow(swiss_roll), function(i) {
+  data.frame(from = i, to = knn_swiss$nn.index[i, ])
+}))
+
+edges_swiss_df <- data.frame(
+  x = swiss_roll$x[edges_swiss$from], y = swiss_roll$z[edges_swiss$from],
+  xend = swiss_roll$x[edges_swiss$to], yend = swiss_roll$z[edges_swiss$to]
+)
+
+# LEFT: Spatial k-NN
+p_swiss_left <- ggplot() +
+  geom_segment(data = edges_swiss_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray50", alpha = 0.3) +
+  geom_point(data = swiss_roll, aes(x = x, y = z, color = t), size = 1.5) +
+  scale_color_distiller(palette = "Spectral") +
+  theme_bg() + theme(legend.position = "none") +
+  labs(title = "Swiss Roll (Spatial 2D Projection)", x = "X", y = "Z")
+
+# RIGHT: Topological Layout (Kamada-Kawai)
+g_swiss <- graph_from_data_frame(edges_swiss, directed = FALSE)
+g_swiss <- simplify(g_swiss)
+lay_swiss <- layout_components(g_swiss, layout = layout_with_kk)
+swiss_roll$lay_x <- lay_swiss[, 1]
+swiss_roll$lay_y <- lay_swiss[, 2]
+
+edges_swiss_lay_df <- data.frame(
+  x = swiss_roll$lay_x[edges_swiss$from], y = swiss_roll$lay_y[edges_swiss$from],
+  xend = swiss_roll$lay_x[edges_swiss$to], yend = swiss_roll$lay_y[edges_swiss$to]
+)
+
+p_swiss_right <- ggplot() +
+  geom_segment(data = edges_swiss_lay_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray60", alpha = 0.3) +
+  geom_point(data = swiss_roll, aes(x = lay_x, y = lay_y, color = t), size = 1.5) +
+  scale_color_distiller(palette = "Spectral") +
+  theme_bg() + theme(legend.position = "none", axis.text = element_blank(), axis.ticks = element_blank()) +
+  labs(title = "Topological Layout", x = "", y = "")
+
+
+# -------------------------------------------------------------------
+# 3. Simulate and Plot 3 Concentric Circles
+# -------------------------------------------------------------------
+
+n_circle <- 150 # Reduced for visual clarity
+radii <- c(2, 6, 10) 
+circles_list <- lapply(seq_along(radii), function(i) {
+  r <- radii[i]
+  theta <- runif(n_circle, 0, 2 * pi)
+  data.frame(
+    x = r * cos(theta) + rnorm(n_circle, 0, 0.1),
+    y = r * sin(theta) + rnorm(n_circle, 0, 0.1),
+    cluster = as.factor(i)
+  )
+})
+circles <- do.call(rbind, circles_list)
+
+knn_circ <- FNN::get.knn(circles[, c("x", "y")], k = k_val)
+edges_circ <- do.call(rbind, lapply(1:nrow(circles), function(i) {
+  data.frame(from = i, to = knn_circ$nn.index[i, ])
+}))
+
+edges_circ_df <- data.frame(
+  x = circles$x[edges_circ$from], y = circles$y[edges_circ$from],
+  xend = circles$x[edges_circ$to], yend = circles$y[edges_circ$to]
+)
+
+# LEFT: Spatial k-NN
+p_circles_left <- ggplot() +
+  geom_segment(data = edges_circ_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray50", alpha = 0.3) +
+  geom_point(data = circles, aes(x = x, y = y, color = cluster), size = 1.5) +
+  scale_color_brewer(palette = "Set1") +
+  theme_bg() + theme(legend.position = "none") +
+  labs(title = "Concentric Circles (Spatial)", x = "X", y = "Y")
+
+# RIGHT: Topological Layout (Kamada-Kawai)
+g_circ <- graph_from_data_frame(edges_circ, directed = FALSE)
+g_circ <- simplify(g_circ)
+lay_circ <- layout_components(g_circ, layout = layout_with_kk)
+circles$lay_x <- lay_circ[, 1]
+circles$lay_y <- lay_circ[, 2]
+
+edges_circ_lay_df <- data.frame(
+  x = circles$lay_x[edges_circ$from], y = circles$lay_y[edges_circ$from],
+  xend = circles$lay_x[edges_circ$to], yend = circles$lay_y[edges_circ$to]
+)
+
+p_circles_right <- ggplot() +
+  geom_segment(data = edges_circ_lay_df, aes(x = x, y = y, xend = xend, yend = yend), 
+               color = "gray60", alpha = 0.3) +
+  geom_point(data = circles, aes(x = lay_x, y = lay_y, color = cluster), size = 1.5) +
+  scale_color_brewer(palette = "Set1") +
+  theme_bg() + theme(legend.position = "none", axis.text = element_blank(), axis.ticks = element_blank()) +
+  labs(title = "Topological Layout", x = "", y = "")
+
+
+# -------------------------------------------------------------------
+# 4. Display the Plots
+# -------------------------------------------------------------------
+
+path_tmp <- "_tmp/graph/"
+if (!dir.exists(path_tmp)) dir.create(path_tmp, recursive = TRUE)
+path_p_init_graph_2 <- file.path(path_tmp, "p-init-graph-2.png")
+
+p_grid <- cowplot::plot_grid(
+  p_normals_left, p_normals_right,
+  p_swiss_left,   p_swiss_right, 
+  p_circles_left, p_circles_right,
+  ncol = 2, nrow = 3
+) + theme_bg()
+
+ggsave(path_p_init_graph_2, p_grid, units = "cm", height = 25, width = 25)
+```
+
+::: {#fig-nonlinear-2}
+![](`r path_p_init_graph_2`)
+
+:::
+
+# 4. A further problem The curse of dimensionality
+
+In high-dimensional data, the distance to your nearest neighbor and farthest neighbor become almost identical - assuming that the additional dimensions do not discriminate (i.e. are "noise" more than "signal").
+Global Euclidean distance loses contrast, meaning points appear to be roughly the same distance from each other.
+Consequently, standard distance-based clustering methods fail.
+
+# 5. A common graph: minimum spanning tree (MST)
+
+We can also connect our space using a Minimum Spanning Tree.
+An MST is a subgraph connecting all nodes with the minimum possible total edge weight and no cycles.
+
+```{r}
+# Generate simulated data
 set.seed(123)
 n_A <- 100
 mean_A <- c(0, 0)
@@ -48,25 +577,19 @@ data_sim <- rbind(data_A, data_B)
 # Compute the Euclidean distance matrix
 dist_matrix <- as.matrix(dist(data_sim))
 
-# Define a threshold to determine connectivity.
-# For example, choose a threshold at the 10th percentile of all distances.
+# Define a connectivity threshold (e.g., 10th percentile of all distances)
 threshold <- quantile(dist_matrix, 0.1)
 
-# Create an adjacency matrix:
-# If the distance between two points is less than the threshold,
-# we consider them connected.
+# Create an adjacency matrix
 adj_matrix <- (dist_matrix < threshold) * 1
+diag(adj_matrix) <- 0 # Remove self-loops
 
-# Remove self-loops by setting the diagonal to zero
-diag(adj_matrix) <- 0
-
-# Build an undirected graph using the igraph package.
-library(igraph)
+# Build an undirected graph
 g_distance <- graph_from_adjacency_matrix(
   adj_matrix, mode = "undirected", weighted = TRUE
 )
 
-# Visualize the graph structure
+# Visualize the graph
 path_p_graph <- projr::projr_path_get(
   "cache", "notes-l3-cluster", "p-graph.png"
 )
@@ -78,35 +601,12 @@ plot(
 dev.off()
 ```
 
+
 ::: {#fig-graph-construct}
 ![](`r path_p_graph`)
 
-Example of a graph constructed from a distance matrix. Each point is connected to its nearest neighbors based on a distance threshold.
-
+Example of a graph constructed from a distance matrix. Each point connects to neighbors within a threshold.
 :::
-
-## Types of graphs
-
-- Undirected graphs:  
-  The connections between nodes have no direction. This is the type of graph typically used for clustering because the relationship is mutual.
-  
-- Weighted graphs:  
-  Each edge has an associated weight that quantifies the strength or cost of the connection. For example, the weight might be the distance between two points. In our application:
-  
-  - In the k‑nearest neighbor graph, edge weights can be set as the Euclidean distance (or another distance metric) between data points.
-
-## Minimum spanning tree (MST)
-
-- Definition:  
-  A minimum spanning tree is a subgraph that connects all the nodes in a weighted graph with the minimum possible total edge weight, and without forming any cycles.
-  
-- Use in HDBSCAN:  
-  HDBSCAN builds a minimum spanning tree based on the mutual reachability distances between points. By constructing the MST, HDBSCAN captures the most important relationships in the data. It then removes long edges (those with high weights) to separate the tree into clusters.
-  
-- Key Points:  
-  - The MST provides a concise representation of the data's structure.
-  - It is used to identify natural divisions or clusters in the data by cutting edges that bridge distant regions.
-
 
 ```{r}
 g_weighted <- graph_from_adjacency_matrix(
@@ -114,10 +614,7 @@ g_weighted <- graph_from_adjacency_matrix(
 )
 
 mst_graph <- mst(g_weighted, weights = E(g_weighted)$weight)
-```
 
-```{r}
-#| include: false
 # Visualize the MST
 path_p_mst <- projr::projr_path_get("cache", "notes-l3-cluster", "p-mst.png")
 png(path_p_mst, units = "cm", width = 12, height = 12, res = 300)
@@ -131,131 +628,81 @@ dev.off()
 ::: {#fig-mst-construct}
 ![](`r path_p_mst`)
 
-Example of a minimum spanning tree constructed from the distance graph. The MST connects all points with the minimum total edge weight.
-:::
-  
-## Constructing the graph for clustering
-
-- Graphs are useful in clustering for the following reasons:
-  - Focuses on local structure:  
-    Clustering often relies on local relationships between data points. Graphs naturally capture these relationships.
-  - Handles complex shapes:  
-    Graph-based methods can identify clusters of arbitrary shapes, unlike traditional methods like k-means, which assume spherical clusters.
-  - Sparsity and efficency:
-    - Graphs can be sparse, meaning they only connect points that are close to each other. This reduces computational complexity, and memory requirements.
-- $k$‑Nearest neighbour graph:  
-  Each data point is connected to its *k* nearest neighbors. This results in a graph where nodes represent data points and edges connect each point to its closest counterparts.
-- Distance graph:
-  - Constructed from a distance matrix, where edges are formed based on a distance threshold.
-
-## Graph-based clustering algorithms
-
-- DBSCAN is implicitly a graph-based algorithm, where the neighbours of a core point are those that are density-reachable.
-  - However, it's a little bit more complicated, as it's an asymmetric graph - border points cannot reach core points.
-- We'll discuss two explicit graph-based clustering algorithms:
-  - Leiden algorithm: 
-    - A community detection algorithm that optimizes modularity.
-  - HDBSCAN:
-    - A density-based clustering algorithm that builds on the concept of a minimum spanning tree (MST) to identify clusters.
-
-## Applying the Leiden algorithm
-
-### 2.1 Modularity
-
-Modularity is a measure that compares how many edges lie inside communities in a network versus how many edges would be expected to lie inside those communities if edges were placed at random (while preserving each node’s degree). In the **unweighted** setting, the formula can be written as:
-
-$$
-H = \frac{1}{2m} \sum_{c} \left( e_c \;-\; \frac{K_c^2}{2m} \right),
-$$
-
-where
-
-- $m$ is the total number of edges in the network,  
-- $e_c$ is the actual number of edges within community $c$,  
-- $K_c$ is the sum of the degrees of the nodes in community $c$.  
-
-This expression is summed over all communities $c$. A high modularity value indicates that there are more edges within communities than would be expected by chance, suggesting a strong community structure.
-
-### 2.1 Why Use the Leiden algorithm?
-
-- **Community detection:** The Leiden algorithm is a community detection method that seeks to maximize a quality function, often **modularity**, which measures how “clustered” a partition of the graph is compared to a random baseline.
-- **Better refinement than Louvain:** Leiden improves on the Louvain algorithm [@blondel_etal08a] by refining communities so that each detected community is guaranteed to be internally well-connected.
-
-### 2.3 The Leiden algorithm
-
-```{r}
-#| include: false
-path_img_leiden_alg <- projr::projr_path_get(
-  "raw-img", "traag_etal19-leiden_alg.png"
-)
-```
-
-
-::: {#fig-leiden-alg}
-![](`r path_img_leiden_alg`)
-
-The Leiden algorithm [@traag_etal19]
+Example of an MST constructed from the distance graph.
 :::
 
-### 2.4 Constructing a graph suited for Leiden
+# 5. The Objective: Finding Clusters (Community Detection)
 
-Leiden typically expects **higher weights to indicate stronger connections** (i.e., more similarity). However, you currently have a *distance* matrix. You can do one of the following:
+Once we have mapped our data into a graph, clustering transforms into a community detection problem. Intuitively, a community (or cluster) is a group of nodes that are highly connected to each other, but only sparsely connected to the rest of the network.
 
-1. **Use a similarity transformation** (e.g., $\exp(-\text{distance}^2 / (2\sigma^2))$) to turn distances into similarities.  
-2. **Invert distances** (e.g., $1 / (\text{distance} + \epsilon)$), or  
-3. **Use a threshold or k‑nearest neighbor approach** to form an adjacency matrix of similarities.
+But how do we mathematically define what makes a "good" community? If a graph is just densely connected everywhere, finding a clump of edges doesn't mean much. We need a baseline to compare against. 
 
-For simplicity, below we’ll illustrate the k‑nearest neighbor approach, but you could adapt it to a direct distance-to-similarity transformation if desired.
+This is where modularity comes in. Modularity acts as a quality score. It answers the question: *Are there more edges inside this group than we would expect by pure, random chance?*
 
-#### Example: k‑Nearest Neighbor Graph
+### Deconstructing the Modularity Formula
+
+To understand the formula, we compare reality to a random baseline (often called the configuration model). 
+
+$$
+H = \frac{1}{2m} \sum_{c} \left( e_c \;-\; \frac{K_c^2}{2m} \right)
+$$
+
+Let's break down the components:
+
+* $m$ (Total edges): The total number of edges in the entire graph. Because every edge has two ends, there are $2m$ total "half-edges" or "stubs" available to connect.
+* $e_c$ (Reality): The actual, counted number of edges that lie completely inside community $c$.
+* $K_c$ (Capacity): The sum of the degrees of all nodes in community $c$. Think of this as the total number of "stubs" sticking out of the nodes in this community.
+* $\frac{K_c^2}{2m}$ (The Random Expectation):  This is the core of the formula. If you took all $K_c$ stubs in this community and connected them completely randomly to any of the $2m$ available stubs in the entire network, this fraction is the exact number of edges you would expect to accidentally form *inside* community $c$.
+
+### The Subtraction: Reality vs. Expectation
+
+The magic happens in the subtraction: $( \text{Actual Edges} - \text{Expected Edges} )$.
+
+* If the result is positive, it means nodes in this group are connecting to each other much more frequently than random chance dictates. This is a strong, meaningful cluster.
+* If the result is zero or negative, it means the edges inside this group are no better than random wiring. It is not a real cluster.
+
+Finally, we sum this difference over every community ($\sum_c$) and divide by $2m$ just to normalize the final score $H$ so it generally falls between -0.5 and 1.0. 
+
+Therefore, when algorithms like Louvain or Leiden run, they are simply moving nodes between different groups, constantly recalculating this formula, and searching for the partition that gives the absolute maximum modularity score.
+
+# 6. Algorithms for Allocating
+
+## The Leiden Algorithm
+
+The Leiden algorithm is a community detection method that maximizes modularity.
+It improves on the Louvain algorithm by refining communities so each is guaranteed to be internally well-connected.
+
+Leiden expects higher weights to indicate similarities, so we often convert our distances into a $k$-nearest neighbor graph before running it.
 
 ```{r}
-library(FNN)
-library(igraph)
-
-# Step 1: Build a k-nearest neighbor graph (choose k = 10 for example)
+# Build a k-nearest neighbor graph
 k <- 5
 knn_result <- get.knn(data_sim, k = k)
 
-# Step 2: Build an edge list from kNN results
+# Build an edge list
 edge_list <- do.call(rbind, lapply(1:nrow(data_sim), function(i) {
   data.frame(from = i, to = knn_result$nn.index[i, ])
 }))
 
-# Step 3: Create an undirected graph (unweighted for simplicity)
+# Create an undirected graph
 g_knn <- graph_from_data_frame(edge_list, directed = FALSE)
-g_knn <- simplify(g_knn)  # remove duplicate edges
-```
+g_knn <- simplify(g_knn)
 
-### 2.5 Running the Leiden Algorithm
-
-```{r}
-
-# Use igraph's Leiden implementation
-# Note: If you want to specify edge weights, you can pass them in via the `weights` parameter.
+# Run the Leiden Algorithm
 leiden_clusters <- cluster_leiden(
   g_knn,
   objective_function = "modularity",
   resolution = 0.2
 )
 
-# Extract membership
 membership_vec <- membership(leiden_clusters)
-
-# Check how many clusters were found
 table(membership_vec)
 ```
 
-#### Interpreting Modularity
-
-- A higher modularity ($Q$) indicates that the partition has denser intra-community edges compared to a random graph with the same degree distribution.
-- Typical modularity values range from around 0 to 1 in real networks, but anything above ~0.3 can already indicate a meaningful community structure (though this depends heavily on context).
-
-### 2.4 Visualizing the Clusters
+We can plot the raw coordinates and color them by their Leiden cluster membership.
 
 ```{r}
 #| warning: false
-# We'll simply plot the raw X-Y coordinates, coloring by cluster
 df_plot <- as_tibble(data_sim)
 df_plot$cluster <- as.character(membership_vec)
 colnames(df_plot)[1:2] <- c("x", "y")
@@ -270,45 +717,29 @@ p <- ggplot(df_plot, aes(x = x, y = y, color = cluster)) +
   labs(x = "X", y = "Y") +
   theme(
     plot.background = element_rect(fill = "white"),
-    panel.background = element_rect(fill = "white")
-  ) +
-  theme(legend.position = "none")
+    panel.background = element_rect(fill = "white"),
+    legend.position = "none"
+  )
 ggsave(
   path_p_leiden_clust_gg, p, width = 12, height = 12, units = "cm"
 )
 ```
 
-## Applying the HDBSCAN algorithm
+## The HDBSCAN Algorithm
 
-### 3.1 Introduction
+HDBSCAN uses the MST to find clusters of varying densities. 
 
-- HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise) is an extension of the DBSCAN algorithm that can find clusters of varying densities and shapes.
+It constructs a graph using mutual reachability distance, gradually removes edges exceeding a threshold to form clusters from the remaining connected components, and scores them based on stability over the threshold range. Highly stable clusters are kept, and unassigned points are labeled as noise.
 
-### 3.2 Why use HDBSCAN?
+# 7. Advantages & Disadvantages
 
-- Handles varying densities:  
-  Unlike DBSCAN, which requires a single density threshold, HDBSCAN can identify clusters of varying densities.
-- Robust to noise:  
-  HDBSCAN can effectively identify and handle noise points, labeling them as outliers.
-- No need to specify the number of clusters:  
-  HDBSCAN automatically determines the number of clusters based on the data.
-- No global density threshold needed to be specified:
-  HDBSCAN uses a hierarchical approach to identify clusters, allowing it to adapt to varying densities.
+Advantages:
 
-### 3.1 The algorithm
+- Captures complex, non-linear cluster shapes.
+- Handles higher dimensions well by utilizing local connectivity.
+- Automatically determines the number of clusters.
 
-- The HDBSCAN algorithm essentially has three stages:
-  - Construct a minimum-spanning tree
-    - The distance is the mutual reachability distance:
-      $d_{MR}(p, q) = \max\{d(p, q), \text{reachability}(p), \text{reachability}(q)\}$.
-    - The reachability is the distance to the $m_{pts}$-nearest point.
-  - Generate clusters:
-    - The minimum spanning tree is then used to generate clusters by removing edges that exceed a certain threshold.
-    - The threshold is gradually reduced, and clusters are formed based on the remaining edges.
-    - The algorithm identifies clusters as connected components in the remaining graph.
-  - Select clusters:
-    - Each cluster is "scored" based on its stability, which is a measure of how well-defined the cluster is.
-    - The definition of stability for a cluster $C$ kis:
-      $MRD_C(Birth) - MRD_C(death)$.
-    - The algorithm selects clusters with high stability scores.
-    - Not all points are clust ered.
+Disadvantages:
+
+- Building the initial graph is computationally expensive ($O(N^2)$) for large datasets.
+- Results are highly sensitive to local construction parameters like $k$ or the distance threshold.

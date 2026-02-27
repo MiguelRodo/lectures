@@ -22,7 +22,7 @@ format:
   * **Implication:** If a constant is added to all dissimilarities before mapping (shifting them to an interval scale), we cannot meaningfully compare the ratios of the resulting configuration distances (e.g., we cannot say Point 1 is "twice as far" from Point 2 as it is from Point 3). However, we *can* meaningfully compare the *differences* between distances (e.g., the difference in distance between Pair 1 and Pair 2 is twice as large as the difference between Pair 3 and Pair 4).
 
 * **Answer 3:**
-  We cannot attempt to get coordinates in Euclidean space such that points have a negative distance between them. 
+  We cannot attempt to get coordinates in Euclidean space such that points have a negative distance between them.
 
 * **Answer 4:**
   Let three points in 1D space be $x=0$, $y=1$, and $z=2$. The squared Euclidean distances are: $d(x,y) = (0-1)^2 = 1$; $d(y,z) = (1-2)^2 = 1$; and $d(x,z) = (0-2)^2 = 4$. According to the triangle inequality, $d(x,z)$ must be $\le d(x,y) + d(y,z)$. Since $4 \not\le 1 + 1$, squared Euclidean distance is not a valid distance metric.
@@ -81,7 +81,7 @@ format:
   * Rank 1: $3$.
   * Rank 2: $1$. Because $1 < 3$, we average them: $(3+1)/2 = 2$. Current state: $\{2, 2\}$.
   * Rank 3: $4$. Because $4 > 2$, it is valid. Current state: $\{2, 2, 4\}$.
-  * Rank 4: $2.5$. Because $2.5 < 4$, we average the violating pair: $(4+2.5)/2 = 3.25$. 
+  * Rank 4: $2.5$. Because $2.5 < 4$, we average the violating pair: $(4+2.5)/2 = 3.25$.
   * Final state: $\{2, 2, 3.25, 3.25\}$.
 
 # Clustering I
@@ -126,7 +126,7 @@ format:
   For a 3x3 matrix, you compute the initial distances ($\binom{3}{2} = 3$). After one merge, you have 2 clusters, requiring 1 distance computation between them. Total = 4. For an $n \times n$ matrix, calculating the initial pairwise distances takes $\frac{n(n-1)}{2}$ computations.
 
 * **Answer 3:**
-  For single linkage, the height is the largest nearest-neighbour distance. For complete linkage, the height is the largest distance. Therefore, for single linkage the merge heights before the final merge are compared visually to a lower value (the nearest-neighbour distance) than for complete linkage (largest distance). As the agglomerative coefficient is dependent on this ratio, it is heavily dependent in absolute terms on the linkage chosen. 
+  For single linkage, the height is the largest nearest-neighbour distance. For complete linkage, the height is the largest distance. Therefore, for single linkage the merge heights before the final merge are compared visually to a lower value (the nearest-neighbour distance) than for complete linkage (largest distance). As the agglomerative coefficient is dependent on this ratio, it is heavily dependent in absolute terms on the linkage chosen.
 
 * **Answer 4:**
   * Single Linkage: Excels at finding elongated, non-spherical shapes (like concentric rings). Fails terribly when there is background noise, causing "chaining" where distinct clusters are merged by a single bridge of noise points.
@@ -154,121 +154,234 @@ format:
   The unconstrained function is $f(x, y) = x^2 + x + y$. Taking partial derivatives and setting to zero: $\frac{\partial f}{\partial x} = 2x + 1 = 0 \implies x = -0.5$. However, $\frac{\partial f}{\partial y} = 1 \neq 0$. There is no critical point where the derivative with respect to $y$ is zero. This function represents a surface that continues upward infinitely in the $y$ direction, meaning it has no global or local maximum.
 
 * **Answer 2:**
-  The Lagrangian is $\mathcal{L}(x, y, \lambda) = x^2 + x + y - \lambda(x^2 + y^2 - 1)$. 
-  Taking partial derivatives:
-  1. $\frac{\partial \mathcal{L}}{\partial x} = 2x + 1 - 2\lambda x = 0 \implies x(2 - 2\lambda) = -1$
-  2. $\frac{\partial \mathcal{L}}{\partial y} = 1 - 2\lambda y = 0 \implies y = \frac{1}{2\lambda}$
-  3. $\frac{\partial \mathcal{L}}{\partial \lambda} = -(x^2 + y^2 - 1) = 0 \implies x^2 + y^2 = 1$
-  By substituting equations 1 and 2 into equation 3, we can solve for $\lambda$, which yields the maximizing coordinates $(x,y)$.
-  I don't know how to do this analytically, so we can plug the resultant equation ($1/\lambda^2+1/(\lambda-1)^2-4=0$) into `optmimize`.
-  The function has asymptotes at 0 and 1, so we'll optimise within each section:
 
-  ```{r}
-  root_fn <- function(lambda) 1/lambda^2 + 1/(lambda-1)^2 - 4
-  root_neg <- uniroot(root_fn, interval = c(-100, -0.01))$root
-  root_pos_01 <- try(uniroot(root_fn, interval = c(0.01, 0.99))$root)
-  root_pos_g1 <- uniroot(root_fn, interval = c(1.01, 100))$root
-  root_vec <- c("neg" = root_neg, "pos" = root_pos)
-  ```
+The Lagrangian is $\mathcal{L}(x, y, \lambda) = x^2 + x + y - \lambda(x^2 + y^2 - 1)$.
+Taking partial derivatives:
+1. $\frac{\partial \mathcal{L}}{\partial x} = 2x + 1 - 2\lambda x = 0 \implies x(2 - 2\lambda) = -1$
+2. $\frac{\partial \mathcal{L}}{\partial y} = 1 - 2\lambda y = 0 \implies y = \frac{1}{2\lambda}$
+3. $\frac{\partial \mathcal{L}}{\partial \lambda} = -(x^2 + y^2 - 1) = 0 \implies x^2 + y^2 = 1$
+By substituting equations 1 and 2 into equation 3, we can solve for $\lambda$, which yields the maximizing coordinates $(x,y)$.
+I don't know how to do this analytically, so we can plug the resultant equation ($1/\lambda^2+1/(\lambda-1)^2-4=0$) into `optmimize`.
+The function has asymptotes at 0 and 1, so we'll optimise within each section:
 
-  There is no root in [0, 1], so it errors out there.
+```{r}
+root_fn <- function(lambda) 1/lambda^2 + 1/(lambda-1)^2 - 4
+root_neg <- uniroot(root_fn, interval = c(-100, -0.01))$root
+root_pos_01 <- try(uniroot(root_fn, interval = c(0.01, 0.99))$root)
+root_pos_g1 <- uniroot(root_fn, interval = c(1.01, 100))$root
+root_vec <- c("neg" = root_neg, "pos" = root_pos_g1)
+```
 
-  The roots were:
+There is no root in [0, 1], so it errors out there.
 
-  ```{r}
-  root_vec
-  ```
+The roots were:
+
+```{r}
+root_vec
+```
 
 
-  ```{r}
-  x_fn <- function(lambda) 1 / 2 / (lambda - 1)
-  y_fn <- function(lambda) 1 / 2 / lambda
-  orig_fn <- function(x, y) x^2 + x + y
-  # for lambda in [-100, -0.01]:
-  x_neg <- x_fn(root_neg)
-  y_neg <- y_fn(root_neg)
-  x_neg^2 + y_neg^2
-  orig_fn(x_neg, y_neg)
-  # for lambda in [0.01, 100]:
-  x_pos <- x_fn(root_pos)
-  y_pos <- y_fn(root_pos)
-  x_pos^2 + y_pos^2 
-  orig_fn(x_pos, y_pos)
-  ```
+```{r}
+x_fn <- function(lambda) 1 / 2 / (lambda - 1)
+y_fn <- function(lambda) 1 / 2 / lambda
+orig_fn <- function(x, y) x^2 + x + y
+# for lambda in [-100, -0.01]:
+x_neg <- x_fn(root_neg)
+y_neg <- y_fn(root_neg)
+x_neg^2 + y_neg^2
+orig_fn(x_neg, y_neg)
+# for lambda in [0.01, 100]:
+x_pos <- x_fn(root_pos_g1)
+y_pos <- y_fn(root_pos_g1)
+x_pos^2 + y_pos^2
+orig_fn(x_pos, y_pos)
+```
 
-  We had a minimum for the point in the [-100, 0.01] interval and a maximum in the [0.01, 100] interval, so the maximising parameter values are `x=0.945` and `y=0.327` leading to a maximum of `2.16`.
+We had a minimum for the point in the [-100, 0.01] interval and a maximum in the [0.01, 100] interval, so the maximising parameter values are `x=0.945` and `y=0.327` leading to a maximum of `2.16`.
 
-  *Note*: I wouldn't ask you to do this in an actual written exam, of course. This is too time-consuming. I just didn't pick functions that led to a nice solution for the multiplier, $\lambda$.
+*Note*: I wouldn't ask you to do this in an actual written exam, of course. This is too time-consuming. I just didn't pick functions that led to a nice solution for the multiplier, $\lambda$.
 
 ### Part B: Deriving the M-Step
 
 * **Answer 1:**
-  The weighted log-likelihood term for component $k$ in the $Q$-function is:
-  $$Q(\lambda_k) = \sum_{i=1}^n \gamma_{ik} (x_i \log(\lambda_k) - \lambda_k - \log(x_i!))$$
-  Take the derivative with respect to $\lambda_k$ and set to zero:
-  $$\frac{\partial Q}{\partial \lambda_k} = \sum_{i=1}^n \gamma_{ik} \left( \frac{x_i}{\lambda_k} - 1 \right) = 0$$
-  $$\sum_{i=1}^n \gamma_{ik} \frac{x_i}{\lambda_k} = \sum_{i=1}^n \gamma_{ik}$$
-  $$\lambda_k = \frac{\sum_{i=1}^n \gamma_{ik} x_i}{\sum_{i=1}^n \gamma_{ik}}$$
-  The MLE is simply the responsibility-weighted sample mean.
+
+The weighted log-likelihood term for component $k$ in the $Q$-function is:
+$$
+Q_k(\lambda_k) = \sum_{i=1}^n \gamma_{ik} (x_i \log(\lambda_k) - \lambda_k - \log(x_i!))
+$$
+
+Take the derivative with respect to $\lambda_k$ and set to zero:
+
+$$
+\frac{\partial Q}{\partial \lambda_k} = \sum_{i=1}^n \gamma_{ik} \left( \frac{x_i}{\lambda_k} - 1 \right) = 0
+$$
+
+$$
+\sum_{i=1}^n \gamma_{ik} \frac{x_i}{\lambda_k} = \sum_{i=1}^n \gamma_{ik}
+$$
+
+$$
+\lambda_k = \frac{\sum_{i=1}^n \gamma_{ik} x_i}{\sum_{i=1}^n \gamma_{ik}}
+$$
+
+The MLE is simply the responsibility-weighted sample mean.
 
 * **Answer 2:**
-  If all components share a single variance $\sigma^2$, the term in the $Q$-function involves a sum over all components $k$:
-  $$Q(\sigma^2) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2}\log(2\pi\sigma^2) - \frac{(x_i - \mu_k)^2}{2\sigma^2} \right)$$
-  Taking the derivative with respect to $\sigma^2$ (let $v = \sigma^2$) and setting to zero:
-  $$\frac{\partial Q}{\partial v} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2v} + \frac{(x_i - \mu_k)^2}{2v^2} \right) = 0$$
-  Multiplying by $2v^2$ and rearranging:
-  $$v \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2$$
-  Since $\sum_{k=1}^K \gamma_{ik} = 1$ for every observation, the sum on the left simplifies to $n$:
-  $$\sigma^2 = \frac{1}{n} \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2$$
-  Unlike component-specific variances, this pools the squared deviations from *all* groups, weighted by their respective responsibilities, and divides by the total sample size $n$.
+
+If all components share a single variance $\sigma^2$, the term in the $Q$-function involves a sum over all components $k$:
+
+$$Q(\sigma^2) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2}\log(2\pi\sigma^2) - \frac{(x_i - \mu_k)^2}{2\sigma^2} \right)$$
+
+Taking the derivative with respect to $\sigma^2$ (let $v = \sigma^2$) and setting to zero:
+
+$$
+\frac{\partial Q}{\partial v} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \left( -\frac{1}{2v} + \frac{(x_i - \mu_k)^2}{2v^2} \right) = 0
+$$
+
+Multiplying by $2v^2$ and rearranging:
+
+$$
+v \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2
+$$
+
+Since $\sum_{k=1}^K \gamma_{ik} = 1$ for every observation, the sum on the left simplifies to $n$:
+
+$$
+\sigma^2 = \frac{1}{n} \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} (x_i - \mu_k)^2
+$$
+
+Unlike component-specific variances, this pools the squared deviations from *all* groups, weighted by their respective responsibilities, and divides by the total sample size $n$.
 
 * **Answer 3:**
-  * a. In the E-step, $\gamma_{i1}$ is calculated using the known, fixed $\mu_1$ inside the density function $f_1(x_i)$. The responsibilities $\gamma_{i2}$ and $\gamma_{i3}$ use the iteratively updated estimates $\mu_2^{(t)}$ and $\mu_3^{(t)}$.
-  * b. The M-step formulas for $\mu_2$ and $\mu_3$ are completely unaffected; they remain the responsibility-weighted means for their respective groups. The parameter $\mu_1$ is not updated at all.
+  * a. In the E-step, $\gamma_{i1}$ is calculated using the known, fixed $\mu_1$ inside the density function $f_1(x_i)$. The responsibilities $\gamma_{i2}$ and $\gamma_{i3}$ use the iteratively updated estimates $\hat{\mu}_2^{(t)}$ and $\hat{\mu}_3^{(t)}$.
+  * b. The M-step formulas for $\hat{\mu}_2$ and $\hat{\mu}_3$ are completely unaffected; they remain the responsibility-weighted means for their respective groups. The parameter $\mu_1$ is not updated at all.
   * c. The common variance uses the fixed $\mu_1$ alongside the newly updated $\mu_2$ and $\mu_3$:
-    $$\sigma^2 = \frac{1}{n} \left[ \sum_{i=1}^n \gamma_{i1}(x_i - \mu_1)^2 + \sum_{i=1}^n \gamma_{i2}(x_i - \mu_2)^2 + \sum_{i=1}^n \gamma_{i3}(x_i - \mu_3)^2 \right]$$
+    $$\sigma^2 = \frac{1}{n} \left[ \sum_{i=1}^n \gamma_{i1}(x_i - \mu_1)^2 + \sum_{i=1}^n \gamma_{i2}(x_i - \hat{\mu}_2)^2 + \sum_{i=1}^n \gamma_{i3}(x_i - \hat{\mu}_3)^2 \right]$$
+
+In effect, there is no real change, except that we don't need to work out the mean each time.
 
 ### Part C: Conceptual Foundations
 
 * **Answer 1:**
-  Because the sum over the $K$ mixture components occurs *inside* the logarithm ($\log(\sum \pi_k f_k(x))$), the log cannot be distributed to the exponential terms of the component densities. Consequently, taking partial derivatives results in deeply entangled equations with no closed-form analytical solutions.
+
+  Because a sum rather than a product of the $K$ mixture components is inside the log ($\log(\sum \pi_k f_k(x)), we cannot apply the rule that the log of the product is the sum of the logs, which is how we normally separate factors of different parameters into sums of different parameters that make differentiation easier.
 
 * **Answer 2:**
-  $Z_{ik}$ is an unobserved indicator variable equal to 1 if observation $i$ truly belongs to component $k$, and 0 otherwise. Introducing it allows us to rewrite the likelihood as a product rather than a sum ($\prod f_k(x_i)^{Z_{ik}}$). When we take the log, the exponent $Z_{ik}$ drops down, turning the log of a product into a sum of logs, effectively breaking the "log of a sum" mathematical deadlock.
+  $Z_{ik}$ is an unobserved indicator variable equal to 1 if observation $i$ truly belongs to component $k$, and 0 otherwise.
+  Introducing it allows us to write the log-likelihood as if we knew group membership.
+  Combined with the "trick" to place it as the exponent of each component's contribution to the PDF, we end up with a log of a product ($\prod f_k(x_i)^{Z_{ik}}$) and so can rewrite it as a sum of logs.
 
 * **Answer 3:**
-  Conceptually, $\gamma_{ik}$ is the posterior probability that observation $i$ belongs to group $k$, given the data and current parameter estimates. By Bayes' Theorem, it is the probability of observing the data from group $k$ (prior weight $\times$ component density) divided by the total marginal probability of observing the data across all groups. Mathematically, it is the expected value of the latent variable $Z_{ik}$.
+  $\gamma_{ik}$ is the posterior probability that observation $i$ belongs to group $k$, given the data and current parameter estimates. Bayes' theorem is what allows us to derive the formula. Mathematically, it is the expected value of the latent variable $Z_{ik}$.
 
 * **Answer 4:**
-  The Lagrangian is:
-  $$\mathcal{L}(\boldsymbol{\pi}, \lambda) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(\pi_k) + \lambda \left( 1 - \sum_{k=1}^K \pi_k \right)$$
-  Taking the partial derivative with respect to $\pi_k$ and setting to zero:
-  $$\frac{\partial \mathcal{L}}{\partial \pi_k} = \sum_{i=1}^n \frac{\gamma_{ik}}{\pi_k} - \lambda = 0 \implies \sum_{i=1}^n \gamma_{ik} = \lambda \pi_k$$
-  Summing both sides over $k$:
-  $$\sum_{k=1}^K \sum_{i=1}^n \gamma_{ik} = \lambda \sum_{k=1}^K \pi_k$$
-  Because $\sum_k \gamma_{ik} = 1$ for each of the $n$ observations, the left side equals $n$. Because of our constraint, $\sum_k \pi_k = 1$. Therefore, $\lambda = n$.
-  Substituting $\lambda = n$ back in gives $\pi_k = \frac{1}{n} \sum_{i=1}^n \gamma_{ik}$.
+
+The Lagrangian is:
+
+$$
+\mathcal{L}(\boldsymbol{\pi}, \lambda) = \sum_{i=1}^n \sum_{k=1}^K \gamma_{ik} \log(\pi_k) + \lambda \left( 1 - \sum_{k=1}^K \pi_k \right)
+$$
+
+Taking the partial derivative with respect to $\pi_k$ and setting to zero:
+
+$$
+\frac{\partial \mathcal{L}}{\partial \pi_k} = \sum_{i=1}^n \frac{\gamma_{ik}}{\pi_k} - \lambda = 0 \implies \sum_{i=1}^n \gamma_{ik} = \lambda \pi_k
+$$
+
+Summing both sides over $k$:
+
+$$
+\sum_{k=1}^K \sum_{i=1}^n \gamma_{ik} = \lambda \sum_{k=1}^K \pi_k
+$$
+
+Because $\sum_k \gamma_{ik} = 1$ for each of the $n$ observations, the left side equals $n$. Because of our constraint, $\sum_k \pi_k = 1$. Therefore, $\lambda = n$.
+Substituting $\lambda = n$ back in gives $\pi_k = \frac{1}{n} \sum_{i=1}^n \gamma_{ik}$.
 
 ### Part D: Practical Implementations and Limits
 
 * **Answer 1:**
-  We can use derivative-free or gradient-based numerical optimization algorithms (such as Nelder-Mead, Newton-Raphson, or BFGS) within the M-step to maximize the responsibility-weighted log-likelihood for that specific component. 
+  We can use numerical optimisation (e.g. Newton-Raphson) for that component.
 
 * **Answer 2:**
-  Initialization is crucial because the EM algorithm only guarantees convergence to a *local* maximum, not the global maximum. Poor initialization can lead to suboptimal clustering. Common strategies include:
+  Initialization is crucial because the EM algorithm only guarantees convergence to a *local* maximum, not the global maximum.
+  Poor initialization can lead to suboptimal clustering. Common strategies include:
   * Running K-means first and using its cluster centers and variances as the starting parameters.
   * Randomly assigning starting responsibilities to all data points and proceeding directly to the first M-step.
 
 * **Answer 3:**
-  The most common criterion is checking the change in the observed-data log-likelihood between iterations. Iterations stop when $\ell^{(t+1)} - \ell^{(t)} < \epsilon$, where $\epsilon$ is a predefined small tolerance value.
+  The most common criterion is checking the change in the observed-data log-likelihood between iterations.
+  Iterations stop when $\ell^{(t+1)} - \ell^{(t)} < \epsilon$, where $\epsilon$ is a predefined small tolerance value.
 
 * **Answer 4:**
-  As $\sigma^2 \to 0$, the component density $f_k(\mathbf{x}_i)$ for the closest mean becomes infinitely larger than the densities for all other means. Consequently, the responsibility $\gamma_{ik}$ approaches exactly 1 for the closest cluster and 0 for all others. This "hard" assignment completely eliminates the uncertainty of the "soft" probabilities, making the algorithm mathematically equivalent to K-means clustering.
+
+The responsibility for object $i$ with respect to group $1$ is given by
+
+$$
+\gamma_{i1} = \frac{\pi_1 \exp(-\frac{1}{2\sigma^2}(x_i-\mu_1)^2)}{
+  \pi_1 \exp(-\frac{1}{2\sigma^2}(x_i-\mu_i)^2) + (1-\pi_1) \exp(-\frac{1}{2\sigma^2}(x_i-\mu_2)^2)
+}
+$$
+
+The responsibility with respect to group $2$ is clearly $1$ minus the above.
+
+As $\sigma^2 \to 0$, the component density $f_k(\mathbf{x}_i)$ for the closer mean becomes infinitely larger than the density for the other mean.
+This arises because the (squared) differences to the mean are multiplied by an increasingly large factor $1/(2\sigma^2)$ and then exponentiated.
+As a result, the responsibility for the compnent density of the closer mean (regardless, eventualy, of the prior weights) tends to 1.
+
+By way of example, assuming that the squared difference between $x_i$ and the mean is 1 for component 1 and 1.5 for component 2, with equal prior variances.
+
+Here is a plot of $\gamma_{i1}$ as  $\sigma^2\rightarrow 0$:
+
+```{r}
+library(ggplot2)
+get_responsibility <- function(sigma_squared,
+                                squared_diff_1 = 1,
+                                squared_diff_2 = 1.5) {
+  comp_1 <- exp(-1 / sigma_squared * squared_diff_1)
+  comp_2 <- exp(-1 / sigma_squared * squared_diff_2)
+  comp_1 / (comp_1 + comp_2)
+}
+
+exponent_vec <- c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6)
+sigma_2_vec <- 2^(c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6))
+gamma_ik_vec <- sapply(sigma_2_vec, get_responsibility)
+plot_tbl <- tibble::tibble(
+  exponent = exponent_vec,
+  sigma_2 = sigma_2_vec,
+  gamma_ik = gamma_ik_vec
+)
+p <- ggplot(
+  plot_tbl,
+  aes(x = exponent, y = gamma_ik)
+) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(
+    breaks = exponent_vec,
+    labels = scales::math_format(2^.x)
+  ) +
+  labs(
+    x = expression(sigma^2),
+    y = expression(gamma[i1])
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy")
+p
+```
+
+All probabilities are therefore driven to 0 or 1, which makes the algorithm akin to hard clustering algorithm, such as K-means, where points either belong to a cluster or they do not.
+
+As another comment, observe that $\gamma_{i1}$ tends to 0.5 as the variance tends to infinity, which makes intuitive sense because the component densities become flatter and more similar to each other, so the prior weights (which are equal in this example) dominate the responsibilities.
 
 ### Part E: Geometric Covariance Decompositions (mclust)
 
 * **Answer 1:**
   * a. $\lambda_k$ is a scalar controlling the overall **volume** of the cluster. $D_k$ is an orthogonal matrix of eigenvectors controlling the **orientation** of the cluster in space. $\Lambda_k$ is a diagonal matrix of eigenvalues (normalized so its determinant is 1) controlling the geometric **shape**.
-  * b. We force the volume parameter to be identical across all groups ($\lambda_k = \lambda$) but allow the shape matrices ($\Lambda_k$) to vary independently for each $k$.
-  * c. No, the geometry is not different. If $\Lambda_k$ has identical diagonal entries (e.g., $\Lambda_k = c\mathbf{I}$), the cluster is perfectly spherical. Applying an orthogonal rotation ($D_k$) to a perfect sphere does not change its geometry. Therefore, estimating a flexible $D_k$ for a spherical shape is mathematically redundant and yields the exact same spatial result as restricting $D_k = \mathbf{I}$.
+  * b. We force the volume parameter to be identical across all groups ($\lambda_k = \lambda$) but allow the shape matrices ($\Lambda_k$) and/or the orientation matrices ($D_k$) to vary independently for each $k$.
+  * c. No, it makes no difference. If the relative stretch along each axis is identical, it makes no difference what the orientation is.
   * d. We constrain all elements to be identical across components: $\lambda_k = \lambda$, $D_k = D$, and $\Lambda_k = \Lambda$ (this is the "EEE" model in `mclust`). To allow the volume to be something other than 1, we simply leave $\lambda$ as a free parameter to be estimated via Maximum Likelihood from the data, rather than fixing it to a constant scalar of 1.
+
+# Clustering II
+
+## Section 1: DBSCAN
+
