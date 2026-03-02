@@ -164,3 +164,60 @@ What is the most common mathematical criterion used in practice to determine whe
 
 # Clustering II
 
+## Section 1: DBSCAN
+
+# Clustering II
+
+## Section 1: DBSCAN
+
+* **Question 1:** For a $k$-NN plot, explain why $k$ is linked to `minPts` and how the plot helps identify an appropriate $\epsilon$. 
+* **Question 2:** Suppose you run DBSCAN on a dataset and inspect the results, but feel they do not reflect the true structure of the data. 
+  * a. How should you adjust the parameters if the vast majority of your points are grouped into a single, massive cluster?
+  * b. How should you adjust the parameters if the vast majority of your points are classified as noise?
+
+* **Question 3:** Is DBSCAN more appropriate when working with small datasets or large datasets? Justify your reasoning based on the algorithm's underlying assumptions.
+
+* **Question 4:** Describe the main computational bottleneck in the standard DBSCAN algorithm.
+
+* **Question 5:** Consider a univariate dataset where 90% of the data comes from a highly concentrated distribution (e.g., a standard normal) and 10% comes from a very spread out, flat distribution. Sketch or describe the mixture density of this data. What specific problem does this varying density scenario pose for the DBSCAN algorithm?
+
+* **Question 6:** Which linkage criterion from agglomerative hierarchical clustering does DBSCAN behave most similarly to, and why? How are they different, primarily, in the way they merge points? How does this help DBSCAN?
+
+* **Question 7:** Will DBSCAN give the same results if vary the order of the data points in the input? What if we vary the order of the columns? 
+
+## Section 2: Graph-based clustering
+
+* **Question 1:** Suppose that we are constructing a $k$-NN graph, and we have two points $A$ and $B$ where $B$ is a nearest-neighbour of $A$ but $A$ is not a nearest neighbour of $B$. If we construct an undirected graph (i.e. if $A$ is a nearest neighbour of $B$, then $B$ must also be nearest neighbour of $A$, and vice versa), how can we resolve this? Propose two rules, and describe their impact on how many neighbours each point ultimately has.
+
+* **Question 2:** Provide the adjacency list for the following adjacency matrix:
+
+$$
+\begin{bmatrix}
+0 & 1 & 0 & 1 \\
+1 & 0 & 1 & 0 \\
+0 & 1 & 0 & 1 \\
+1 & 0 & 1 & 0 \\
+\end{bmatrix}
+$$
+
+* **Question 3:** For the above graph, what is $k$?
+
+* **Question 4:**Suppose that we have the following distance matrix for 4 points, where the letters along the rows and columns denote the points:
+
+$$
+\begin{array}{c|cccc}
+      & A & B & C & D \\ \hline
+A & 0 & 2 & 3 & 4\\
+B & 2 & 0 & 1 & 5\\
+C & 3 & 1 & 0 & 6\\
+D & 4 & 5 & 6 & 0
+\end{array}
+$$
+
+What is the Euclidean distance $A$ and $C$? If the points lie along a line A-B-C-D, what is the geodesic distance (approximately) between $A$ and $C$?
+
+* **Question 5:** Contrast a minimum-spanning tree from a $k$-NN graph.
+
+* **Question 6:** Describe the modularity statistic.
+
+* **Question 7:** Contrast the Leiden algorithm from $k$-means clustering.

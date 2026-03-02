@@ -385,3 +385,59 @@ As another comment, observe that $\gamma_{i1}$ tends to 0.5 as the variance tend
 
 ## Section 1: DBSCAN
 
+# Clustering II
+
+## Section 1: DBSCAN
+
+* **Answer 1:** `minPts` is the number of points required in the neighbourhood to be a core point. If we set $\epsilon$ much larger than a (in some sense) typical distance to the `minPts`-th nearest neighbourhood, then we are likely to include many noise points as core points. If we set $\epsilon$ much smaller, then we will split excessively. By setting $\epsilon$ to just beyond the distance at which the `minPts`-th nearest neighbour becomes rapidly more distance for most points, we are retaining most of the core points while excluding most of the noise points, which is exactly what we want.
+
+ exactly what we need to determine whether a point is a core point (i.e., has at least `minPts` points within $\epsilon$ distance). If the distance to the $minPts$-th nearest neighbour is less than or equal to $\epsilon$, then the point is a core point; otherwise, it is not.
+
+* **Answer 2:** * a. If most points are in one cluster, your density threshold is too loose (under-partitioning). You should decrease $\epsilon$ (to shrink the neighborhood size) or increase `minPts` (to require a higher point concentration).
+  * b. If most points are noise, your density threshold is too strict, and should the opposite as above - increase $\epsilon$ and/or decrease `minPts`.
+
+* **Answer 3:** DBSCAN is much more appropriate for large datasets, because it is highly flexible and relies on the data to define the cluster shape. 
+
+* **Answer 4:** The primary bottleneck is finding the points in each point's neighbourhood.
+
+* **Answer 5:** A sketch of this mixture density would show a tall, narrow peak for the 90% group, sitting on top of a very short, wide plateau for the 10% group. The primary problem here is that DBSCAN uses a single, global density threshold (defined by constant $\epsilon$ and `minPts` values). It struggles with clusters of varying densities. If you set $\epsilon$ small enough to properly segment the dense cluster without grabbing outliers, the sparse cluster will fall below the density threshold and be completely classified as noise. Conversely, if you set a larger $\epsilon$ to capture the sparse cluster, you risk merging the dense cluster with nearby noise or distinct neighboring clusters. 
+
+* **Answer 6:** It is most similar to single linkage, as it merges observations sufficiently close into a cluster, which is similar to single linkage merging the clusters containing the closest points. They are different in terms of how they merge points primarily in that any points can be used as the basis for merging clusters in sinkle linkage, but in DBSCAN a point must be a core point (in a sufficiently dense region) to do so. This helps DBSCAN because it makes it harder to have chaining.
+
+* **Answer 7:** Assuming that the $k$-NN are determined exactly, then varying the order of the columns will not change DBSCAN's results but changing the order of the rows may. This is because border points will be allocated to the first cluster they are assigned to, and so would have been allocated to a different core point if it had been processed earlier. Changing the column order does not affect distance calculations, so does not affect the result.
+
+## Section 2: Graph-based clustering
+
+* **Answer 1:** We can either say that two points are nearest neighbours if either is a nearest neighbour of the other, or only if they're both nearest neighbours of each other. For the former, each point will have at least $k$ nearest neighbours, and for the latter, each point will have between 0 and $k$ nearest neighbours.
+
+* **Answer 2:**
+
+- The adjacency list for the above matrix is as follows:
+
+- Node 1: Neighbors 2, 4
+- Node 2: Neighbors 1, 3
+- Node 3: Neighbors 2, 4
+- Node 4: Neighbors 1, 3
+
+* **Answer 3:**
+
+2
+
+* **Answer 4:**
+
+- Euclidean distance: 3
+
+- Geodesic distance: 5
+
+* **Answer 5:**
+
+In an MST, there is no restriction on how many points each point can be connected to.
+In $k$-NN graph, loops are permitted and a point only be connected to its $k$ nearest neighbours.
+
+* **Answer 6:**
+
+Modularity captures the actual number of within-partition edges versus the expected number of within-partition edges under a null model of random edge placement. A higher modularity therefore indicates more structure.
+
+* **Answer 7:**
+- The Leiden algorithm focuses on connections between points, which if the graph is a $k$-NN graph means that it is focusing on local distances, whereas the $k$-means algorithm always compares each point to the cluster centroid, which is a function of all points in the cluster.
+- This difference in approaches allows for arbitrarily shaped clusters in Leiden, whereas $k$-means focuses on finding spherical clusters.
