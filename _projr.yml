@@ -19,5 +19,11 @@ build:
       - raw-content
       - docs
       - output
-  scripts: w1/SlidesRegW1S1Intro.qmd
+  scripts:
+  - w0/OutlineReg.qmd
+  - w1/SlidesRegW1S1Intro.qmd
+  - question_bank/QuestionBankRegQuestions.qmd
+  - question_bank/QuestionBankRegSolutions.qmd
+dev:
+  scripts: w0/NotesRegW1S0Prereq.qmd
 

@@ -1,5 +1,5 @@
 ---
-title: "Regression Prequisites"
+title: "Regression Prerequisites"
 subtitle: "Statistical distributions and linear algebra"
 author: "Miguel Rodo (with credit to Prof Francesca Little and Yovna Junglee)"
 institute: University of Cape Town
@@ -23,7 +23,7 @@ Here, we summarise the relationships between these distributions.
 
 \centering
 
-![](_raw_data/img/distributions.png){width=90%}
+![](../_raw_data/img/distributions.png){width=90%}
 
 ## Chi-squared distribution
 
@@ -35,13 +35,13 @@ Here, we summarise the relationships between these distributions.
 
 2. If $X^2 \sim \chi^2_n$, then $\mathrm{E}(X^2) = n$ and $\mathrm{Var}(X^2) = 2n$.
 
-3. If $Y_i \sim N(\mu_i, \sigma_i^2)$, then
+3. If $Y_1,\dots,Y_n$ are independent and $Y_i \sim N(\mu_i, \sigma_i^2)$, then
 
    $$
    X^2 = \sum_{i=1}^n \left(\frac{Y_i - \mu_i}{\sigma_i}\right)^2 \sim \chi^2_n.
    $$
 
-4. If $\symbf{Y} \sim \mathrm{MVN}(\symbf{\mu}, \symbf{\Sigma})$, then
+4. If the $n$-dimensional random vector $\symbf{Y} \sim \mathrm{MVN}(\symbf{\mu}, \symbf{\Sigma})$, where $\symbf{\Sigma}$ is positive definite (and hence invertible), then
 
    $$
    X^2 = (\symbf{Y} - \symbf{\mu})^T \symbf{\Sigma}^{-1} (\symbf{Y} - \symbf{\mu}) \sim \chi^2_n.
@@ -107,19 +107,19 @@ Here are parts that won't come up:
 
 ### Linear algebra in `R`
 
-- The document `DemRegW1L3LinearAlgebra.html` (in `0. Prerequisites` on Amathuba) covers some of the key concepts above and shows you to perform the linear algebra in `R`.
+- The document `DemRegW1L3LinearAlgebra.html` (in `0. Prerequisites` on Amathuba) covers some of the key concepts above and shows you how to perform the linear algebra in `R`.
 - You can kill two birds with one stone and improve both your coding and your linear algebra at the same time.
 
 ### Notation for row and column vectors
 
-- Firstly, a brief point re notation: $\symbf{a}_{[i]}$ refers to the $i$-th **row** of $\symbf{A}$, whereas $\symbf{a}_{i}$ refers to the $i$-th ***column** of $\symbf{A}$.
+- Firstly, a brief point re notation: $\symbf{a}_{[i]}$ refers to the $i$-th **row** of $\symbf{A}$, whereas $\symbf{a}_{i}$ refers to the $i$-th **column** of $\symbf{A}$.
 - For example, if $\symbf{A}=\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$, then $\symbf{a}_{[1]}=\begin{bmatrix} 1 \\ 2\end{bmatrix}$ and $\symbf{a}_1=\begin{bmatrix} 1 \\ 3 \end{bmatrix}$.
 - Note that, despite that $\symbf{a}_{[1]}$ is from a row, it's still written as a column vector. This is just a convention that whether we talk about a row/column of a matrix from a matrix (i.e. it's now considered on its own, outside the matrix structure), then we think of it as a column vector.
 - There are likely deviations from the above conventions in the notes and slides, but we'll point those out when we come across them (if they're not fixed beforehand).
 
 ## Matrix multiplication
 
-- In $\symbf{AB}$, the $ij$-th element is the dot product of $i$-th row of $\symbf{A}$ and the the $j$-th column of $\symbf{B}$, i.e. $(\symbf{AB})_{ij} = \symbf{a}_{[i]}'\symbf{b}_{j}$. We can also write $\symbf{a}_{[i]}'\symbf{b}_{j}$ as $\symbf{a}_{[i]}\cdot\symbf{b}_{j}$
+- In $\symbf{AB}$, the $ij$-th element is the dot product of $i$-th row of $\symbf{A}$ and the $j$-th column of $\symbf{B}$, i.e. $(\symbf{AB})_{ij} = \symbf{a}_{[i]}'\symbf{b}_{j}$. We can also write $\symbf{a}_{[i]}'\symbf{b}_{j}$ as $\symbf{a}_{[i]}\cdot\symbf{b}_{j}$
 
 - For example, if both $\symbf{A}$ and $\symbf{B}$ are $3\times 3$, then 
 
@@ -146,7 +146,7 @@ $$
 \end{bmatrix}
 $$
 
-- Then, if we calculate $\symbf{B}$, we might want to partition $\symbf{B}$ in a way that allows us to simply use the sub-matrices of $\symbf{A}$ rather than working out all the dot products. So, let's then then set
+- Then, if we calculate $\symbf{AB}$, we might want to partition $\symbf{B}$ in a way that allows us to simply use the sub-matrices of $\symbf{A}$ rather than working out all the dot products. So, let's then set
 
 $$
 \symbf{B}_{3\times2} =
@@ -187,45 +187,58 @@ $$
 
 ## Orthogonality
 
-- Two vectors, $\symbf{x}, \symbf{y}$ are orthogonal if:
-  - Their dot product is equal to zero, i.e. $\symbf{x}^T \symbf{y} = \sum x_iy_i = 0$
-  - Or equivalently, the angle between the vectors is 90 degrees.
+- Two vectors, $\symbf{x}$ and $\symbf{y}$, are orthogonal if:
+  - Their dot product is equal to zero, i.e. $\symbf{x}^T \symbf{y} = \sum_i x_i y_i = 0$.
+  - Equivalently, the angle between the vectors is 90 degrees.
   - For example, $\begin{bmatrix} 1 \\ 2 \end{bmatrix}$ and $\begin{bmatrix} -2 \\ 1 \end{bmatrix}$ are orthogonal.
 
+### Orthonormal vectors and orthogonal matrices
 
+- A set of vectors is orthonormal if the vectors are mutually orthogonal and every vector has unit length.
 
-- A matrix is orthogonal if it is:
-  - Square and every column is orthogonal to every other column
-  - For example:
-    - All diagonal matrices are orthogonal.
-    - The matrix $\begin{bmatrix} 1 & -2 & 0 \\ 2 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}$ is orthogonal.
-
-
-### Orthonormality
-
-- A matrix is orthonormal if it is:
-  - Orthogonal and every column has unit length. 
-  - For example:
-    - the identity matrix is orthonormal.
-    - Any orthogonal matrix is orthonormal if you divide each column by its length.
-  - Non-examples:
-    - Not every diagonal matrix is orthonormal as the columns need not be length 1, e.g. $\begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix}$.
-  
-
-  - For orthonormal matrices, the inverse is the transpose, i.e. $\symbf{A}^{-1}=\symbf{A}'$.
-
-- Where does orthonormality factor in?
-- Well, later on we have that any square symmetric matrix can be written as
+- A square matrix $\symbf{Q}$ is an orthogonal matrix if
 
 $$
-\symbf{P}\symbf{\Lambda}\symbf{P}'
+\symbf{Q}'\symbf{Q}=\symbf{Q}\symbf{Q}'=\symbf{I}.
 $$
 
-- where $\symbf{P}$ is an orthonormal matrix and $\symbf{\Lambda}$ is a diagonal matrix.
+- Equivalently, the columns of $\symbf{Q}$ form an orthonormal set. Its rows then also form an orthonormal set.
+- The terminology is potentially confusing: an orthogonal matrix has orthonormal, rather than merely orthogonal, columns.
+- For an orthogonal matrix, the inverse is the transpose:
 
-- Similar result holds for idempotent matrices, i.e. a matrix which when squared equals itself ($\symbf{A}^2=\symbf{A}\symbf{A}=\symbf{A}$). 
+$$
+\symbf{Q}^{-1}=\symbf{Q}'.
+$$
 
-- A final example is that the residual vector ($\symbf{e}=\symbf{y}-\hat{\symbf{y}}$) is orthogonal to the vector of fitted values ($\hat{\symbf{y}}$) as well as the columns of the model matrix ($\symbf{X}$).
+- Examples:
+  - The identity matrix is orthogonal.
+  - A diagonal matrix is orthogonal only if every diagonal entry is either $1$ or $-1$.
+  - The matrix
+
+$$
+\begin{bmatrix}
+1/\sqrt{5} & -2/\sqrt{5} & 0 \\
+2/\sqrt{5} & 1/\sqrt{5} & 0 \\
+0 & 0 & 1
+\end{bmatrix}
+$$
+
+    is orthogonal.
+
+- Non-examples:
+  - The matrix $\begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix}$ has orthogonal columns, but it is not an orthogonal matrix because its second column does not have unit length.
+  - Similarly, $\begin{bmatrix} 1 & -2 & 0 \\ 2 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}$ has mutually orthogonal columns but is not an orthogonal matrix until its first two columns are normalised.
+
+- Where do orthogonal matrices factor in?
+- Later on, we use the result that any real square symmetric matrix can be written as
+
+$$
+\symbf{A}=\symbf{P}\symbf{\Lambda}\symbf{P}',
+$$
+
+- where $\symbf{P}$ is an orthogonal matrix and $\symbf{\Lambda}$ is a diagonal matrix.
+- A similar orthogonal factorisation holds for symmetric idempotent matrices, i.e. symmetric matrices satisfying $\symbf{A}^2=\symbf{A}$.
+- A final example is that the residual vector ($\symbf{e}=\symbf{y}-\hat{\symbf{y}}$) is orthogonal to the vector of fitted values ($\hat{\symbf{y}}$), as well as to the columns of the model matrix ($\symbf{X}$).
 
 ## Trace
 
@@ -257,14 +270,14 @@ Rank can be thought of in various ways:
 
 ### Full rank
 
-- A matrix is full rank when it is square and its rank is equal to the number of columns/rows. 
-  - The key implication here is then that the inverse exists, i.e. if $\symbf{A}$ is full rank then $\symbf{A}^{-1}$ exists where $\symbf{A}\symbf{A}^{-1} = \symbf{I}$.
+- A matrix is full rank when it is square and its rank equals its number of rows and columns. Thus, for an $n\times n$ matrix, full rank means $\mathrm{rank}(\symbf{A})=n$.
+  - The key implication is that the inverse exists: if the square matrix $\symbf{A}$ is full rank, then $\symbf{A}^{-1}$ exists and $\symbf{A}\symbf{A}^{-1}=\symbf{I}$.
 
 #### Maximum rank
 
-- The rank cannot be any higher than the smaller of the number of columns or rows (i.e. maximum possible rank of a rectangular matrix is its "shorter" dimension).
-  - Where the rank of a matrix is equal to the number of columns, we say that it is full column rank. Similarly for rows. 
-  - For example, $\symbf{A}=\begin{bmatrix} 1 & 0 & 1 \\ 0 & 1 & 1 \end{bmatrix}$ is full row rank but not full column rank.
+- The rank cannot exceed the smaller of the number of rows and columns. Thus, the maximum possible rank of a rectangular matrix is its "shorter" dimension.
+  - If the rank equals the number of columns, we say that the matrix has full column rank.
+  - If the rank equals the number of rows, we say that the matrix has full row rank.
 
 ### Rank of product of related matrices
 
@@ -273,7 +286,8 @@ Rank can be thought of in various ways:
 
 ## Eigenvectors and eigenvalues
 
-- For a given matrix $\symbf{A}$, an eigenvector $\symbf{x}$ is a unit-length (by convention) vector such that $\symbf{A}\symbf{x}=\lambda\symbf{x}$.
+- For a given matrix $\symbf{A}$, an eigenvector $\symbf{x}$ is a non-zero vector such that $\symbf{A}\symbf{x}=\lambda\symbf{x}$.
+- Any non-zero scalar multiple of an eigenvector is also an eigenvector for the same eigenvalue. Conventionally, eigenvectors are therefore normalised to have unit length, and we follow that convention in this course.
 - Eigenvectors and eigenvalues are central to linear algebra, but the main way they come into the course is in appearing in useful properties of covariance matrices.
 - You won't need to calculate them by hand (apart from the very first question in the first tutorial).
 
@@ -295,31 +309,87 @@ $$
 
 ### Positive definite matrices
 
-- A positive definite matrix is a symmetric matrix where all the eigenvalues are positive.
-- This is equivalent to the statement that there for any vector $\symbf{x}$, we have that $\symbf{x}'\symbf{A}\symbf{x}>0$. 
-- The way this ties into the course is that the covariance matrix is positive definite. 
+- A positive definite matrix is a symmetric matrix whose eigenvalues are all positive.
+- Equivalently, a symmetric matrix $\symbf{A}$ is positive definite if, for every **non-zero** vector $\symbf{x}$,
 
-- You can see this intuitively by considering the variance of a linear combination of some random vector, $\symbf{X}$ with variance covariance matrix $\symbf{\Sigma}$. The variance of the linear combination $\symbf{a}'\symbf{X}$ is $\symbf{a}'\symbf{\Sigma}\symbf{a}$. Clearly this cannot be 0 or less, since it is the sum of squared numbers, and so this always exceeds 0. Thus $\symbf{\Sigma}$ is positive definite.
+$$
+\symbf{x}'\symbf{A}\symbf{x}>0.
+$$
+
+- A symmetric matrix is positive semidefinite if, for every vector $\symbf{x}$,
+
+$$
+\symbf{x}'\symbf{A}\symbf{x}\geq 0.
+$$
+
+- Every covariance matrix $\symbf{\Sigma}$ is positive semidefinite because, for any vector $\symbf{a}$,
+
+$$
+\symbf{a}'\symbf{\Sigma}\symbf{a}
+=
+\mathrm{Var}(\symbf{a}'\symbf{X})
+\geq 0.
+$$
+
+- A covariance matrix is positive definite only when every non-zero linear combination $\symbf{a}'\symbf{X}$ has positive variance. Exact linear dependencies between the variables prevent positive definiteness.
+
+- For a simple example, suppose $X_2=2X_1$ and $\mathrm{Var}(X_1)=\sigma^2>0$. Then
+
+$$
+\symbf{\Sigma}
+=
+\sigma^2
+\begin{bmatrix}
+1 & 2 \\
+2 & 4
+\end{bmatrix}.
+$$
+
+- Taking $\symbf{a}=\begin{bmatrix}2 \\ -1\end{bmatrix}$ gives
+
+$$
+\symbf{a}'\symbf{X}=2X_1-X_2=0
+$$
+
+and therefore
+
+$$
+\symbf{a}'\symbf{\Sigma}\symbf{a}
+=
+\mathrm{Var}(2X_1-X_2)
+=
+0.
+$$
+
+- Thus, this covariance matrix is positive semidefinite but not positive definite. Dependencies can, of course, arise in less obvious and more complicated ways than one variable being an exact multiple of another.
 
 ## Idempotency 
 
-- As stated earlier, a matrix is idempotent if it is equal to itself when squared ($\symbf{A}^2=\symbf{A}\symbf{A}=\symbf{A}$). 
-- The eigenvalues of an idempotent matrix are always 0 and 1 (why?).
-- It can be shown that (similarly to symmetric matrices) idempotent matrices can be factored in the form
+- As stated earlier, a matrix is idempotent if it is equal to itself when squared ($\symbf{A}^2=\symbf{A}\symbf{A}=\symbf{A}$).
+- Every eigenvalue of an idempotent matrix is either $0$ or $1$ (why?). Both values do not necessarily occur.
+- A general idempotent matrix can be diagonalised in the form
 
 $$
-\symbf{P}\symbf{\Lambda}\symbf{P}'
+\symbf{A}=\symbf{P}\symbf{\Lambda}\symbf{P}^{-1}.
 $$
 
-- where $\symbf{P}$ is an orthonormal matrix and $\symbf{\Lambda}$ is a diagonal matrix. In this case, 
+- If the idempotent matrix is also symmetric, it can be orthogonally diagonalised as
 
 $$
-\symbf{\Lambda}=\begin{bmatrix} \symbf{I}_r & 0 \\ 0 & 0 \end{bmatrix}.
+\symbf{A}=\symbf{P}\symbf{\Lambda}\symbf{P}',
 $$
 
-- where $r$ is the rank and $\symbf{I}_r$ is an identity matrix of rank $r$, as we already know the eigenvalues.
-- In addition, if a matrix $\symbf{A}$ is idempotent, then $\symbf{I} - \symbf{A}$ is also idempotent.
+- where $\symbf{P}$ is an orthogonal matrix and $\symbf{\Lambda}$ is diagonal. In this case,
+
+$$
+\symbf{\Lambda}=\begin{bmatrix} \symbf{I}_r & 0 \\ 0 & 0 \end{bmatrix},
+$$
+
+- where $r=\mathrm{rank}(\symbf{A})$ and $\symbf{I}_r$ is the $r\times r$ identity matrix.
+- In addition, if a matrix $\symbf{A}$ is idempotent, then $\symbf{I}-\symbf{A}$ is also idempotent.
 
 - Where do idempotent matrices come up in the course?
-  - Idempotent matrices arise as the matrix $\symbf{X}(\symbf{X}'\symbf{X})^{-1}\symbf{X}'$ is idempotent, and $\symbf{X}(\symbf{X}'\symbf{X})^{-1}\symbf{X}'$ is the matrix we use to calculate fitted values ($\hat{\symbf{y}}_i$). 
-- This will imply that residuals are calculated using $\symbf{I}-\symbf{X}(\symbf{X}'\symbf{X})^{-1}\symbf{X}'$, which leads to the result that residuals are orthogonal to fitted values. 
+  - The hat matrix $\symbf{H}=\symbf{X}(\symbf{X}'\symbf{X})^{-1}\symbf{X}'$ is symmetric and idempotent, and it is used to calculate fitted values: $\hat{\symbf{y}}=\symbf{H}\symbf{y}$.
+  - Residuals are calculated using the residual-maker matrix $\symbf{I}-\symbf{H}$: $\symbf{e}=(\symbf{I}-\symbf{H})\symbf{y}$.
+  - These properties help establish that residuals are orthogonal to fitted values.
+
