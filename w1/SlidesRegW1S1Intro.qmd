@@ -12,7 +12,8 @@ format:
     linkcolor: blue
     filecolor: magenta
     include-in-header:
-      file: preamble.tex
+      file: ../preamble.tex
+    keep-tex: true
 ---
 
 ```{r}
@@ -84,25 +85,6 @@ assessment_colours <- c(
   "Prac test" = "#e78ac3"
 )
 
-<<<<<<< HEAD
-assessment_colours <- c(
-  "3" = "#8da0cb",
-  "4"  = "#e78ac3",
-  "2"       = "#fc8d62",
-  "1"       = "#66c2a5"
-)
-
-plot_tbl_txt <- tibble::tibble(
-  x = 1:4,
-  y = c(1.5, 6, 7.5, 35) |> rev(),
-  txt = c("70%", "15%", "12%", "3%")
-)
-
-plot_tbl_date <- tibble::tibble(
-  x = 2:3,
-  y = c(17, 17),
-  txt = c("1 September", "9 September")
-=======
 final_mark_tbl <- tibble::tibble(
   assessment = final_mark_order,
   percentage = c(30, 70)
@@ -112,7 +94,6 @@ class_mark_tbl <- tibble::tibble(
   assessment = class_mark_order,
   percentage = c(25, 20, 10),
   date = c("1 September", "9 September", "TBC (+/- Week 10)")
->>>>>>> origin/slides-2026-sta2005s
 )
 
 assessment_plot <- function(
@@ -131,34 +112,10 @@ assessment_plot <- function(
     data,
     aes(x = percentage, y = assessment, fill = assessment)
   ) +
-<<<<<<< HEAD
-  # geom_hline(yintercept = c(15, 70), linetype = "dashed") +
-  scale_y_continuous(
-    labels = scales::percent_format(scale = 1) # ,
-    # breaks = seq(0, 100, 10)
-  ) +
-  cowplot::theme_cowplot() +
-  theme(
-     axis.title.y = element_blank(),
-     axis.title.x = element_blank(),
-    # axis.ticks.y = element_blank(),
-    # axis.text.y = element_blank(),
-    legend.position = "none"
-  ) +
-  theme(
-    plot.background = element_rect(fill = "white"),
-    panel.background = element_rect(fill = "white")
-  ) + #+
-  scale_fill_manual(values = assessment_colours) +
-  geom_text(
-    data = plot_tbl_txt, aes(x = x, y = y, label = txt),
-    size = 5, inherit.aes = FALSE
-=======
     geom_col(width = 0.8) +
     geom_text(
       aes(x = percentage / 2, label = paste0(percentage, "%")),
       size = 5
->>>>>>> origin/slides-2026-sta2005s
     ) +
     scale_fill_manual(values = assessment_colours) +
     scale_x_continuous(
@@ -238,12 +195,9 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 ```
 
 \begin{figure}
-
 \centering
-\includegraphics[width=0.6\textwidth]{`r path_p`}
-
+\includegraphics[width=0.5\textwidth]{`r path_p`}
 \end{figure}
-
 
 # Learning resources: content
 
@@ -253,7 +207,7 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 - Slides:
   - Location: in `Slides` folder under each week's tab
 - Lecture recordings:
-  - Automatically uploaded to `Lecture Videos/2025 Lecture Videos` tab
+  - Automatically uploaded to `Lecture Videos/2026 Lecture Videos` tab
 
 # Learning resources: testing I
 
@@ -369,7 +323,7 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 
 \begin{figure}
 \centering
-\includegraphics[width=\textwidth]{_raw_data/img/reg_img.png}
+\includegraphics[width=\textwidth]{../_raw_data/img/reg_img.png}
 \end{figure}
 :::
 
@@ -402,7 +356,7 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 
 \begin{figure}
 \centering
-\includegraphics[width=0.6\textwidth]{_raw_data/img/toolbox-wide-edit-removebg.png}
+\includegraphics[width=0.6\textwidth]{../_raw_data/img/toolbox-wide-edit-removebg.png}
 \end{figure}
 
 <!--
@@ -596,7 +550,7 @@ knitr::include_graphics(path_p_grid)
 
 \begin{figure}
 \centering
-\includegraphics[width=\textwidth]{_raw_data/img/iceberg.png}
+\includegraphics[width=\textwidth]{../_raw_data/img/iceberg.png}
 \end{figure}
 
 :::
@@ -605,7 +559,7 @@ knitr::include_graphics(path_p_grid)
 
 \begin{figure}
 \centering
-\includegraphics[width=0.95\textwidth]{_raw_data/img/lm_output.png}
+\includegraphics[width=0.95\textwidth]{../_raw_data/img/lm_output.png}
 \end{figure}
 
 :::
