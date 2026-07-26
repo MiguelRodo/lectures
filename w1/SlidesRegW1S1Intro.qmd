@@ -1,5 +1,5 @@
 ---
-title: "Regression Week I: Introduction and foundations to GLMs"
+title: "Regression Week I: Foundations for linear models"
 subtitle: "Slide deck I: Course introduction and motivation"
 author: Miguel Rodo
 institute: University of Cape Town
@@ -30,7 +30,7 @@ library(ggplot2)
 <!-- \pause !-->
 
 - Well, to really get you on your way
-  - First year (STA1006S) is useful, but easily replicable by non-statisticans
+  - First year (STA1006S) is useful, but easily replicable by non-statisticians
   - STA2004F is (despite all the effort you put in) not immediately of great practical use
   - The practical skills and mathematical understanding you'll gain here are not easily replicable and can actually be used to assist decision-making
 
@@ -78,11 +78,11 @@ final_mark_order <- c("Class mark", "Exam mark")
 class_mark_order <- c("Test", "Assignment", "Prac test")
 
 assessment_colours <- c(
-  "Exam mark" = "#66c2a5",
-  "Class mark" = "#b3b3b3",
-  "Test" = "#fc8d62",
-  "Assignment" = "#8da0cb",
-  "Prac test" = "#e78ac3"
+  "Exam mark"  = "#66c2a5",
+  "Class mark" = "#fc8d62",
+  "Regression" = "#8da0cb",
+  "ED"         = "#e78ac3",
+  "Prac test"  = "#a6d854"
 )
 
 final_mark_tbl <- tibble::tibble(
@@ -90,77 +90,121 @@ final_mark_tbl <- tibble::tibble(
   percentage = c(30, 70)
 )
 
-class_mark_tbl <- tibble::tibble(
-  assessment = class_mark_order,
-  percentage = c(25, 20, 10),
-  date = c("1 September", "9 September", "TBC (+/- Week 10)")
-)
-
-assessment_plot <- function(
-  data,
-  assessment_order,
-  title,
-  x_max,
-  date_x = NULL
-) {
-  data$assessment <- factor(
-    data$assessment,
-    levels = rev(assessment_order)
+class_mark_tbl <- tibble::tribble(
+  ~assessment,  ~section,     ~percentage, ~date,
+  "Test",       "ED",         25,          "12 October",
+  "Test",       "Regression", 25,          "1 September",
+  "Assignment", "ED",         20,          "19 October",
+  "Assignment", "Regression", 20,          "9 September",
+  "Prac test",  "Prac test",  10,          "TBC"
+) |>
+  dplyr::mutate(
+    assessment = factor(
+      assessment,
+      levels = rev(class_mark_order)
+    )
   )
 
-  p <- ggplot(
-    data,
-    aes(x = percentage, y = assessment, fill = assessment)
-  ) +
-    geom_col(width = 0.8) +
-    geom_text(
-      aes(x = percentage / 2, label = paste0(percentage, "%")),
-      size = 5
-    ) +
-    scale_fill_manual(values = assessment_colours) +
-    scale_x_continuous(
-      labels = scales::percent_format(scale = 1),
-      limits = c(0, x_max),
-      breaks = seq(0, x_max, by = 20),
-      expand = c(0, 0)
-    ) +
-    cowplot::theme_cowplot() +
-    labs(title = title, x = NULL, y = NULL) +
-    theme(
-      legend.position = "none",
-      plot.background = element_rect(fill = "white", colour = NA),
-      panel.background = element_rect(fill = "white", colour = NA),
-      plot.title = element_text(hjust = 0.5, size = 14),
-      axis.text.y = element_text(size = 12),
-      axis.text.x = element_text(size = 10)
+class_mark_totals <- class_mark_tbl |>
+  dplyr::group_by(assessment) |>
+  dplyr::summarise(
+    total = sum(percentage),
+    .groups = "drop"
+  )
+
+p_final_mark <- final_mark_tbl |>
+  dplyr::mutate(
+    assessment = factor(
+      assessment,
+      levels = rev(final_mark_order)
     )
+  ) |>
+  ggplot(
+    aes(
+      x = percentage,
+      y = assessment,
+      fill = assessment
+    )
+  ) +
+  geom_col(width = 0.8) +
+  geom_text(
+    aes(
+      x = percentage / 2,
+      label = paste0(percentage, "%")
+    ),
+    size = 5
+  ) +
+  scale_fill_manual(values = assessment_colours) +
+  scale_x_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 75),
+    breaks = seq(0, 60, by = 20),
+    expand = c(0, 0)
+  ) +
+  cowplot::theme_cowplot() +
+  labs(
+    title = "Final mark",
+    x = NULL,
+    y = NULL
+  ) +
+  theme(
+    legend.position = "none",
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.background = element_rect(fill = "white", colour = NA),
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10)
+  )
 
-  if (!is.null(date_x)) {
-    p <- p +
-      geom_text(
-        aes(x = date_x, label = date),
-        size = 4.5,
-        hjust = 0
-      )
-  }
-
-  p
-}
-
-p_final_mark <- assessment_plot(
-  final_mark_tbl,
-  final_mark_order,
-  title = "Final mark",
-  x_max = 75
-)
-
-p_class_mark <- assessment_plot(
+p_class_mark <- ggplot(
   class_mark_tbl,
-  class_mark_order,
-  title = "Regression components of class mark",
-  x_max = 70,
-  date_x = 28
-)
+  aes(
+    x = percentage,
+    y = assessment,
+    fill = section
+  )
+) +
+  geom_col(
+    width = 0.8,
+    position = position_stack(reverse = FALSE)
+  ) +
+  geom_text(
+    aes(label = date),
+    position = position_stack(vjust = 0.5, reverse = FALSE),
+    size = 4.2
+  ) +
+  geom_text(
+    data = class_mark_totals,
+    aes(
+      x = total + 2.5,
+      y = assessment,
+      label = paste0(total, "%")
+    ),
+    inherit.aes = FALSE,
+    hjust = 0,
+    size = 4.5
+  ) +
+  scale_fill_manual(values = assessment_colours) +
+  scale_x_continuous(
+    labels = scales::percent_format(scale = 1),
+    limits = c(0, 65),
+    breaks = seq(0, 60, by = 20),
+    expand = c(0, 0)
+  ) +
+  cowplot::theme_cowplot() +
+  labs(
+    title = "Class mark",
+    x = NULL,
+    y = NULL
+  ) +
+  theme(
+    legend.position = "none",
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.background = element_rect(fill = "white", colour = NA),
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.text.y = element_text(size = 12),
+    axis.text.x = element_text(size = 10)
+  )
 
 p <- cowplot::plot_grid(
   p_final_mark,
@@ -172,11 +216,18 @@ p <- cowplot::plot_grid(
 )
 
 path_p <- projr::projr_path_get(
-  "cache", "fig", "w1s1", "p-assessment.png"
+  "cache",
+  "fig",
+  "w1s1",
+  "p-assessment.png"
 )
+
 cowplot::ggsave2(
-  path_p, p,
-  width = 19, height = 8, units = "cm"
+  path_p,
+  p,
+  width = 19,
+  height = 8,
+  units = "cm"
 )
 ```
 
@@ -262,14 +313,14 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 # Introduction to `R`
 
 - Online lecture:
-  - Day: Tuesday, 29 July
+  - Day: Wednesday, 29 July
   - Time: 2pm
-  - Link: [MS Teams](https://teams.microsoft.com/l/meetup-join/19%3aEKHxusbmBOjlrYMG0p3XKfzkKofUC-I-AtfcqCzGY0w1%40thread.tacv2/1753534512225?context=%7b%22Tid%22%3a%2292454335-564e-4ccf-b0b0-24445b8c03f7%22%2c%22Oid%22%3a%22c2d8a7b6-6c2b-4c5c-880f-fa02dfe60643%22%7d)
+  - Link: Pending
 
 \pause
 
 - Practicals:
-  - Days: Wednesday, Thursday and Friday (30, 31 July and 1 August)
+  - Days: Wednesday, Thursday and Friday (29-31 July)
   - Times: 2-4pm
   - Category: `R Intro Workshop`
 
@@ -286,15 +337,15 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 - Start: week 2
 - Signup:
   - `Amathuba` >> `Course info` >> `Groups`
-  - Categories;
-    - Practical: `Computer Lab Session` or `Lab Session`
+  - Categories:
+    - Practical: `Computer Lab Session`
     - Tutorial: `STA2005S Tutorials`
 
 # Office hours
 
 - Room: 5.52 PD Hahn (fifth floor, down the corridor from stats reception)
-- Time: 10-12
-- Day: Thursday
+- Time: TBC once class rep is appointed
+- Day: TBC
 - Purpose: any content-related questions
 - May also email for other times, if need be
 
@@ -302,7 +353,7 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 
 - Email:
   - Address: `miguel.rodo@uct.ac.za`
-  - Purpose: any admin-related issues
+  - Purpose: any admin-related issues specific to the regression section
 
 # What is regression? {.smaller}
 
@@ -317,6 +368,11 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
   - The function `f` describes how they relate
   - $Y$ cannot be categorical
 
+- A regression model describes how the distribution of a response $Y$
+  depends on one or more explanatory variables $X  .
+- For the linear regression models considered in this section, $Y$ is
+  continuous.
+- Random variation is represented through an error term $\epsilon$.
 :::
 
 :::{.column width=50%}
@@ -331,7 +387,7 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 
 # Regression versus the correlation coefficient: round one
 
-- Image we work out what the correlation is between advertising spending and revenue.
+- Imagine we work out what the correlation is between advertising spending and revenue.
 - In what way might the correlation coefficient be deficient?
 
 # Regression versus the correlation coefficient round two
@@ -374,7 +430,7 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 # ==========================
 # density
 set.seed(3)
-# generate data from a normal distrbution from a range of x values
+# generate data from a normal distribution from a range of x values
 p_normal <- ggplot(
   tibble::tibble(x = rnorm(1000, 200, 5)),
   aes(x = x)
@@ -540,7 +596,7 @@ knitr::include_graphics(path_p_grid)
   - within subsets of observations, e.g. measurements from the same individual, or
   - between "nearby" observations, e.g. time-series or spatial data
 - Non-normally distributed data, e.g. count data
-- Categorial dependent vairables, e.g. disease status
+- Categorical dependent variables, e.g. disease status
 
 # Mathematical foundations to linear regression
 
