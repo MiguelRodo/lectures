@@ -1,9 +1,22 @@
 ^_projr\.yml$
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-^README\.Rmd$
+^_raw_data/
+^_raw_data$
+^_reference/
+^_reference$
+^_content/
+^_content$
+^docs/
+^docs$
+^_tmp/
+^_tmp$
+^_output/
+^_output$
 ^_projr\.yml$
-^_archive/
-^_archive$
+^README\.Rmd$
+^LICENSE\.md$
 # End of projr section
+
+^LICENSE\.md$
 

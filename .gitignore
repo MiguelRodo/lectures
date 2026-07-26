@@ -4,6 +4,11 @@ _output/**
 docs/**
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
-_archive/**
+_raw_data/**
+_reference/**
+_content/**
+docs/**
+_tmp/**
+_output/**
 # End of projr section
 

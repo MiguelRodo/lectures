@@ -1,0 +1,337 @@
+---
+title: "Introductory example of linear regression"
+subtitle: "End-to-end"
+author: "Miguel Rodo (with thanks to Prof. Little and Yovna Junglee)"
+format:
+  html:
+    toc: true
+    theme: lumen
+    number-sections: true
+    embed-resources: true
+    code-fold: true
+---
+
+# End-to-end example of linear regression
+
+## Introduction
+
+This is an example analysis of a simple dataset to illustrate the use of linear regression.
+
+### Problem statement
+
+Suppose that you're a business analyst tasked with helping the executives decide how to advertise.
+
+You've gathered annual data across 200 markets in terms of sales revenue and advertising spend on TV, radio and newspaper. Your boss has heard about "regression", and wants to see if it can be more informative than simply understanding that more advertising leads to more sales.
+
+### Note on folded sections
+
+Extra details, particularly those related to programming, are kept inside expandable "folds" (click on the triangle to the left of the fold to expand it) if you're viewing the HTML or inside HTML tags if you're viewing the qmd file.
+
+Code is also "folded" away, so you can click on the triangle to the left of the code to expand it.
+
+## Set-up
+
+#### Files
+
+To run this, you will have to download `w1s2.zip` from `Amathuba` (`Module 1 - Regression` >> `Introduction` >> `Slides`), unzip it, and copy the contents to the your working diretory.
+It contains two files, within the `_raw_data` folder.
+- `Advertising.csv`
+- `reg_img_exp.png`. This file (and not `Advertising.csv`) must be in the `img` sub-folder of `_raw_data`, i.e. at `_raw_data/img/reg_img_exp.png`.
+
+So, in your working directory you must have these files at these paths:
+- `_raw_data/Advertising.csv` (`Advertising.csv`)
+- `_raw_data/img/reg_img_exp.png` (`reg_img_exp.png`)
+
+#### `R` packages
+
+First we attach R packages we need, which make useful functions available: 
+
+```{r}
+#| warning: false
+#| message: false
+#| results: "hide"
+#| echo: true
+# install packages if missing
+pkg_vec <- c("tibble", "dplyr", "ggplot2", "cowplot")
+for (x in pkg_vec) {
+  if (!requireNamespace(x, quietly = TRUE)) {
+    install.packages(x)
+  }
+}
+# attach packages
+library(tibble)
+library(dplyr)
+library(ggplot2)
+library(cowplot)
+```
+
+#### Details
+
+<details>
+  <summary>Indicating code in an qmd</summary>
+- How do I indicate code in an `qmd`?
+  - By "fencing" it
+  - What does that mean?
+    - Putting ```{r} before the code and ``` after the code
+  - What is another name for the tick things?
+    - Back ticks
+    - Where is it on the keyboard?
+      - Top left (next to one)
+  - What do I put in between the fences?
+    - Code!
+</details>
+
+<details>
+  <summary>Attaching packages</summary>
+  
+  In `R`, a package is a collection of functions that extend the functionality of `R`.
+  In `R`, a library is a actually a folder where packages are installed (e.g. the output from `.libPaths()`).
+
+  Somewhat confusingly, the `library` function is used to attach a package into the current `R` session. 
+  For example, the package `tibble` provides the `as_tibble` function.
+  If I run `as_tibble` without attaching the `tibble` package, I get the error that `as_tibble` function is not found.
+  But if I first run `library(tibble)` and then run `as_tibble`, it works.
+  Another option would be to not run `library(tibble)`, but instead directly reference the `tibble` package when using the `as_tibble` function, like so: `tibble::as_tibble` (note the double semi-colons). 
+
+  Some languages do not allow you to attach libraries in the way `R` does.
+  I prefer not attaching packages, but typical practice in the R community is to attach them.
+  Since this is an introductory course, I'll attach them.
+
+  If you are attaching them, then it's good practice to attach them at the top of the script.  
+
+</details>
+
+
+<details>
+  <summary>Naming datasets</summary>
+  
+  - I like reading in naming data sets I've just read in `data_raw_<name>`
+  - Converting it to a `tibble` prevents too much information being printed to the console each time you print it 
+
+</details>
+
+## Data
+
+First we read our data in:
+
+```{r}
+# Read in the raw data from the Advertising.csv file
+data_raw_ad <- read.csv("_raw_data/Advertising.csv", header = TRUE)
+
+# Convert the raw data to a tibble for easier manipulation
+data_raw_ad <- as_tibble(data_raw_ad)
+```
+
+## Data exploration
+
+In the real world, it's important to examine the data first as the analytical techniques chosen will depend on the data itself.
+
+- Since we're interested in performing linear regression, we would like to assess upfront the following:
+  - Distribution of the response variable (hopefully normal)
+  - Relationship between response and dependent variables (hopefully linear)
+  - Correlation between explanatory variables (hopefully minor)
+
+- Once we've fitted the model, we can also be more sure that we haven't made a mistake somewhere by the results matching what we see in preliminary data exploration.
+
+```{r}
+# Print the first 10 rows of the data
+data_raw_ad
+```
+
+We'll consider a linear regression analysis.
+
+We see that one column, `X`, is just the row number. So we delete it, yielding our analysis-ready dataset:
+
+```{r}
+data_tidy_ad <- data_raw_ad |>
+  select(-X)
+data_tidy_ad[1, ]
+```
+
+<details>
+  <summary>Pipe operator</summary>
+  
+  - The pipe operator, `|>`,  simplifies writing long chains of functions.
+    - For example, `f(g(h(x))` is equivalent to `f() |> g() |> h()x`.
+    - This might seem particularly advantageous here, but when `f`, `g` and `h` all have multiple arguments, having them on different lines is very helpful.
+</details>
+
+<details>
+  <summary>The tidyverse</summary>
+  
+  - The two packages I've used so far, `tibble` and `dplyr`, are part of the `tidyverse`.
+  - The `tidyverse` is a collection of packages that share a common philosophy of data manipulation.
+  - The `tidyverse` is very popular in the `R` community, and is a good place to start.
+  - The book `R for Data Science` is a good introduction to the `tidyverse`.
+</details>
+
+### Distribution of response variable
+
+
+First we'll examine the distribution of the sales response variable, which will be our dependent variable, to assess whether a normal distribution might be appropriate:
+
+```{r}
+hist(data_tidy_ad$sales, freq = FALSE)
+```
+
+We can also overlay a normal distribution on the histogram to see how well it fits:
+
+```{r}
+hist(data_tidy_ad$sales, freq = FALSE)
+x_vec <- seq(
+  min(data_tidy_ad$sales), max(data_tidy_ad$sales),
+  length.out = 1e3
+  )
+y_vec <- dnorm(
+  x_vec, mean = mean(data_tidy_ad$sales), sd = sd(data_tidy_ad$sales)
+)
+lines(x_vec, y_vec, col = "red", size = 2)
+```
+
+It seems approximately normally distributed, if positively skewed.
+
+It's important to note that the model only requires that the response variable be *conditionally* normally distributed, which we can't assess until we've fit the model. 
+But what we see thus far seems encouraging.
+
+### Correlation between explanatory variables
+
+The effects of explanatory variables are hard to isolate when they are highly correlated with one another. So we'll examine their correlation:
+
+```{r}
+cor(data_tidy_ad |> select(radio:sales)) |> signif(2)
+```
+
+They are all very low.
+
+Graphs could highlight non-linear relationships not captured by the correlation statistics, as well as indicate outlying observations:
+
+```{r}
+pairs(data_tidy_ad)
+```
+
+The explanatory variables also look uncorrelated. A few possible outliers, but nothing dramatic.
+
+Sales definitely seems to depend on TV and radio spending, but less so on newspaper spending.
+
+So, overall, we're happy that we'll be able fit a linear model. 
+
+## Modelling sales against TV
+
+So, let's just model sales against TV spending first.
+
+In this case, we assume that $Y_i=\beta_0 + \beta_{\mathrm{TV}}X_{i,\mathrm{TV}}+\epsilon_i$, where $\epsilon_i\sim N(0,\sigma^2)$. 
+
+### Fitting the model
+
+We fit the model using the `lm` function, which finds values for $\beta_0$, $\beta_{\mathrm{TV}}$ and $\sigma^2$ that best fit the data:
+
+```{r}
+fit_tv <- lm(sales ~ TV, data = data_tidy_ad)
+```
+
+Simply printing the model output displays the model structure and the estimated regression coefficients ($\beta_0$ and $\beta_{\mathrm{TV}}$):
+
+```{r}
+fit_tv
+```
+
+### Examining the model output
+
+However, if we want to find out what the effect of TV on sales is (the estimate), how accurate that estimate is (the estimate's standard error) and how compatible the data are with no effect (the p-value), we'll need to use the `summary` function on the fitted model object to generate extra statistics and estimates:
+
+#### Estimates and inference
+
+```{r}
+summary(fit_tv)
+```
+
+The `summary` function gives the following output:
+
+- `Call`:
+  - This is the command that fit the model.
+- `Residuals`:
+  - This is a five-number summary of the residuals (the difference between the actual and fitted response values).
+  - Since the residuals are not scaled (i.e. not divided by standard deviation), their magnitude is less important than symmetry around zero. That said, typically one would use the residuals in a plot rather than examine this line.
+- `Coefficients`:
+  - These are the estimated values of the parameters (`Estimate`), along with the accuracy thereof (`Std. Error`) as well as the test-statistic (`t value`) and p-value (`Pr(>|t|)`) for testing the null hypothesis that the parameter is zero.
+  - `(Intercept)` means $\beta_0$.
+  - As we can see, each one unit increase in TV spending increases sales by 0.047.
+  - The 95% confidence interval for this effect is roughly (0.042, 0.052), which is probably precise enough, given the purpose.
+ - The p-value is minute ($<2*10^{-16}$).
+  - The `Signif. codes` maps the number of stars next to the p-values to the range the star indicates.
+- `Residual standard error`:
+  - This is the estimate of $\sigma$, i.e. the standard deviation of the response.
+    - It is also the square root of the average squared distance of fitted values from the actual values.
+  - The degrees of freedom is the sample size (200) less the number of parameters estimated (2).
+  - The actual value is not particularly meaningful as it is scaled by the response variable.
+- `Multiple R-squared` and `Adjusted R-squared`: 
+  - These are measures of the proportion of variation in the response variable (`y_i`) captured by the model.
+  - The `Adjusted R-squared` is the `Multiple R-squared` penalised for the number of parameters estimated. 
+  - Both of these measures lie between 0 and 1, with higher values indicating more variation captured.
+- `F-statistic`:
+  - This is a "global" test for the nullity (i.e. zero-ness) of all the parameters except the intercept.
+  - The first number (312.1) is the test statistic, the second two are the $F$ distribution's degrees of freedom under the null and the third is the p-value. 
+ 
+#### Displaying results graphically
+
+The plot below displays some of the key quantities associated with the data and the model:
+
+```{r}
+#| results: asis
+#| echo: false
+path_img <- "_raw_data/img/reg_img_exp.png"
+if (file.exists(path_img)) {
+  knitr::include_graphics(path_img)
+}
+```
+
+- $\hat{\beta}_0$: estimated mean sales when TV spending is zero
+- $\hat{\beta}_1$: The estime per-unit increase in mean sales for each unit increase in TV spending
+- $y_i$: The response value for the $i$-th observation
+- $\hat{y}_i$: The fitted value for the $i$-th observation
+- $\hat{\epsilon}_i$: The estimated residual for the $i$-th observation (different between actual and fitted response value, i.e. $y_i-\hat{y}_i$)
+  - Note that it is more correct to use $\hat{\epsilon}_i$ than $\epsilon_i$, as the residuals are estimated (since the true value of the mean response is not known), but in practice this is not strictly adhered to. Use of the caret (i.e. the hat, $\textasciicircum$) for the estimated coefficients is important, however.
+
+#### Fitted values and residuals
+
+By virtue of fitting the model, we've described a way for relating any value of TV spending to average sales.
+
+For example, if someone spends 100 on TV advertising, we can predict that their average sales will be:
+
+```{r}
+coef_vec <- coefficients(fit_tv) |> setNames(NULL)
+beta_0 <- coef_vec[1]
+beta_1 <- coef_vec[2]
+round(beta_0 + beta_1 * 100, 1)
+```
+
+## Modelling sales against TV, radio and newspaperk
+
+Now that we've examined sales against TV, let's examine sales against all three explanatory variables.
+
+In this case, we assume that $Y_i=\beta_0 + \beta_{\mathrm{TV}}X_{i,\mathrm{TV}} + \beta_{\mathrm{R}}X_{i,\mathrm{R}} + \beta_{\mathrm{N}}X_{i,\mathrm{N}}  +\epsilon_i$, where $\epsilon_i\sim N(0,\sigma^2)$. 
+
+### Fitting the model
+
+We fit the model using the `lm` function as before, which finds optimal values for the unknowne parameters:
+
+```{r}
+fit_all <- lm(sales ~ TV + radio + newspaper, data = data_tidy_ad)
+```
+
+### Examining the model output
+
+Let's examine the detailed inferential output from the `summary` function:
+
+```{r}
+summary(fit_all)
+```
+
+The model output reveals that radio spending is clearly associated with sales, while newspaper spending does not show a significant effect. The inference regarding the effect of TV advertising spending on sales remains largely unchanged from the previous model.
+
+The only (subtle) change is that we now can confirm (in addition to the data exploration) that the effect of TV is not driven by an association between TV and radio.
+
+## Connection to future lessons
+
+- Over the next few weeks, we will develop the mathematical and statistical theory to estimate the parameters and conduct inference regarding them.
+- Once we've done that, we'll actually have a flexible inferential tool we can make use of.

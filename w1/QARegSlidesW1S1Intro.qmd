@@ -1,0 +1,106 @@
+---
+title: "Q&A: Week One - Slide deck one - Introduction and prerequisites"
+subtitle: "Version 1"
+format:
+  html:
+    embed-resources: true
+---
+
+### What is regression?
+
+- In terms of notation, what is the symbol for the:
+  - Response variable?
+    - $Y$
+    - What is another name for the response variable?
+      - Dependent variable
+    - Is $Y$ categorical?
+      - No
+    - Is $Y$ random?
+      - Yes
+  - Explanatory variable(s)?
+    - $X$
+    - What is another name for the explanatory variable(s):
+      - First?
+        - Independent variable
+      - Second?
+        - Predictor variable
+    - Is $X$ random?
+      - No
+  - Error term?
+    - $\epsilon$
+    - Is $\epsilon$ random?
+      - Yes
+  - Intercept?
+    - $\beta_0$
+      - What does the intercept represent?
+        - The expected value of $Y$ when $X=0$
+  - Slope?
+    - $\beta_1$
+      - What does the slope represent?
+        - The change in $Y$ for a one-unit change in $X$
+- Consider the model formula $Y = \beta_0 + \beta_1X + \epsilon$.
+  - What is this model called?
+    - Simple linear regression
+  - What is an extension of this?
+    - Multiple linear regression
+    - What is the difference between simple and multiple linear regression?
+      - The number of explanatory variables
+    - What is the model formula for multiple linear regression with two explanatory variables?
+      - $Y = \beta_0 + \beta_1X_1 + \beta_2X_2 + \epsilon$
+
+### Regression vs alternatives
+
+#### Correlation coefficient
+
+- Advantages of regression:
+  - First?
+    - Precise quantification of relationship
+  - Second?
+    - Able to predict
+  - Third?
+    - Separates size of effect from variability
+- Advantage of correlation:
+  - First?
+    - Unitless
+  - Second?
+    - Directly quantifies strength of relationship
+
+#### $t$-test
+
+- Advantages of regression:
+  - First?
+    - Can handle multiple predictors
+  - Second?
+    - Can handle continuous and categorical predictors
+- Advantage of $t$-test?
+  - First?
+    - Compared to our regression model, can handle differing variances between groups
+
+### Assumptions
+
+- What type of regression do we consider?
+  - Linear regression
+- What are the restrictions:
+  - First?
+    - Distribution of response
+    - What must it be?
+      - Normal
+  - Second?
+    - Relationship with response variables
+    - What must it be?
+      - Linear
+  - Third?
+    - Variance
+    - What must it be?
+      - Must be constant
+      - With respect to?
+        - Predictor variables
+  - Fourth?
+    - Errors
+    - What must they be?
+      - Independent
+      - Of:
+        - First?
+          - Each other
+        - Second?
+          - Predictor variables

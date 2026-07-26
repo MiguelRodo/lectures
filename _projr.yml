@@ -1,4 +1,20 @@
 directories:
+  raw-data:
+    path: _raw_data
+  raw-reference:
+    path: _reference
+  raw-content:
+    path: _content
   docs:
     path: docs
+build:
+  github:
+    slides-2026-sta2005s:
+      content:
+      - raw-data
+      - raw-reference
+      - raw-content
+      - docs
+      - output
+  scripts: w0/CommentChatGPT.qmd
 
