@@ -3,11 +3,37 @@ Title: Slides for STA2005S
 Version: 0.0.1-1
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"))
 Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
-Description: Slides for STA2005S
+Description: Lecture and practical material for the regression section of STA2005S.
 License: CC BY 4.0
-URL: https://github.com/MiguelRodo/Slides23RodoSTA2005S/#readme
-BugReports: https://github.com/MiguelRodo/Slides23RodoSTA2005S/issues
+URL: https://github.com/MiguelRodo/lectures
+BugReports: https://github.com/MiguelRodo/lectures/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
-Imports: ggplot2
+Depends:
+    R (>= 4.1.0)
+Imports:
+    broom,
+    car,
+    cffr,
+    codemeta,
+    cowplot,
+    DataTidy23RodoHonsMult,
+    dplyr,
+    ggforce,
+    ggplot2,
+    ggrepel,
+    kableExtra,
+    knitr,
+    MASS,
+    projr,
+    purrr,
+    quarto,
+    remotes,
+    scales,
+    stringr,
+    tibble,
+    tidyr
+Remotes:
+    MiguelRodo/DataTidy23RodoHonsMult@2024,
+    SATVILab/projr

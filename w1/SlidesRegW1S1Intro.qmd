@@ -51,8 +51,8 @@ library(ggplot2)
 #| label: tab-schedule
 schedule_tbl <- tibble::tibble(
   Weeks = c("1-6", "Vac", "7-12"),
-  `Start date` = c("28 Jul", "8 Sep", "15 Sep"),
-  `End date` = c("7 Sep", "14 Sep", "17 Oct"),
+  `Start date` = c("27 Jul", "7 Sep", "14 Sep"),
+  `End date` = c("4 Sep", "11 Sep", "23 Oct"),
   Section = c("Regression",  "", "Experimental design")
 )
 ```
@@ -87,7 +87,7 @@ plot_tbl_txt <- tibble::tibble(
 plot_tbl_date <- tibble::tibble(
   x = 2:3,
   y = c(17, 17),
-  txt = c("2 September", "29 August")
+  txt = c("1 September", "9 September")
 )
 
 cat_lab_vec <- c("Prac test", "Assignment", "Test", "Exam") |> rev()
