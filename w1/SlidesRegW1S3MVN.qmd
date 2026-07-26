@@ -12,7 +12,7 @@ format:
     linkcolor: blue
     filecolor: magenta
     include-in-header:
-      file: preamble.tex
+      file: ../preamble.tex
     keep-tex: true
 ---
 
