@@ -78,6 +78,10 @@ You still need to be able to **use** the MGF and the MVN results.
 
 # The univariate normal distribution
 
+::::{.columns}
+
+:::{.column width=58%}
+
 \begin{block}{Definition}
 If $X \sim N(\mu, \sigma^2)$, then its probability density function is
 $$
@@ -95,21 +99,48 @@ E(X)=\mu,
 $$
 \end{block}
 
+:::
+
+:::{.column width=42%}
+
 ```{r}
-#| fig-width: 5.8
-#| fig-height: 2.2
+#| fig-width: 4.6
+#| fig-height: 3.6
+#| out-width: "100%"
 x <- seq(-4, 4, length.out = 600)
 y <- dnorm(x)
+old_par <- par(
+  mar = c(4.0, 4.2, 2.2, 0.6),
+  mgp = c(2.4, 0.7, 0),
+  tcl = -0.25
+)
 plot(
   x, y,
-  type = "l",
-  lwd = 2,
-  xlab = "$x$",
+  type = "n",
+  xlim = c(-4, 4),
+  ylim = c(0, 0.42),
+  xaxs = "i",
+  yaxs = "i",
+  xlab = expression(x),
   ylab = "Density",
-  main = "$X \\sim N(0,1)$"
+  main = expression(X %~% N(0, 1)),
+  las = 1
 )
-abline(h = 0, col = "grey80")
+polygon(
+  c(x, rev(x)),
+  c(y, rep(0, length(y))),
+  col = grDevices::adjustcolor("#647C9C", alpha.f = 0.22),
+  border = NA
+)
+lines(x, y, lwd = 2.2, col = "#003366")
+abline(v = 0, lty = 3, col = "grey45")
+box()
+par(old_par)
 ```
+
+:::
+
+::::
 
 # The multivariate normal distribution {.smaller}
 
@@ -150,28 +181,49 @@ $$
 $$
 
 ```{r}
-#| fig-width: 8.2
-#| fig-height: 3.3
+#| fig-width: 8.4
+#| fig-height: 3.4
+#| out-width: "96%"
 x <- seq(-4, 4, length.out = 80)
 y <- seq(-4, 4, length.out = 80)
 z <- outer(x, y, function(a, b) dnorm(a) * dnorm(b))
-old_par <- par(mfrow = c(1, 2), mar = c(3, 3, 2, 1))
+old_par <- par(
+  mfrow = c(1, 2),
+  mar = c(3.2, 3.3, 2.3, 1.0),
+  mgp = c(2.0, 0.6, 0),
+  tcl = -0.25
+)
 persp(
   x, y, z,
   theta = 35,
   phi = 25,
-  expand = 0.6,
-  xlab = "X1",
-  ylab = "X2",
+  expand = 0.62,
+  ticktype = "detailed",
+  col = "#D9E2EC",
+  border = "#647C9C",
+  xlab = expression(X[1]),
+  ylab = expression(X[2]),
   zlab = "Density",
-  main = "Density surface"
+  main = "Density surface",
+  cex.axis = 0.75,
+  cex.lab = 0.9,
+  cex.main = 0.95
 )
 contour(
   x, y, z,
-  xlab = "X1",
-  ylab = "X2",
+  xlim = c(-4, 4),
+  ylim = c(-4, 4),
+  levels = seq(0.02, 0.14, by = 0.02),
+  col = "#647C9C",
+  lwd = 1.4,
+  xlab = expression(X[1]),
+  ylab = expression(X[2]),
   main = "Contour plot",
-  asp = 1
+  asp = 1,
+  las = 1,
+  cex.axis = 0.8,
+  cex.lab = 0.9,
+  cex.main = 0.95
 )
 par(old_par)
 ```
@@ -270,26 +322,26 @@ $$
 
 The final expression is the MGF of a multivariate normal random vector with
 
+\begin{block}{Identified mean and covariance matrix}
 $$
-E(\mathbf Y)=\mathbf C\boldsymbol\mu
-$$
-
-and
-
-$$
+E(\mathbf Y)=\mathbf C\boldsymbol\mu,
+\qquad
 \operatorname{Cov}(\mathbf Y)
 =
 \mathbf C\boldsymbol\Sigma\mathbf C^T.
 $$
+\end{block}
 
 \pause
 
 Therefore
 $$
+\boxed{
 \mathbf Y=\mathbf C\mathbf X
 \sim
 N_q(\mathbf C\boldsymbol\mu,
-\mathbf C\boldsymbol\Sigma\mathbf C^T).
+\mathbf C\boldsymbol\Sigma\mathbf C^T)
+}.
 $$
 
 # Why selection matrices are useful
@@ -625,6 +677,10 @@ because $\mathbf P^T\mathbf P=\mathbf I_n$.
 
 # Quadratic forms and chi-square: proof continued {.smaller}
 
+::::{.columns}
+
+:::{.column width=58%}
+
 Since $\mathbf Y=\mathbf P\mathbf Z$,
 $$
 \begin{aligned}
@@ -640,6 +696,10 @@ $$
 \end{aligned}
 $$
 
+:::
+
+:::{.column width=42%}
+
 Partition $\mathbf Z=(Z_1,\ldots,Z_n)^T$. Then
 $$
 \mathbf Y^T\mathbf A\mathbf Y
@@ -649,8 +709,12 @@ $$
 
 Because $\mathbf Z\sim N_n(\mathbf 0,\mathbf I_n)$, the $Z_i$ are independent standard normal random variables. Hence
 $$
-\sum_{i=1}^k Z_i^2\sim \chi^2_k.
+\boxed{\sum_{i=1}^k Z_i^2\sim \chi^2_k}.
 $$
+
+:::
+
+::::
 
 # Why this theorem matters for regression
 
