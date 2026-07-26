@@ -1,0 +1,31 @@
+directories:
+  raw-data:
+    path: _raw_data
+  raw-reference-git:
+    path: _reference
+    ignore-git: no
+  raw-reference-non-git:
+    path: _reference/non_git
+  raw-content:
+    path: _content
+  docs:
+    path: docs
+build:
+  github:
+    slides-2026-sta2005s:
+      content:
+      - raw-data
+      - raw-reference-non-git
+      - raw-content
+      - docs
+      - output
+  scripts:
+  - w0/OutlineReg.qmd
+  - w0/NotesRegW1S0Prereq.qmd
+  - w0/QARegNotesW1S0Prereq.qmd
+  - w1/SlidesRegW1S1Intro.qmd
+  - w1/SlidesRegW1S3MVN.qmd
+  - w1/QARegSlidesW1S3IntroMVN.qmd
+dev:
+  scripts: w1/SlidesRegW1S3MVN.qmd
+

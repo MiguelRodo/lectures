@@ -1,141 +1,257 @@
 ---
-title: "Q&A: Week One - Slide deck one - Multivariate normal distribution"
-subtitle: "Version 1"
+title: "Q&A: Week One - Slide deck III - The normal distribution and related theorems"
+subtitle: "Version 2"
 format:
   html:
     embed-resources: true
 ---
 
+#### Normality and linear regression
+
+- Is normality required for ordinary least-squares point estimation?
+  - No
+- What does the normal-error assumption provide for linear regression?
+  - Exact finite-sample distributions used for inference
+- Under normal errors, how are least-squares estimates related to maximum likelihood estimates?
+  - They are also maximum likelihood estimates
+
 #### The univariate normal distribution
 
-- What is the PDF of $X \sim N(\mu, \sigma^2)$?
-  - $f(x) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp \left( -\frac{(x - \mu)^2}{2\sigma^2} \right)$
-- What are $E(X)$ and $\text{Var}(X)$?
-  - $E(X) = \mu$
-  - $\text{Var}(X) = \sigma^2$
+- How is a univariate normal random variable with mean $\mu$ and variance $\sigma^2$ denoted?
+  - $X\sim N(\mu,\sigma^2)$
+- What is the probability density function of $X\sim N(\mu,\sigma^2)$?
+
+  $$
+  f(x)
+  =
+  \frac{1}{\sqrt{2\pi\sigma^2}}
+  \exp\left\{-\frac{(x-\mu)^2}{2\sigma^2}\right\},
+  \qquad x\in\mathbb R.
+  $$
+- What is the mean of $X$?
+  - $E(X)=\mu$
+- What is the variance of $X$?
+  - $\operatorname{Var}(X)=\sigma^2$
 
 #### The multivariate normal distribution
 
-- What is the density function of a random vector $\mathbf{X} \sim MVN(\mu, \symbf{\Sigma})$?
-  - $f(\mathbf{x}) = \frac{1}{(2\pi)^{p/2} |\symbf{\Sigma}|^{1/2}} \exp \left( -\frac{1}{2} (\mathbf{x} - \mu)^T \symbf{\Sigma}^{-1} (\mathbf{x} - \mu) \right)$
-- What does $\symbf{\Sigma}$ represent in this context?
-  - Covariance matrix
+- How is a $p$-dimensional multivariate normal random vector denoted?
+  - $\mathbf X\sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$
+- What does $\boldsymbol\mu$ represent?
+  - The mean vector of $\mathbf X$
+- What does $\boldsymbol\Sigma$ represent?
+  - The covariance matrix of $\mathbf X$
+- What condition on $\boldsymbol\Sigma$ is required for the ordinary multivariate normal density?
+  - $\boldsymbol\Sigma$ must be positive definite
+- What is the density of $\mathbf X\sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$ when $\boldsymbol\Sigma$ is positive definite?
 
-#### Moment-generating function (MGF)
+  $$
+  f(\mathbf x)
+  =
+  \frac{1}{(2\pi)^{p/2}|\boldsymbol\Sigma|^{1/2}}
+  \exp\left\{-\frac{1}{2}(\mathbf x-\boldsymbol\mu)^T
+  \boldsymbol\Sigma^{-1}(\mathbf x-\boldsymbol\mu)\right\},
+  \qquad \mathbf x\in\mathbb R^p.
+  $$
+- What is $E(\mathbf X)$?
+  - $E(\mathbf X)=\boldsymbol\mu$
+- What is $\operatorname{Cov}(\mathbf X)$?
+  - $\operatorname{Cov}(\mathbf X)=\boldsymbol\Sigma$
+- How can $\operatorname{Cov}(\mathbf X)$ be written as an expectation?
+  - $\operatorname{Cov}(\mathbf X)=E\{(\mathbf X-\boldsymbol\mu)(\mathbf X-\boldsymbol\mu)^T\}$
+- What is the $(i,j)$ entry of $\boldsymbol\Sigma$?
+  - $\operatorname{Cov}(X_i,X_j)$
 
-- What is the definition of MGF?
-  - $E[e^{t'X}]$
-  - What is $t$?
-    - A constant
-- When does MGF exist?
-  - If the expectation is finite
-  - Where?
-    - in the region of $t = 0$
-- What does the $r$-th derivative of MGF evaluated at $t=0$ equal?
-  - $r$-th moment, $E[X^r]$
-- What is the main use of MGF in this context?
-  - To find the distribution of linear transformations of MVN random variables
+#### Moment-generating functions
 
-#### Linear transformation of MVN random variable: Theorem
+- What is the moment-generating function of a random vector $\mathbf X$?
 
-- Conditions:
-  - On $\symbf{X}$:
-    - Distribution?
-      - Normal
-    - Mean and variance?
-      - None
-    - Length?
-      - Any
-  - On $\symbf{C}$:
-    - Size?
-      - Same number of rows as length of $\symbf{X}$
-    - Rank?
-      - Any
-      - Consequence if rank is less than number of rows?
-        - $\symbf{C}\symbf{\Sigma}\symbf{C}^T$ is singular
-- Consequence:
-  - Notation for random variable of interest?
-    - $\symbf{Y}$
-  - Consequencues for $\symbf{Y}$:
-    - Distribution?
-      - Normal
-    - Mean?
-      - $\symbf{C}\mu$
-    - Variance?
-      - $\symbf{C}\symbf{\Sigma}\symbf{C}^T$
+  $$
+  M_{\mathbf X}(\mathbf t)
+  =
+  E\left\{\exp(\mathbf t^T\mathbf X)\right\}.
+  $$
+- What is $\mathbf t$ in the multivariate MGF?
+  - A deterministic vector conformable with $\mathbf X$
+- What property makes an existing MGF useful for identifying a distribution?
+  - It uniquely determines the distribution
+- What is the MGF of $\mathbf X\sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$?
 
-#### Linear transformation of MVN random variable: Proof
+  $$
+  M_{\mathbf X}(\mathbf t)
+  =
+  \exp\left\{
+  \mathbf t^T\boldsymbol\mu
+  +
+  \frac{1}{2}\mathbf t^T\boldsymbol\Sigma\mathbf t
+  \right\}.
+  $$
 
-- First step?
-  - Write MGF of $\symbf{Y}$ in terms of $\symbf{X}$
-- Second step?
-  - Expand the MGF of $\symbf{X}$
-  - Special aspect?
-    - Parameter is not $\symbf{t}$
-    - What is it?
-      - $\symbf{C}'t$
-- Third step?
-  - Recognise the MGF as that of a normal distribution
+#### Linear transformations of multivariate normal random vectors
 
-#### MVN partitions are MVN: Theorem
+- What distributional condition is imposed on $\mathbf X$ in the linear-transformation theorem?
+  - $\mathbf X\sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$
+- What are the dimensions of the fixed transformation matrix $\mathbf C$?
+  - $q\times p$
+- If $\mathbf Y=\mathbf C\mathbf X$, what is the distribution of $\mathbf Y$?
 
-- Conditions:
-  - On $\symbf{X}$:
-    - Distribution?
-      - MVN
-    - Mean and covariance matrix?
-      - $\mu$ and $\symbf{\Sigma}$
-    - Partition?
-      - $\symbf{X} = (\symbf{X}^{(1)}, \symbf{X}^{(2)})$
-- Consequences:
-  - On $\symbf{X}^{(i)}$:
-    - Distribution?
-      - MVN
-    - Mean and covariance matrix?
-      - $\mu^{(i)}$ and $\symbf{\Sigma}_{ii}$
+  $$
+  \mathbf Y
+  =
+  \mathbf C\mathbf X
+  \sim
+  N_q\left(
+  \mathbf C\boldsymbol\mu,
+  \mathbf C\boldsymbol\Sigma\mathbf C^T
+  \right).
+  $$
+- What is the mean of $\mathbf Y=\mathbf C\mathbf X$?
+  - $E(\mathbf Y)=\mathbf C\boldsymbol\mu$
+- What is the covariance matrix of $\mathbf Y=\mathbf C\mathbf X$?
+  - $\operatorname{Cov}(\mathbf Y)=\mathbf C\boldsymbol\Sigma\mathbf C^T$
+- Must $\mathbf C$ have full row rank?
+  - No
+- What happens if $\mathbf C\boldsymbol\Sigma\mathbf C^T$ is singular?
+  - The resulting multivariate normal distribution is degenerate
+- Do the mean and covariance formulas remain valid when the resulting distribution is degenerate?
+  - Yes
 
-#### Idempotent quadratic product of standard MVN is $\chi^2$: theorem
+#### Proof of the linear-transformation theorem
 
-- Conditions:
-  - On $\symbf{A}$:
-    - Special property?
-      - Idempotent
-    - Rank?
-      - $k$
-  _ On $\symbf{Y}$:
-    - Distribution?
-      - MVN
-    - Mean?
-      - Zero
-    - Covariance matrix?
-      - $\symbf{I}$
-- Consequence:
-  - Random variable of interest?
-    - $\symbf{Y}^T \symbf{A} \symbf{Y}$
-  - Distribution:
-    - Family?
-      - $\chi^2$
-    - Degrees of freedom?
-      - $k$
-  
-#### Idempotent quadratic product of standard MVN is $\chi^2$: proof
+- How is the MGF of $\mathbf Y=\mathbf C\mathbf X$ expressed in terms of the MGF of $\mathbf X$?
 
-- First step:
-  - Part one?
-    - Define $\symbf{Z}$
-    - What is $\symbf{Z}$?
-      - $\symbf{P}'\symbf{Y}$
-  - Part two?
-    - Find the distribution of $\symbf{Z}$
-    - What is it?
-      - $N(0, \symbf{I})$
-- Second step:
-  - Re-express $\symbf{Y}^T \symbf{A} \symbf{Y}$
-  - In terms of?
-    - $\symbf{Z}$
-  - What does it become?
-    - $\sum_{i=1}^k Z_i^2$
-- Third step?
-  - Recognise the distribution of $\sum_{i=1}^k Z_i^2$
-  - What is it?
-    - $\chi^2_k$
+  $$
+  \begin{aligned}
+  M_{\mathbf Y}(\mathbf t)
+  &=E\left\{\exp(\mathbf t^T\mathbf Y)\right\}\\
+  &=E\left\{\exp(\mathbf t^T\mathbf C\mathbf X)\right\}\\
+  &=E\left\{\exp\left((\mathbf C^T\mathbf t)^T\mathbf X\right)\right\}\\
+  &=M_{\mathbf X}(\mathbf C^T\mathbf t).
+  \end{aligned}
+  $$
+- What does substitution of the MVN MGF give for $M_{\mathbf Y}(\mathbf t)$?
+
+  $$
+  M_{\mathbf Y}(\mathbf t)
+  =
+  \exp\left\{
+  \mathbf t^T\mathbf C\boldsymbol\mu
+  +
+  \frac{1}{2}\mathbf t^T\mathbf C\boldsymbol\Sigma\mathbf C^T\mathbf t
+  \right\}.
+  $$
+- Which distribution has this MGF?
+  - $N_q(\mathbf C\boldsymbol\mu,\mathbf C\boldsymbol\Sigma\mathbf C^T)$
+- What conclusion follows?
+  - $\mathbf C\mathbf X\sim N_q(\mathbf C\boldsymbol\mu,\mathbf C\boldsymbol\Sigma\mathbf C^T)$
+
+#### Selection matrices
+
+- What does a selection matrix do?
+  - It extracts specified components of a vector
+- Why can the linear-transformation theorem be applied to a selection matrix?
+  - A selection matrix defines a fixed linear transformation
+
+#### Partitions of multivariate normal random vectors
+
+- How is the random vector partitioned in the partition theorem?
+
+  $$
+  \mathbf X
+  =
+  \begin{pmatrix}
+  \mathbf X^{(1)}\\
+  \mathbf X^{(2)}
+  \end{pmatrix}.
+  $$
+- What are the dimensions of $\mathbf X^{(1)}$ and $\mathbf X^{(2)}$?
+  - $\mathbf X^{(1)}$ is $q\times1$ and $\mathbf X^{(2)}$ is $r\times1$
+- How are the mean vector and covariance matrix partitioned?
+
+  $$
+  \boldsymbol\mu
+  =
+  \begin{pmatrix}
+  \boldsymbol\mu^{(1)}\\
+  \boldsymbol\mu^{(2)}
+  \end{pmatrix},
+  \qquad
+  \boldsymbol\Sigma
+  =
+  \begin{pmatrix}
+  \boldsymbol\Sigma_{11}&\boldsymbol\Sigma_{12}\\
+  \boldsymbol\Sigma_{21}&\boldsymbol\Sigma_{22}
+  \end{pmatrix}.
+  $$
+- What is the marginal distribution of $\mathbf X^{(1)}$?
+  - $\mathbf X^{(1)}\sim N_q(\boldsymbol\mu^{(1)},\boldsymbol\Sigma_{11})$
+- What is the marginal distribution of $\mathbf X^{(2)}$?
+  - $\mathbf X^{(2)}\sim N_r(\boldsymbol\mu^{(2)},\boldsymbol\Sigma_{22})$
+- Which selection matrix extracts $\mathbf X^{(1)}$?
+  - $\mathbf C_1=\begin{pmatrix}\mathbf I_q&\mathbf 0_{q\times r}\end{pmatrix}$
+- What is $\mathbf C_1\mathbf X$?
+  - $\mathbf C_1\mathbf X=\mathbf X^{(1)}$
+- What is $\mathbf C_1\boldsymbol\mu$?
+  - $\mathbf C_1\boldsymbol\mu=\boldsymbol\mu^{(1)}$
+- What is $\mathbf C_1\boldsymbol\Sigma\mathbf C_1^T$?
+  - $\mathbf C_1\boldsymbol\Sigma\mathbf C_1^T=\boldsymbol\Sigma_{11}$
+- Which selection matrix extracts $\mathbf X^{(2)}$?
+  - $\mathbf C_2=\begin{pmatrix}\mathbf 0_{r\times q}&\mathbf I_r\end{pmatrix}$
+- What does joint normality imply about the marginal distributions?
+  - Each marginal distribution is normal
+- Do normal marginal distributions by themselves imply joint normality?
+  - No
+
+#### Symmetric idempotent quadratic forms
+
+- What does it mean for a matrix $\mathbf A$ to be idempotent?
+  - $\mathbf A^2=\mathbf A$
+- What distributional condition is imposed on $\mathbf Y$ in the quadratic-form theorem?
+  - $\mathbf Y\sim N_n(\mathbf 0,\mathbf I_n)$
+- What conditions are imposed on $\mathbf A$?
+  - $\mathbf A$ is symmetric and idempotent
+- What is the rank of $\mathbf A$ denoted by?
+  - $k$
+- What is the distribution of $\mathbf Y^T\mathbf A\mathbf Y$?
+
+  $$
+  \mathbf Y^T\mathbf A\mathbf Y\sim\chi_k^2.
+  $$
+- What determines the degrees of freedom of the chi-square distribution?
+  - $\operatorname{rank}(\mathbf A)=k$
+- Why is symmetry of $\mathbf A$ required in the proof?
+  - It permits orthogonal diagonalisation
+
+#### Proof of the quadratic-form theorem
+
+- What type of matrix $\mathbf P$ is used to diagonalise $\mathbf A$?
+  - An orthogonal matrix
+- What diagonal form is obtained for a symmetric idempotent matrix of rank $k$?
+
+  $$
+  \mathbf P^T\mathbf A\mathbf P
+  =
+  \begin{pmatrix}
+  \mathbf I_k&\mathbf 0\\
+  \mathbf 0&\mathbf 0
+  \end{pmatrix}.
+  $$
+- What transformed random vector is defined in the proof?
+  - $\mathbf Z=\mathbf P^T\mathbf Y$
+- What is the distribution of $\mathbf Z$?
+  - $\mathbf Z\sim N_n(\mathbf 0,\mathbf I_n)$
+- Why does $\mathbf Z$ have covariance matrix $\mathbf I_n$?
+  - $\mathbf P^T\mathbf I_n\mathbf P=\mathbf P^T\mathbf P=\mathbf I_n$
+- How is the quadratic form expressed in terms of the components of $\mathbf Z$?
+
+  $$
+  \mathbf Y^T\mathbf A\mathbf Y
+  =
+  \sum_{i=1}^k Z_i^2.
+  $$
+- What are the distributions of $Z_1,\ldots,Z_n$?
+  - They are independent standard normal random variables
+- What is the distribution of the sum of their first $k$ squared values?
+  - $\sum_{i=1}^k Z_i^2\sim\chi_k^2$
+- What conclusion follows for the original quadratic form?
+  - $\mathbf Y^T\mathbf A\mathbf Y\sim\chi_k^2$
