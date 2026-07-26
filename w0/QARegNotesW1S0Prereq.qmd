@@ -6,128 +6,291 @@ format:
     embed-resources: true
 ---
 
-## Statistical distributions
+#### Statistical distributions
 
-- Why do related univariate distributions arise frequently in the context of linear regression?
-  - Since the response is normally distributed (and univariate)
-- How is a standard normal random variable denoted?
-  - $Z$ (usually)
-  - How do we write its distribution?
-    - $N(0, 1)$
-  - Suppose a normal random variable has mean $\mu$ and variance $\sigma^2$. How do we denote its distribution?
-    - $N(\mu, \sigma^2)$
-  - How to create a $N(\mu, \sigma^2)$ random variable from a $N(0, 1)$ random variable?
-    - Multiply by $\sigma$ and add $\mu$
-    - Formula?
-      - $\mu + \sigma Z$
-  - How do we create a $N(0, 1)$ random variable from a $N(\mu, \sigma^2)$ random variable?
-    - Subtract $\mu$ and divide by $\sigma$
-    - Formula?
-      - $\frac{(X - \mu)}{\sigma}$
-- What is the sum of squares of $n$ standard normal random variables distributed as?
-  - $\chi^2$ with $n$ degrees of freedom
-  - How do we denote this?
-    - $\chi^2_n$
-- $\chi^2_n$ random variable:
-  - What variables do we need to create it?
-    - $n$ normal random variables
-  - What are the conditions on the random variables:
+- How is a standard normal random variable represented?
+  - $Z\sim N(0,1)$
+- What are the mean and variance of a standard normal random variable:
+  - Mean?
+    - $0$
+  - Variance?
+    - $1$
+- Chi-squared distribution:
+  - How is a central chi-squared random variable with $n$ degrees of freedom constructed?
+    - As the sum of squares of $n$ independent standard normal random variables
+  - What distributional conditions must the random variables satisfy:
     - First?
-      - Standard normal
-      - Meaning?
-        - Mean 0 and variance 1
+      - $Z_i\sim N(0,1)$
     - Second?
-      - Independent
-    - Formula?
-      - $\sum_{i=1}^n Z_i^2$
-- $t_n$ random variable:
-  - What variables do we need to create it:
-    - First?
-      - Normal random variable
-    - Second?
-      - $\chi^2_n$ random variable
-  - How must these two variables relate?
-    - Independent
-  - What is the formula?
-    - $\frac{X}{\sqrt{\chi^2_n/n}}$
-- $F_{m,n}$ random variable:
-  - What variables do we need to create it:
-    - First?
-      - $\chi^2_m$ random variable
-    - Second?
-      - $\chi^2_n$ random variable
-  - How must these two variables relate?
-    - Independent
-  - What is the formula?
-    - $\frac{\chi^2_m / m}{\chi^2_n / n}$
+      - They are independent
+  - What is the defining relationship?
+    - $X^2=\sum_{i=1}^n Z_i^2\sim\chi_n^2$
+  - What is its expected value?
+    - $\mathrm{E}(X^2)=n$
+  - What is its variance?
+    - $\mathrm{Var}(X^2)=2n$
+- How can independent non-standard normal variables be used to construct a chi-squared random variable:
+  - What is assumed about each variable?
+    - $Y_i\sim N(\mu_i,\sigma_i^2)$
+  - How must the variables relate?
+    - They must be independent
+  - How is each variable standardised?
+    - $\frac{Y_i-\mu_i}{\sigma_i}$
+  - What is the resulting relationship?
+    - $X^2=\sum_{i=1}^n\left(\frac{Y_i-\mu_i}{\sigma_i}\right)^2\sim\chi_n^2$
+- How can a multivariate normal random vector be used to construct a chi-squared random variable:
+  - What is the distribution of the random vector?
+    - $\symbf{Y}\sim\mathrm{MVN}(\symbf{\mu},\symbf{\Sigma})$
+  - What dimension does the random vector have?
+    - $n$
+  - What condition is imposed on the covariance matrix?
+    - It is positive definite
+  - What consequence does positive definiteness have here?
+    - The covariance matrix is invertible
+  - What is the resulting relationship?
+    - $(\symbf{Y}-\symbf{\mu})^T\symbf{\Sigma}^{-1}(\symbf{Y}-\symbf{\mu})\sim\chi_n^2$
+- $t$-distribution:
+  - How is a $t$ random variable with $n$ degrees of freedom defined?
+    - $T=\frac{Z}{\sqrt{X^2/n}}\sim t_n$
+  - What is the distribution of the numerator?
+    - $Z\sim N(0,1)$
+  - What is the distribution of the chi-squared variable in the denominator?
+    - $X^2\sim\chi_n^2$
+  - How must the numerator and chi-squared variable relate?
+    - They must be independent
+- $F$-distribution:
+  - How is an $F$ random variable with $n$ and $m$ degrees of freedom defined?
+    - $F=\frac{X_1^2/n}{X_2^2/m}\sim F_{n,m}$
+  - What is the distribution of the numerator's chi-squared variable?
+    - $X_1^2\sim\chi_n^2$
+  - What is the distribution of the denominator's chi-squared variable?
+    - $X_2^2\sim\chi_m^2$
+  - How must the two chi-squared variables relate?
+    - They must be independent
+- How are the $t$- and $F$-distributions related?
+  - Squaring a $t_n$ random variable produces an $F_{1,n}$ random variable
+- What is the relationship in symbols?
+  - $T\sim t_n\implies T^2\sim F_{1,n}$
 
-## Linear algebra
+#### Linear algebra
 
-- What is the notation for the i-th row of a matrix $\symbf{A}$?
-  - $\symbf{a}_{[i]}$
-  - Is $\symbf{a}_{[i]}$ a row or column vector?
-    - Column vector
-- What is the notation for the i-th column of a matrix $\symbf{A}$?
-  - $\symbf{a}_{i}$
-  - Is $\symbf{a}_{i}$ a row or column vector?
-    - Column vector
-- How do you calculate the $ij$-th element in matrix multiplication $\symbf{AB}$?
-  - Dot product of i-th row of $\symbf{A}$ and j-th column of $\symbf{B}$
-- What are the conditions for orthogonality between two vectors $\symbf{x}$ and $\symbf{y}$:
-  - Algebraic condition?
-    - Their dot product is zero
-  - Geometric condition?
-    - The angle between the vectors is 90 degrees
-- Condition for a matrix being column-wise orthogonal?
-  - Every column is orthogonal to every other column
-- Conditions for a matrix being orthogonal:
+- Row and column notation:
+  - What does $\symbf{a}_{[i]}$ refer to?
+    - The $i$-th row of $\symbf{A}$
+  - How is that row written when considered outside the matrix?
+    - As a column vector
+  - What does $\symbf{a}_i$ refer to?
+    - The $i$-th column of $\symbf{A}$
+  - How is that column written when considered outside the matrix?
+    - As a column vector
+- For $\symbf{A}=\begin{bmatrix}1&2\\3&4\end{bmatrix}$, what is its first row under the course convention?
+  - $\symbf{a}_{[1]}=\begin{bmatrix}1\\2\end{bmatrix}$
+- For the same matrix, what is its first column?
+  - $\symbf{a}_1=\begin{bmatrix}1\\3\end{bmatrix}$
+- Why is a row written as a column vector when it is discussed on its own?
+  - This is the adopted vector-notation convention
+- May the notes and slides sometimes deviate from this convention?
+  - Yes
+- Matrix multiplication:
+  - How is the $ij$-th element of $\symbf{AB}$ calculated?
+    - As the dot product of the $i$-th row of $\symbf{A}$ and the $j$-th column of $\symbf{B}$
+  - What is the formula using transpose notation?
+    - $(\symbf{AB})_{ij}=\symbf{a}_{[i]}'\symbf{b}_j$
+  - What is the equivalent dot-product notation?
+    - $(\symbf{AB})_{ij}=\symbf{a}_{[i]}\cdot\symbf{b}_j$
+- Block matrix multiplication:
+  - When can block matrix multiplication be especially useful?
+    - When submatrices have useful structure
+  - How are submatrices treated during block multiplication?
+    - Like elements in ordinary matrix multiplication
+  - What condition must the blocks satisfy?
+    - They must be conformable
+  - What does conformable mean in this context?
+    - Their dimensions line up so that the multiplications are defined
+  - Which structured matrices can simplify block multiplication:
+    - First?
+      - Identity matrices
+    - Second?
+      - Zero matrices
+  - Why can block multiplication be easier than writing every dot product?
+    - It exploits the effects of identity and zero matrices
+  - Where will this block structure later be useful?
+    - In factorising idempotent matrices
+- Orthogonal vectors:
+  - What is the algebraic condition for two vectors to be orthogonal?
+    - $\symbf{x}^T\symbf{y}=\sum_i x_i y_i=0$
+  - What is the equivalent geometric condition?
+    - The angle between them is 90 degrees
+- Give an example of two orthogonal vectors.
+  $\begin{bmatrix}1\\2\end{bmatrix}\text{ and }\begin{bmatrix}-2\\1\end{bmatrix}$
+- What makes a set of vectors orthonormal:
   - First?
-    - Square
+    - The vectors are mutually orthogonal
   - Second?
-    - Every column is orthogonal to every other column
-- Conditions for a matrix being orthonormal:
+    - Every vector has unit length
+- Orthogonal matrices:
+  - What shape must an orthogonal matrix have?
+    - It must be square
+  - What defining identity does an orthogonal matrix satisfy?
+    - $\symbf{Q}'\symbf{Q}=\symbf{Q}\symbf{Q}'=\symbf{I}$
+  - What equivalent property do its columns have?
+    - They form an orthonormal set
+  - What property do its rows then also have?
+    - They form an orthonormal set
+  - Why can the term "orthogonal matrix" be confusing?
+    - Its columns are orthonormal, not merely orthogonal
+  - How is its inverse calculated?
+    - $\symbf{Q}^{-1}=\symbf{Q}'$
+- Is the identity matrix orthogonal?
+  - Yes
+- When is a diagonal matrix orthogonal?
+  - When every diagonal entry is either 1 or -1
+- Why is $\begin{bmatrix}1&0\\0&2\end{bmatrix}$ not an orthogonal matrix?
+  - Its second column does not have unit length
+- What property does $\begin{bmatrix}1&0\\0&2\end{bmatrix}$ nevertheless have?
+  - Its columns are orthogonal
+- What must be done to mutually orthogonal columns that do not have unit length before they form an orthogonal matrix?
+  - They must be normalised
+- Where do orthogonal matrices appear in this course:
   - First?
-    - Orthogonal
+    - In the factorisation of real symmetric matrices
   - Second?
-    - Every column has unit length
-- How is the trace of a matrix calculated?
-  - Sum of diagonal elements
-- What is the cyclic property of traces?
-  - $\mathrm{tr}(\symbf{ABC})= \mathrm{tr}(\symbf{CAB})= \mathrm{tr}(\symbf{BCA})$
+    - In the factorisation of symmetric idempotent matrices
+- In regression, to which vector is the residual vector orthogonal?
+  - The vector of fitted values
+- In regression, to which matrix columns is the residual vector orthogonal?
+  - The columns of the model matrix
+- What are the relevant regression vectors?
+  - $\symbf{e}=\symbf{y}-\hat{\symbf{y}}$
+- Trace:
+  - How is the trace of a matrix calculated?
+    - By summing its diagonal elements
+  - What is the trace of $\begin{bmatrix}a&b\\c&d\end{bmatrix}$?
+    - $a+d$
+- For $\symbf{A}:p\times q$ and $\symbf{B}:q\times p$, what trace identity holds?
+  - $\mathrm{tr}(\symbf{A}\symbf{B})=\mathrm{tr}(\symbf{B}\symbf{A})$
+- Cyclic trace property:
+  - What identity holds for conformable matrices $\symbf{A}$, $\symbf{B}$ and $\symbf{C}$?
+    - $\mathrm{tr}(\symbf{A}\symbf{B}\symbf{C})=\mathrm{tr}(\symbf{C}\symbf{A}\symbf{B})=\mathrm{tr}(\symbf{B}\symbf{C}\symbf{A})$
+  - Does the cyclic trace property permit arbitrary reordering?
+    - No
+  - Which reordered expression is not generally equal to $\mathrm{tr}(\symbf{A}\symbf{B}\symbf{C})$?
+    - $\mathrm{tr}(\symbf{B}\symbf{A}\symbf{C})$
+- Rank:
+  - How can rank be described in terms of a basis?
+    - As the size of a basis of the column or row space
+  - What is a basis?
+    - A minimal set of vectors that spans the relevant space
+  - How can rank be described in terms of linear independence?
+    - As the number of linearly independent columns or rows
+- Full rank:
+  - Under the terminology used in these notes, when is a matrix called full rank?
+    - When it is square and its rank equals its number of rows and columns
+  - For an $n\times n$ matrix, what is the full-rank condition?
+    - $\mathrm{rank}(\symbf{A})=n$
+  - What key implication follows for a full-rank square matrix?
+    - Its inverse exists
+  - What inverse identity then holds?
+    - $\symbf{A}\symbf{A}^{-1}=\symbf{I}$
 - What is the maximum possible rank of a rectangular matrix?
-  - Its shorter dimension
-- Which matrices share the same rank as $\symbf{A}$?
-  - $\symbf{A}$′, $\symbf{A}\symbf{A}'$, and $\symbf{A}'\symbf{A}$
-- What is the rank condition for invertibility?
-  - Rank must equal the number of rows and columns of the matrix
-- What is an eigenvector $\symbf{x}$ of a matrix $\symbf{A}$?
-  - A unit-length vector such that $\symbf{A}\symbf{x}=\lambda\symbf{x}$
-- What can any symmetric matrix $\symbf{S}$ be factorisation as?
-  - $\symbf{P}\symbf{\Lambda}\symbf{P}'$
-  - What is:
-    - $\symbf{P}$?
-      - Matrix of eigenvectors of $\symbf{S}$
-      - Are the eigenvectors the rows or columns of $\symbf{P}$?
-        - Columns
-    - $\symbf{\Lambda}$?
-      - Diagonal matrix of eigenvalues of $\symbf{S}$
-    - What is a name commonly given to the factorisation $\symbf{S}= \symbf{P}\symbf{\Lambda}\symbf{P}'$?
-      - Spectral decomposition
-- What characterizes a positive definite matrix?
-  - First?
-      - All eigenvalues are positive
-  - Second?
-    - Symmetric
-- What is the condition for a matrix $\symbf{A}$ to be idempotent?
-  - $\symbf{A}^2=\symbf{A}\symbf{A}=\symbf{A}$
-- What are the eigenvalues of an idempotent matrix?
-  - 0 and 1
-- What is the factorization of an idempotent matrix?
-  - $\symbf{P}\symbf{\Lambda}\symbf{P}'$
-  - What is:
-    - $\symbf{\Lambda}$?
-      - $\begin{bmatrix} \symbf{I}_r & 0 \\ 0 & 0 \end{bmatrix}$
-    - $\symbf{P}$?
-      - Matrix of eigenvectors of $\symbf{A}$
-      - Are the eigenvectors the rows or columns of $\symbf{P}$?
-        - Columns
+  - The smaller of its number of rows and columns
+- When does a rectangular matrix have full column rank?
+  - When its rank equals its number of columns
+- When does a rectangular matrix have full row rank?
+  - When its rank equals its number of rows
+- Which matrices have the same rank as $\symbf{A}$?
+  - $\symbf{A}',\ \symbf{A}\symbf{A}',\ \text{and }\symbf{A}'\symbf{A}$
+- Under what condition do the product-rank equalities apply?
+  - The relevant products must exist
+- Why is the rank of $\symbf{X}'\symbf{X}$ relevant in this course?
+  - A centred data matrix produces a covariance matrix proportional to $\symbf{X}'\symbf{X}$
+- Eigenvectors and eigenvalues:
+  - What is an eigenvector $\symbf{x}$ of a matrix $\symbf{A}$?
+    - A non-zero vector whose direction is unchanged by multiplication by $\symbf{A}$
+  - What equation defines it?
+    - $\symbf{A}\symbf{x}=\lambda\symbf{x}$
+  - What does $\lambda$ represent?
+    - The corresponding eigenvalue
+  - Is an eigenvector required by definition to have unit length?
+    - No
+  - What happens when an eigenvector is multiplied by a non-zero scalar?
+    - It remains an eigenvector for the same eigenvalue
+  - Why are eigenvectors conventionally normalised?
+    - Their scale is otherwise arbitrary
+  - What length convention is used in this course?
+    - Unit length
+- Symmetric matrices:
+  - What condition defines a symmetric matrix?
+    - $\symbf{A}=\symbf{A}'$
+  - What shape must a symmetric matrix have?
+    - It must be square
+  - How can any real symmetric matrix be factorised?
+    - $\symbf{A}=\symbf{P}\symbf{\Lambda}\symbf{P}'$
+  - What are the columns of $\symbf{P}$?
+    - An orthonormal set of eigenvectors of $\symbf{A}$
+  - What kind of matrix is $\symbf{P}$?
+    - An orthogonal matrix
+  - What does $\symbf{\Lambda}$ contain?
+    - The ordered eigenvalues of $\symbf{A}$
+  - What kind of matrix is $\symbf{\Lambda}$?
+    - A diagonal matrix
+- Positive definite matrices:
+  - What two properties define a positive definite matrix:
+    - First?
+      - It is symmetric
+    - Second?
+      - All its eigenvalues are positive
+  - What equivalent quadratic-form condition holds for every non-zero vector $\symbf{x}$?
+    - $\symbf{x}'\symbf{A}\symbf{x}>0$
+- Positive semidefinite matrices:
+  - What quadratic-form condition defines a symmetric positive semidefinite matrix?
+    - $\symbf{x}'\symbf{A}\symbf{x}\geq0\text{ for every }\symbf{x}$
+  - Must all its eigenvalues be strictly positive?
+    - No
+- Why is every covariance matrix positive semidefinite?
+  - Every linear combination has non-negative variance
+- What identity establishes this result?
+  - $\symbf{a}'\symbf{\Sigma}\symbf{a}=\mathrm{Var}(\symbf{a}'\symbf{X})\geq0$
+- When is a covariance matrix positive definite?
+  - When every non-zero linear combination of the variables has positive variance
+- What prevents a covariance matrix from being positive definite?
+  - An exact linear dependency among the variables
+- Idempotent matrices:
+  - What condition defines an idempotent matrix?
+    - $\symbf{A}^2=\symbf{A}$
+  - What values can its eigenvalues take?
+    - $0\text{ or }1$
+  - Must both eigenvalues occur?
+    - No
+  - How can a general idempotent matrix be diagonalised?
+    - $\symbf{A}=\symbf{P}\symbf{\Lambda}\symbf{P}^{-1}$
+  - When can an idempotent matrix be orthogonally diagonalised?
+    - When it is also symmetric
+  - What is the orthogonal diagonalisation in that case?
+    - $\symbf{A}=\symbf{P}\symbf{\Lambda}\symbf{P}'$
+  - What kind of matrix is $\symbf{P}$ in the symmetric case?
+    - An orthogonal matrix
+  - What is the block form of $\symbf{\Lambda}$ in the symmetric case?
+    - $\symbf{\Lambda}=\begin{bmatrix}\symbf{I}_r&0\\0&0\end{bmatrix}$
+  - What does $r$ represent?
+    - $r=\mathrm{rank}(\symbf{A})$
+  - What is $\symbf{I}_r$?
+    - The $r\times r$ identity matrix
+  - If $\symbf{A}$ is idempotent, what related matrix is also idempotent?
+    - $\symbf{I}-\symbf{A}$
+- Where do idempotent matrices occur in regression:
+  - What is the hat matrix?
+    - $\symbf{H}=\symbf{X}(\symbf{X}'\symbf{X})^{-1}\symbf{X}'$
+  - Which two special properties does the hat matrix have:
+    - First?
+      - It is symmetric
+    - Second?
+      - It is idempotent
+  - How are fitted values calculated using the hat matrix?
+    - $\hat{\symbf{y}}=\symbf{H}\symbf{y}$
+  - What is the residual-maker matrix?
+    - $\symbf{I}-\symbf{H}$
+  - How are residuals calculated using it?
+    - $\symbf{e}=(\symbf{I}-\symbf{H})\symbf{y}$
+  - What orthogonality result do these properties help establish?
+    - Residuals are orthogonal to fitted values

@@ -1,115 +1,685 @@
 ---
-title: "Regression Week I: Introduction and foundations to GLMs"
-subtitle: "Lecture IV: The normal distribution and related theorems"
-author: "Yovna Junglee (edited by Miguel Rodo)"
+title: "Regression Week I: Foundations for linear models"
+subtitle: "Slide deck III: The normal distribution and related theorems"
+author: "Yovna Junglee, edited by Miguel Rodo"
 institute: University of Cape Town
-aspectratio: 169
-theme: Boadilla
+date: today
 format:
   beamer:
     embed-resources: true
-    colorlinks: true
+    aspectratio: 169
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
     include-in-header:
       file: preamble.tex
-    classoption: "aspectratio=169"
+    keep-tex: true
 ---
 
-# The centrality of the normal distribution
-
-- As mentioned in the demonstration linear regression analysis, we typically assume that the errors are normally distributed.
-
-<!-- \pause !-->
-
-- This assumption leads to our parameters of interest (i.e. $\beta_0$, $\beta_1$, $\beta_2$, $\ldots$) having a normal distribution (which we'll show next week). 
-- Therefore both our criterion for estimating the parameters as well as our inference regarding the parameters strongly depend on the normal distribution:
-
-```{r, include = FALSE}
-library(tibble)
-library(dplyr)
-
-data_raw_ad <- read.csv("_raw_data/Advertising.csv", header = TRUE)
-
-# Convert the raw data to a tibble for easier manipulation
-data_raw_ad <- as_tibble(data_raw_ad)
-
-data_tidy_ad <- data_raw_ad |>
-  dplyr::select(-X)
-data_tidy_ad[1, ]
-
-fit_tv <- lm(sales ~ TV, data = data_tidy_ad)
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
 ```
 
-```{r , eval = FALSE, echo = FALSE}
-summary(fit_tv)
-```
+# Why the normal distribution matters
 
-\begin{figure}
-\centering
-\includegraphics[width=0.6\textwidth]{_raw_data/img/lm_output.png}
-\end{figure}
+- In the linear regression model, we usually assume that the **errors** are normally distributed.
 
+\pause
+
+- This assumption is not needed for ordinary least squares point estimation.
+
+\pause
+
+- It is central for the exact finite-sample distributions used in inference:
+  - normal distributions for linear combinations of normal random variables
+  - chi-square distributions for residual sums of squares
+  - $t$ and $F$ distributions built from those results
+
+\pause
+
+- Under normal errors, the least-squares estimates are also maximum likelihood estimates.
 
 # Lecture outline
 
-- Describe the PDFs and MGFs of the univariate and multivariate normal distributions
-- Prove several results regarding the multivariate normal (MVN) distributions:
-  - Linear combination of a MVN random variable is MVN
-  - MVN composed of MVNs
-  - Relationship between MVN and a $\chi^2$ random variable
+By the end of this deck, you should be able to:
 
-# Exclusions compared to to previous years' courses
+- State the PDFs of the univariate and multivariate normal distributions
+- State the MGF of the multivariate normal distribution
+- Use the MGF to prove that a linear transformation of an MVN random vector is MVN
+- Use selection matrices to obtain distributions of components and subvectors
+- Prove the relationship between a standard MVN quadratic form and a $\chi^2$ random variable
 
-- The following appear in previous years' slides and tests (and in some cases, the notes), but won't be examined here:
-  - Deriving MVN distribution
-  - Deriving MVN MGF
-  - Determining mean and variance of an MVN distribution given the exponent
+# Exclusions compared to previous years' courses {.smaller}
 
-<!-- \pause !-->
+The following appear in previous years' slides, tests and some notes, but will not be examined here:
 
-- The reasons are as follows:
-  - Later results complete without them
-  - Learning them well does not particularly help with other course content
-  - Overlap with STA2004F
-  - Adds significantly heavier calculus component
+- Deriving the MVN density
+- Deriving the MVN MGF
+- Determining the mean and covariance matrix of an MVN distribution from its exponent
 
-<!-- \pause !-->
+\pause
 
-- Note that being apply to make use of the MGF is still important.
-- In general, however, the foundational mathematical facts and ideas of the coure are in linear algebra and the statistical distributions connected to the normal.
+The reasons are:
 
+- Later results can be established without those derivations
+- Learning the derivations well does not substantially help with other course content
+- There is overlap with STA2004F
+- They add a heavier calculus component than we need here
+
+\pause
+
+You still need to be able to **use** the MGF and the MVN results.
 
 # The univariate normal distribution
 
-::::{.columns}
+\begin{block}{Definition}
+If $X \sim N(\mu, \sigma^2)$, then its probability density function is
+$$
+f(x)
+=
+\frac{1}{\sqrt{2\pi\sigma^2}}
+\exp\left\{-\frac{(x-\mu)^2}{2\sigma^2}\right\},
+\qquad x \in \mathbb R.
+$$
+Moreover,
+$$
+E(X)=\mu,
+\qquad
+\operatorname{Var}(X)=\sigma^2.
+$$
+\end{block}
 
-:::{.column width="50%"}
+```{r}
+#| fig-width: 5.8
+#| fig-height: 2.2
+x <- seq(-4, 4, length.out = 600)
+y <- dnorm(x)
+plot(
+  x, y,
+  type = "l",
+  lwd = 2,
+  xlab = "$x$",
+  ylab = "Density",
+  main = "$X \\sim N(0,1)$"
+)
+abline(h = 0, col = "grey80")
+```
 
-\vspace{1.15cm}
+# The multivariate normal distribution {.smaller}
 
-::: {.def-univ_normal_dbn}
+\begin{block}{Definition}
+Let $\mathbf X=(X_1,\ldots,X_p)^T$. If
+$\mathbf X \sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$ and
+$\boldsymbol\Sigma$ is positive definite, then
+$$
+f(\mathbf x)
+=
+\frac{1}{(2\pi)^{p/2}|\boldsymbol\Sigma|^{1/2}}
+\exp\left\{-\frac{1}{2}(\mathbf x-\boldsymbol\mu)^T
+\boldsymbol\Sigma^{-1}(\mathbf x-\boldsymbol\mu)\right\},
+\qquad \mathbf x \in \mathbb R^p.
+$$
+Moreover,
+$$
+E(\mathbf X)=\boldsymbol\mu,
+\qquad
+\operatorname{Cov}(\mathbf X)
+=
+E\{(\mathbf X-\boldsymbol\mu)(\mathbf X-\boldsymbol\mu)^T\}
+=\boldsymbol\Sigma.
+$$
+\end{block}
 
-## Definition
+- $\boldsymbol\Sigma$ is a covariance **matrix**, not a scalar.
+- Its $(i,j)$ entry is $\operatorname{Cov}(X_i,X_j)$.
 
-If $X \sim \mathcal{N}(\mu,\sigma^2)$, then the probability density function is given as:
+# Visualising a bivariate normal distribution
 
-$$f(x)= \frac{1}{\sqrt{2 \pi \sigma^2}}\exp\left( -\frac{(x-\mu)^2}{2 \sigma^2} \right)$$
-where $E(X)= \mu$ and $\textrm{Var}(X)=\sigma^2$ for $x\in\mathbb{R}$.
-:::
+Let
+$$
+\mathbf X \sim N_2\left(
+\begin{pmatrix}0\\0\end{pmatrix},
+\begin{pmatrix}1&0\\0&1\end{pmatrix}
+\right).
+$$
 
-:::
+```{r}
+#| fig-width: 8.2
+#| fig-height: 3.3
+x <- seq(-4, 4, length.out = 80)
+y <- seq(-4, 4, length.out = 80)
+z <- outer(x, y, function(a, b) dnorm(a) * dnorm(b))
+old_par <- par(mfrow = c(1, 2), mar = c(3, 3, 2, 1))
+persp(
+  x, y, z,
+  theta = 35,
+  phi = 25,
+  expand = 0.6,
+  xlab = "X1",
+  ylab = "X2",
+  zlab = "Density",
+  main = "Density surface"
+)
+contour(
+  x, y, z,
+  xlab = "X1",
+  ylab = "X2",
+  main = "Contour plot",
+  asp = 1
+)
+par(old_par)
+```
 
-:::{.column width="50%"}
+# Moment-generating functions {.smaller}
 
-\vspace{0cm}
+\begin{block}{Definition}
+For a random vector $\mathbf X$, the moment-generating function is
+$$
+M_{\mathbf X}(\mathbf t)
+=
+E\left\{\exp(\mathbf t^T\mathbf X)\right\},
+$$
+where $\mathbf t$ is a deterministic vector conformable with $\mathbf X$.
+\end{block}
 
-\begin{figure}
-    \centering
-    \includegraphics[width=\linewidth]{_raw_data/img/rnorm_0_1.pdf}
-    \caption{$X \sim \mathcal{N}(0,1)$}
-    \label{fig:sims_rnorm}
-\end{figure}
+- The MGF is said to exist if the expectation is finite in an open neighbourhood of $\mathbf 0$.
+- For a univariate random variable, derivatives of the MGF at $0$ give moments.
+- For a random vector, partial derivatives give marginal and mixed moments.
 
+\pause
 
-:::
+In this course, the main use of MGFs is not to calculate moments. It is to identify distributions, because an existing MGF uniquely determines the distribution.
 
-::::
+# The MGF of the multivariate normal distribution
+
+\begin{block}{Result}
+If $\mathbf X \sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$, then
+$$
+M_{\mathbf X}(\mathbf t)
+=
+\exp\left\{
+\mathbf t^T\boldsymbol\mu
++
+\frac{1}{2}\mathbf t^T\boldsymbol\Sigma\mathbf t
+\right\}.
+$$
+\end{block}
+
+\pause
+
+- We will use this result without deriving it.
+- The important point is that the exponent contains:
+  - a linear term, $\mathbf t^T\boldsymbol\mu$
+  - a quadratic term, $\frac{1}{2}\mathbf t^T\boldsymbol\Sigma\mathbf t$
+
+# Linear transformation of an MVN random variable: theorem {.smaller}
+
+\begin{block}{Theorem}
+Let $\mathbf X \sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$.
+If $\mathbf C$ is a fixed $q \times p$ matrix, then
+$$
+\mathbf Y
+=
+\mathbf C\mathbf X
+\sim
+N_q\left(
+\mathbf C\boldsymbol\mu,
+\mathbf C\boldsymbol\Sigma\mathbf C^T
+\right).
+$$
+\end{block}
+
+\pause
+
+- This result is essential because regression estimators are linear transformations of a normally distributed response vector.
+- If $\mathbf C\boldsymbol\Sigma\mathbf C^T$ is singular, the resulting normal distribution is degenerate. The formula for the mean and covariance matrix still holds.
+
+# Linear transformation of an MVN random variable: proof {.smaller}
+
+Let $\mathbf Y=\mathbf C\mathbf X$. Then
+$$
+\begin{aligned}
+M_{\mathbf Y}(\mathbf t)
+&= E\left\{\exp(\mathbf t^T\mathbf Y)\right\} \\
+&= E\left\{\exp(\mathbf t^T\mathbf C\mathbf X)\right\} \\
+&= E\left\{\exp\left((\mathbf C^T\mathbf t)^T\mathbf X\right)\right\} \\
+&= M_{\mathbf X}(\mathbf C^T\mathbf t).
+\end{aligned}
+$$
+
+\pause
+
+Using the MGF of $\mathbf X$,
+$$
+\begin{aligned}
+M_{\mathbf Y}(\mathbf t)
+&= \exp\left\{(\mathbf C^T\mathbf t)^T\boldsymbol\mu
++ \frac{1}{2}(\mathbf C^T\mathbf t)^T\boldsymbol\Sigma(\mathbf C^T\mathbf t)\right\} \\
+&= \exp\left\{\mathbf t^T\mathbf C\boldsymbol\mu
++ \frac{1}{2}\mathbf t^T\mathbf C\boldsymbol\Sigma\mathbf C^T\mathbf t\right\}.
+\end{aligned}
+$$
+
+# Linear transformation proof: conclusion
+
+The final expression is the MGF of a multivariate normal random vector with
+
+$$
+E(\mathbf Y)=\mathbf C\boldsymbol\mu
+$$
+
+and
+
+$$
+\operatorname{Cov}(\mathbf Y)
+=
+\mathbf C\boldsymbol\Sigma\mathbf C^T.
+$$
+
+\pause
+
+Therefore
+$$
+\mathbf Y=\mathbf C\mathbf X
+\sim
+N_q(\mathbf C\boldsymbol\mu,
+\mathbf C\boldsymbol\Sigma\mathbf C^T).
+$$
+
+# Why selection matrices are useful
+
+- A selection matrix is a matrix that extracts components of a vector.
+- This lets us use the linear-transformation theorem to obtain distributions of:
+  - a single component, such as $X_1$
+  - a subvector, such as $(X_1,X_2)^T$
+  - all components except one, such as $(X_2,\ldots,X_p)^T$
+  - a sum, such as $X_1+\cdots+X_p$
+
+\pause
+
+The handwritten examples from the original deck are written out on the next slides.
+
+# Example: identity matrix
+
+Suppose
+$$
+\mathbf X \sim N_p(\boldsymbol\mu,\boldsymbol\Sigma),
+\qquad
+\mathbf Y=\mathbf C\mathbf X.
+$$
+
+If $\mathbf C=\mathbf I_p$, then
+$$
+\mathbf Y=\mathbf I_p\mathbf X=\mathbf X.
+$$
+
+Therefore
+$$
+E(\mathbf Y)=\mathbf I_p\boldsymbol\mu=\boldsymbol\mu,
+\qquad
+\operatorname{Cov}(\mathbf Y)
+=
+\mathbf I_p\boldsymbol\Sigma\mathbf I_p^T
+=\boldsymbol\Sigma.
+$$
+
+# Example: one individual element {.smaller}
+
+Suppose
+$$
+\mathbf X=(X_1,\ldots,X_p)^T
+\sim
+N_p(\boldsymbol\mu,\boldsymbol\Sigma).
+$$
+
+To extract $X_i$, use the row vector
+$$
+\mathbf e_i^T
+=
+\begin{pmatrix}0&\cdots&0&1&0&\cdots&0\end{pmatrix},
+$$
+where the $1$ is in position $i$.
+
+\pause
+
+Then
+$$
+Y=\mathbf e_i^T\mathbf X=X_i,
+$$
+so
+$$
+E(Y)=\mathbf e_i^T\boldsymbol\mu=\mu_i,
+\qquad
+\operatorname{Var}(Y)
+=\mathbf e_i^T\boldsymbol\Sigma\mathbf e_i
+=\sigma_{ii}.
+$$
+
+Therefore
+$$
+X_i \sim N(\mu_i,\sigma_{ii}).
+$$
+
+# Example: the first two elements {.smaller}
+
+Let
+$$
+\mathbf C
+=
+\begin{pmatrix}
+1&0&0&\cdots&0\\
+0&1&0&\cdots&0
+\end{pmatrix}.
+$$
+
+Then
+$$
+\mathbf Y=\mathbf C\mathbf X
+=
+\begin{pmatrix}X_1\\X_2\end{pmatrix}.
+$$
+
+\pause
+
+By the linear-transformation theorem,
+$$
+\begin{pmatrix}X_1\\X_2\end{pmatrix}
+\sim
+N_2\left(
+\begin{pmatrix}\mu_1\\\mu_2\end{pmatrix},
+\begin{pmatrix}
+\sigma_{11} & \sigma_{12}\\
+\sigma_{21} & \sigma_{22}
+\end{pmatrix}
+\right).
+$$
+
+# Example: all elements except the first {.smaller}
+
+Let
+$$
+\mathbf C
+=
+\begin{pmatrix}
+0&1&0&\cdots&0\\
+0&0&1&\cdots&0\\
+\vdots&\vdots&\vdots&\ddots&\vdots\\
+0&0&0&\cdots&1
+\end{pmatrix}
+=\begin{pmatrix}\mathbf 0_{(p-1)\times 1}&\mathbf I_{p-1}\end{pmatrix}.
+$$
+
+Then
+$$
+\mathbf Y=\mathbf C\mathbf X
+=
+\begin{pmatrix}X_2\\X_3\\\vdots\\X_p\end{pmatrix}.
+$$
+
+\pause
+
+Therefore
+$$
+\begin{pmatrix}X_2\\X_3\\\vdots\\X_p\end{pmatrix}
+\sim
+N_{p-1}\left(
+\begin{pmatrix}\mu_2\\\mu_3\\\vdots\\\mu_p\end{pmatrix},
+\boldsymbol\Sigma_{2:p,\,2:p}
+\right).
+$$
+
+# Example: the sum of all elements
+
+Let
+$$
+\mathbf 1_p
+=
+\begin{pmatrix}1\\\vdots\\1\end{pmatrix},
+\qquad
+Y=\mathbf 1_p^T\mathbf X.
+$$
+
+Then
+$$
+Y=X_1+X_2+\cdots+X_p.
+$$
+
+\pause
+
+Using the linear-transformation theorem,
+$$
+Y \sim N\left(
+\mathbf 1_p^T\boldsymbol\mu,
+\mathbf 1_p^T\boldsymbol\Sigma\mathbf 1_p
+\right).
+$$
+
+Equivalently,
+$$
+Y \sim N\left(
+\sum_{i=1}^p\mu_i,
+\sum_{i=1}^p\sum_{j=1}^p \sigma_{ij}
+\right).
+$$
+
+# MVN partitions are MVN: theorem {.smaller}
+
+\begin{block}{Theorem}
+Let
+$$
+\mathbf X
+=
+\begin{pmatrix}\mathbf X^{(1)}\\\mathbf X^{(2)}\end{pmatrix}
+\sim
+N_p\left(
+\begin{pmatrix}\boldsymbol\mu^{(1)}\\\boldsymbol\mu^{(2)}\end{pmatrix},
+\begin{pmatrix}
+\boldsymbol\Sigma_{11}&\boldsymbol\Sigma_{12}\\
+\boldsymbol\Sigma_{21}&\boldsymbol\Sigma_{22}
+\end{pmatrix}
+\right),
+$$
+where $\mathbf X^{(1)}$ is $q\times 1$ and $\mathbf X^{(2)}$ is $r\times 1$.
+Then
+$$
+\mathbf X^{(1)}\sim N_q(\boldsymbol\mu^{(1)},\boldsymbol\Sigma_{11}),
+\qquad
+\mathbf X^{(2)}\sim N_r(\boldsymbol\mu^{(2)},\boldsymbol\Sigma_{22}).
+$$
+\end{block}
+
+# MVN partitions are MVN: proof {.smaller}
+
+To extract $\mathbf X^{(1)}$, define
+$$
+\mathbf C_1=\begin{pmatrix}\mathbf I_q&\mathbf 0_{q\times r}\end{pmatrix}.
+$$
+Then
+$$
+\mathbf C_1\mathbf X
+=
+\begin{pmatrix}\mathbf I_q&\mathbf 0\end{pmatrix}
+\begin{pmatrix}\mathbf X^{(1)}\\\mathbf X^{(2)}\end{pmatrix}
+=
+\mathbf X^{(1)}.
+$$
+
+\pause
+
+The mean is
+$$
+\mathbf C_1\boldsymbol\mu
+=
+\begin{pmatrix}\mathbf I_q&\mathbf 0\end{pmatrix}
+\begin{pmatrix}\boldsymbol\mu^{(1)}\\\boldsymbol\mu^{(2)}\end{pmatrix}
+=
+\boldsymbol\mu^{(1)}.
+$$
+
+# MVN partitions are MVN: proof continued {.smaller}
+
+The covariance matrix is
+$$
+\begin{aligned}
+\mathbf C_1\boldsymbol\Sigma\mathbf C_1^T
+&=
+\begin{pmatrix}\mathbf I_q&\mathbf 0\end{pmatrix}
+\begin{pmatrix}
+\boldsymbol\Sigma_{11}&\boldsymbol\Sigma_{12}\\
+\boldsymbol\Sigma_{21}&\boldsymbol\Sigma_{22}
+\end{pmatrix}
+\begin{pmatrix}\mathbf I_q\\\mathbf 0\end{pmatrix} \\
+&=\boldsymbol\Sigma_{11}.
+\end{aligned}
+$$
+
+Therefore
+$$
+\mathbf X^{(1)}\sim N_q(\boldsymbol\mu^{(1)},\boldsymbol\Sigma_{11}).
+$$
+
+\pause
+
+The proof for $\mathbf X^{(2)}$ is identical, using
+$$
+\mathbf C_2=\begin{pmatrix}\mathbf 0_{r\times q}&\mathbf I_r\end{pmatrix}.
+$$
+
+# Example: bivariate MVN marginals {.smaller}
+
+Suppose
+$$
+\begin{pmatrix}X_1\\X_2\end{pmatrix}
+\sim
+N_2\left(
+\begin{pmatrix}\mu_1\\\mu_2\end{pmatrix},
+\begin{pmatrix}
+\sigma_1^2 & \sigma_{12}\\
+\sigma_{21} & \sigma_2^2
+\end{pmatrix}
+\right).
+$$
+
+Then, by the partition theorem,
+$$
+X_1\sim N(\mu_1,\sigma_1^2),
+\qquad
+X_2\sim N(\mu_2,\sigma_2^2).
+$$
+
+\pause
+
+- A jointly normal vector has normal marginal distributions.
+- The converse is not true in general: normal marginal distributions do not by themselves guarantee joint normality.
+
+# Quadratic forms and the chi-square distribution {.smaller}
+
+\begin{block}{Theorem}
+Let
+$$
+\mathbf Y \sim N_n(\mathbf 0,\mathbf I_n).
+$$
+If $\mathbf A$ is symmetric and idempotent, with rank $k$, then
+$$
+\mathbf Y^T\mathbf A\mathbf Y \sim \chi^2_k.
+$$
+\end{block}
+
+\pause
+
+- Idempotent means $\mathbf A^2=\mathbf A$.
+- Symmetry is needed for the orthogonal diagonalisation used in the proof.
+- The rank $k$ determines the degrees of freedom.
+
+# Quadratic forms and chi-square: proof {.smaller}
+
+Since $\mathbf A$ is symmetric and idempotent, there is an orthonormal matrix $\mathbf P$ such that
+$$
+\mathbf P^T\mathbf A\mathbf P
+=
+\begin{pmatrix}
+\mathbf I_k&\mathbf 0\\
+\mathbf 0&\mathbf 0
+\end{pmatrix}.
+$$
+
+Let
+$$
+\mathbf Z=\mathbf P^T\mathbf Y.
+$$
+
+\pause
+
+By the linear-transformation theorem,
+$$
+\mathbf Z\sim N_n(\mathbf P^T\mathbf 0,\mathbf P^T\mathbf I_n\mathbf P)
+=N_n(\mathbf 0,\mathbf I_n),
+$$
+because $\mathbf P^T\mathbf P=\mathbf I_n$.
+
+# Quadratic forms and chi-square: proof continued {.smaller}
+
+Since $\mathbf Y=\mathbf P\mathbf Z$,
+$$
+\begin{aligned}
+\mathbf Y^T\mathbf A\mathbf Y
+&=(\mathbf P\mathbf Z)^T\mathbf A(\mathbf P\mathbf Z)\\
+&=\mathbf Z^T\mathbf P^T\mathbf A\mathbf P\mathbf Z\\
+&=\mathbf Z^T
+\begin{pmatrix}
+\mathbf I_k&\mathbf 0\\
+\mathbf 0&\mathbf 0
+\end{pmatrix}
+\mathbf Z.
+\end{aligned}
+$$
+
+Partition $\mathbf Z=(Z_1,\ldots,Z_n)^T$. Then
+$$
+\mathbf Y^T\mathbf A\mathbf Y
+=
+\sum_{i=1}^k Z_i^2.
+$$
+
+Because $\mathbf Z\sim N_n(\mathbf 0,\mathbf I_n)$, the $Z_i$ are independent standard normal random variables. Hence
+$$
+\sum_{i=1}^k Z_i^2\sim \chi^2_k.
+$$
+
+# Why this theorem matters for regression
+
+- In the general linear model, residual sums of squares can be written as quadratic forms.
+- Projection matrices used in regression are symmetric and idempotent.
+- Their ranks determine the relevant degrees of freedom.
+
+\pause
+
+That is why this theorem is one of the foundations for:
+
+- residual variance estimation
+- $t$ tests for individual coefficients
+- $F$ tests comparing linear models
+
+# Summary
+
+In this deck, we used three main ideas:
+
+- The multivariate normal distribution is stable under linear transformations:
+$$
+\mathbf C\mathbf X
+\sim
+N(\mathbf C\boldsymbol\mu,\mathbf C\boldsymbol\Sigma\mathbf C^T).
+$$
+
+- Components and partitions of an MVN random vector are themselves normally distributed.
+
+- A symmetric idempotent quadratic form in a standard MVN random vector is chi-square:
+$$
+\mathbf Y^T\mathbf A\mathbf Y\sim\chi^2_{\operatorname{rank}(\mathbf A)}.
+$$
