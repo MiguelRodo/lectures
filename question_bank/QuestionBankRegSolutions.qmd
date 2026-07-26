@@ -1,0 +1,1805 @@
+---
+title: STA2005S Regression Question Bank
+subtitle: Solutions
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+format:
+  html:
+    embed-resources: true
+    number-sections: true
+    toc: true
+  pdf:
+    embed-resources: true
+    number-sections: true
+    include-in-header:
+      text: |
+        \usepackage{graphicx} % Allows including images
+        \usepackage{booktabs}
+        \usepackage{amsmath}
+        \usepackage{url}
+        \usepackage{subfigure}
+        \usepackage{xcolor}
+        \usepackage{amsthm,amsfonts,amssymb,amscd,amsxtra}
+        \usepackage{pgfpages}
+        \usepackage{animate}
+        \usepackage[backend=bibtex,style=verbose-trad2]{biblatex}
+        \bibliography{bibliography}
+        \usepackage{mathpazo}
+        \usepackage{unicode-math}
+---
+
+```{r}
+#| include: false
+library(ggplot2)
+library(tibble)
+devtools::load_all()
+```
+
+# Prerequisites
+
+## Statistical distributions
+
+## Linear algebra
+
+### Basic calculations and properties
+
+a. $\begin{pmatrix} 2 \\ 4 \end{pmatrix}$
+b. $\begin{pmatrix} 3 \\ 4 \end{pmatrix}$
+c. 1 + 4 = 5
+d. No - the columns are not orthogonal ($\symbf{a}_1 \cdot \symbf{a}_2 = 14$)
+e. Yes - the columns are linearly independent. There is no constant $c$ such that $c\symbf{a}_1 = \symbf{a}_2$.
+f. No.
+g. No - all positive-definite matrices are symmetric.
+h. No:
+
+```{r}
+#| echo: false
+#| eval: false
+a_mat <- matrix(
+  c(1, 2, 3, 4), nrow = 2, ncol = 2
+)
+a_mat %*% a_mat
+```
+
+$$
+\begin{aligned}
+\symbf{AA} &= \begin{bmatrix}
+1 & 2 \\
+3 & 4
+\end{bmatrix}\begin{bmatrix}
+1 & 2 \\
+3 & 4
+\end{bmatrix}, \\
+&= \begin{bmatrix}
+1 + 6 & 2 + 8 \\
+3 + 12 & 6 + 16
+\end{bmatrix}, \\
+&= \begin{bmatrix}
+7 & 10 \\
+15 & 22
+\end{bmatrix}, \\
+&\neq \symbf{A}
+\end{aligned}
+$$
+
+### Block matrices
+
+#### Basics
+
+a. 4
+b. 1
+c. 3
+d. 2
+
+#### Calculation
+
+a. $3\times 1$
+b. $1\times 3$
+c. $1\times 1$.
+d. $4 \times 5$.
+e.
+$$
+\begin{bmatrix}
+\symbf{F} + \symbf{CH} & \symbf{G} + \symbf{CI} \\
+\symbf{DF} + \symbf{EH} & \symbf{DG} + \symbf{EI}
+\end{bmatrix}
+$$
+
+In the following answers (f-i), assume that $a$ and $b$ are positive natural numbers such that $a + b = 5$.
+
+f. $3\times a$ (e.g. $3\times 1$)
+g. $3 \times b$ (e.g. $3 \times 4$)
+h. $1 \times a$ (e.g. $1 \times 1$)
+i. $1 \times b$ (e.g. $1 \times 4$)
+
+#### Orthnormality
+
+We first write $\symbf{P}$ in terms of its eigenvectors $\symbf{e}_i$:
+
+$$
+\symbf{P}=\begin{bmatrix} \symbf{e}_1 & \symbf{e}_2 & \ldots & \symbf{e}_k \end{bmatrix}
+$$
+
+We then calculate $\symbf{P}'\symbf{P}$:
+
+$$
+\begin{aligned}
+\symbf{P}\symbf{P}' &= \begin{bmatrix} \symbf{e}_1' \\ \symbf{e}_2' \\ \vdots \\ \symbf{e}_k' \end{bmatrix}\begin{bmatrix} \symbf{e}_1 & \symbf{e}_2 & \ldots & \symbf{e}_k \end{bmatrix}, \\
+&= \begin{bmatrix} \symbf{e}_1'\symbf{e}_1 & \symbf{e}_1'\symbf{e}_2 & \ldots & \symbf{e}_1'\symbf{e}_k \\ \symbf{e}_2'\symbf{e}_1 & \symbf{e}_2'\symbf{e}_2 & \ldots & \symbf{e}_2'\symbf{e}_k \\ \vdots & \vdots & \ddots & \vdots \\ \symbf{e}_k'\symbf{e}_1 & \symbf{e}_k'\symbf{e}_2 & \ldots & \symbf{e}_k'\symbf{e}_k \end{bmatrix}.
+\end{aligned}
+$$
+
+As $\symbf{e}_i'\symbf{e}_i=1$ and $\symbf{e}_i'\symbf{e}_j=0$ for $i\neq j$, the diagonal elements are all 1 and the off-diagonal elements are all 0. Therefore, $\symbf{P}'\symbf{P}=\symbf{I}$. As $\symbf{P}'\symbf{P}$ is symmetric, we have that $\symbf{P}\symbf{P}' = I$ and so $\symbf{P}^{-1}=\symbf{P}'$.
+
+
+### Special matrices
+
+a. 2 (rank is # of non-zero eigenvalues)
+b. 1 (length one; by convention)
+c. 0 (orthogonal)
+d. $\begin{bmatrix} \symbf{e}_1 & \symbf{e}_2 & \symbf{e}_3 \end{bmatrix}\begin{bmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 0 \end{bmatrix} \begin{bmatrix} \symbf{e}_1' \\ \symbf{e}_2' \\ \symbf{e}_3' \end{bmatrix}$
+e. For an eigenvector $\symbf{e}_i$ with eigenvalue $\lambda_i$, we have that $\symbf{A}\symbf{e}_i=\lambda_i\symbf{e}_i \implies \symbf{A}^k\symbf{e}_i = \lambda_i^k\symbf{e}_i$. By idempotency, $\symbf{A}^k=\symbf{A}$ for $k\in \mathbb{N}_{>0}$, implying that $\lambda_i^k=\lambda_i$. This is only true for $\lambda=0$ or $\lambda=1$.
+
+### Invertibility
+
+a. $\symbf{P}^{-1}$ is such that $\symbf{P}^{-1}\symbf{P}=\symbf{I}$ and $\symbf{P}\symbf{P}^{-1}=\symbf{I}$. Clearly, setting $\symbf{P}^{-1}=\symbf{P}'$ solves the former, and transposing both sides of $\symbf{P}'\symbf{P}=I$ shows that it also solves the latter.
+
+# General linear model formulation
+
+In a general linear model, we have that $\symbf{Y}= \symbf{X}\beta + \symbf{\epsilon}$ where $\symbf{Y}$ is an $n \times 1$ vector of responses, $\symbf{X}$ is a fixed $n \times k$ matrix of predictors and $\symbf{\epsilon}$ is an $n \times 1$ vector of errors. In additiion, $\mathrm{E}[\symbf{\epsilon}] = \symbf{0}$ and $\mathrm{E}[\symbf{\epsilon}\symbf{\epsilon}'] = \sigma^2\symbf{I}$. Finally, suppose that $\symbf{X}$ is full column rank (i.e. no column is a linear combination of any other columns) and $n>k$ (i.e. more observations than parameters).
+
+# Week Two
+
+## Model formulation
+
+### Simple linear regression
+
+a.
+Known: $x_i$ (observed predictor value). $y_i$ is the response variable, which we also observed.
+
+b.
+Unknown: $\beta_0, \beta_1, \sigma^2, e_i.
+
+c.
+Parameters: $\beta_0, \beta_1, \sigma^2$ (fixed, unknown).
+Random variables: $e_i, y_i$.
+
+d.
+
+$$
+E[y_i] = E[\beta_0 + \beta_1 x_i + e_i] = \beta_0 + \beta_1 x_i + E[e_i] = \beta_0 + \beta_1 x_i.
+$$
+
+e.
+
+$$
+\mathrm{Var}(y_i) = \mathrm{Var}(\beta_0 + \beta_1 x_i + e_i) = \mathrm{Var}(e_i) = \sigma^2.
+$$
+
+f.
+Let $\beta_0 = 3.0$, $\beta_1 = 2.0$, $\sigma^2 = 4.0$. Then:
+
+$$
+y_i = 3.0 + 2.0 x_i + e_i, \quad e_i \sim N(0, 4.0).
+$$
+
+g.
+For $x_i = 5$:
+
+$$
+y_i = 3.0 + 2.0(5) + e_i = 13.0 + e_i, \quad e_i \sim N(0, 4.0).
+$$
+
+h.
+Mean: $13.0$, Variance: $4.0$.
+
+i.
+For $x_i = 6$:
+
+$$
+y_i = 3.0 + 2.0(6) + e_i = 15.0 + e_i, \quad e_i \sim N(0, 4.0).
+$$
+
+Mean: $15.0$, Variance: $4.0$.
+
+j.
+Adding 1 to $x_i$ increases the mean of $y_i$ by $\beta_1 = 2.0$, variance unchanged ($\sigma^2 = 4.0$).
+
+k.
+We do not know yet, as we have not estimated the regression coefficients and so cannot calculate the fitted values.
+
+l.
+If $e_i = 2.5$:
+
+$$
+y_i = 13.0 + 2.5 = 15.5.
+$$
+
+m.
+Example: $x_i$ = hours studied, $y_i$ = exam score (percentage).
+Model predicts score increases 2 percentage points per extra study hour.
+
+n.
+Contrast: The model uses $x_i$ to explain variation in $y_i$, yielding different predictions for different $x_i$.
+Estimating only the mean of $y$ ignores $x_i$, giving the same prediction for all students regardless of hours studied.
+
+### Fitted values, residuals and errors
+
+a.
+Known before fitting: $y_i$ (responses), $x_{ij}$ (design values, with $x_{i0}=1$), $p$, and the assumed error model $e_i\stackrel{iid}{\sim}N(0,\sigma^2)$.
+
+b.
+Known after fitting: $\hat{\beta}_j$, $\hat{y}_i=\sum_{j=0}^p x_{ij}\hat{\beta}_j$, $\hat{e}_i=y_i-\hat{y}_i$, and typically $s^2$ (an estimate of $\sigma^2$).
+
+c.
+Remain unknown: $\beta_j$ (true coefficients), $e_i$ (true errors), $\sigma^2$ (true variance).
+
+d.
+With $p=2$:
+
+$$
+E[y_i]=\beta_0+\beta_1 x_{i1}+\beta_2 x_{i2}.
+$$
+
+e.
+With $\beta_0=1,\ \beta_1=-2,\ \beta_2=3$:
+
+$$
+E[y_i]=1-2x_{i1}+3x_{i2}.
+$$
+
+f.
+Choose $x_{i1}=2,\ x_{i2}=1$:
+
+$$
+E[y_i]=1-2(2)+3(1)=1-4+3=0.
+$$
+
+g.
+Given $y_i=5$:
+
+$$
+e_i= y_i-\big(\beta_0+\beta_1 x_{i1}+\beta_2 x_{i2}\big)=5-\big(\beta_0+\beta_1 x_{i1}+\beta_2 x_{i2}\big).
+$$
+
+h.
+With $\hat{\beta}_0=1,\ \hat{\beta}_1=-2,\ \hat{\beta}_2=3$:
+
+$$
+\hat{y}_i=1-2x_{i1}+3x_{i2}.
+$$
+
+i.
+Given $y_i=5$:
+
+$$
+\hat{e}_i=5-\hat{y}_i=5-\big(1-2x_{i1}+3x_{i2}\big).
+$$
+
+j.
+For $y_j=4,\ x_{j1}=2,\ x_{j2}=1$:
+
+$$
+\hat{y}_j=1-2(2)+3(1)=0,\qquad \hat{e}_j=4-0=4,
+$$
+
+and
+
+$$
+e_j= y_j-\big(\beta_0+2\beta_1+1\cdot\beta_2\big)=4-(\beta_0+2\beta_1+\beta_2).
+$$
+
+k.
+$\hat{y}_i=x_i^\top\hat{\beta}$ is the plug‑in estimate of $E[y_i\mid x_i]=x_i^\top\beta$. Under the usual GLM assumptions $E[\hat{y}_i\mid X]=x_i^\top\beta$; it equals the true mean iff $\hat{\beta}=\beta$.
+
+n.
+Example consistent with (e): $x_{i1}$ = hours of gaming/week (negative effect), $x_{i2}$ = hours of study/week (positive effect), $y_i$ = exam score (%).
+
+### Model representation
+
+a.
+With an intercept and two predictors: $k=p+1=3$ parameters $(\beta_0,\beta_1,\beta_2)$.
+
+b.
+$n=3$.
+
+c.  (scalar, with $x_{i0}=1$)
+
+$$
+\begin{aligned}
+y_1&=\beta_0+\beta_1(1)+\beta_2(2)+e_1,\\
+y_2&=\beta_0+\beta_1(2)+\beta_2(3)+e_2,\\
+y_3&=\beta_0+\beta_1(4)+\beta_2(-1)+e_3.
+\end{aligned}
+$$
+
+Each of the above are instances of
+
+$$
+y_i = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + e_i.
+$$
+
+d.  (vector)
+
+Defining the following:
+
+$$
+\mathbf{Y}=\begin{bmatrix}Y_1\\Y_2\\Y_3\end{bmatrix},\quad
+\mathbf{X}_0 = \begin{bmatrix}
+1 \\
+1 \\
+1 
+\end{bmatrix},\quad
+\mathbf{X}_1 = \begin{bmatrix}
+1 \\
+2 \\
+4
+\end{bmatrix},\quad
+\mathbf{X}_2 = \begin{bmatrix}
+2 \\
+3 \\
+-1
+\end{bmatrix},\quad
+\varepsilon=\begin{bmatrix}e_1\\ e_2\\ e_3\end{bmatrix}
+$$
+
+We then have that
+
+$$
+\mathbf{Y} = \beta_0 \mathbf{X}_0 + \beta_1 \mathbf{X}_1 + \beta_2 \mathbf{X}_2 + \varepsilon.
+$$
+
+f.  (matrix)
+
+$$
+X=\begin{bmatrix}
+1 & 1 & 2\\
+1 & 2 & 3\\
+1 & 4 & -1
+\end{bmatrix},\qquad
+\mathbf{Y}=X\beta+\varepsilon.
+$$
+
+f.  (dimensions of matrices in e)
+$X\in\mathbb{R}^{3\times3}$.
+
+g.
+$X'X\in\mathbb{R}^{3\times3}$ and $XX'\in\mathbb{R}^{3\times3}$.)
+
+h.
+No change to fitted values.
+
+Clearly, each the response and the explanatory variables have not changed, and so the MLE cannot change either.
+
+j.
+What **does** change: the association/order of coefficients. After permuting columns, the entries of $\beta$ and $\hat\beta$ correspond to different predictors.
+
+k.
+Vector of regression parameters: $\beta=\begin{bmatrix}\beta_0&\beta_1&\beta_2\end{bmatrix}^\top$.
+
+l.
+Vector of estimated regression parameters: $\hat\beta=\begin{bmatrix}\hat\beta_0&\hat\beta_1&\hat\beta_2\end{bmatrix}^\top$.
+
+m.
+Fitted values: $\hat{\mathbf y}=X\hat\beta$ (equivalently $\hat{\mathbf y}=X(X'X)^{-1}X'\mathbf y$).
+
+n.
+
+$$
+\hat{\mathbf y}=X\hat\beta=\mathbf y \ \Rightarrow\ 
+\hat y_1=3,\ \hat y_2=5,\ \hat y_3=7.
+$$
+
+Immediate because here $n=k=3$ and $X$ is invertible, so the OLS hat matrix is $H=X(X'X)^{-1}X'=XX^{-1}(X')^{-1}X'=I_3$ (taking the inverse of the product, which we can do now because X^{-1} exists).
+We then have that $\hat{\mathbf y}=I_3\mathbf y= \mathbf y$.
+
+o.
+
+$$
+\hat e_i=y_i-\hat y_i=0\quad(i=1,2,3).
+$$
+
+Immediate from $\hat{\mathbf y}=\mathbf y$.
+
+p.
+
+```{r}
+X <- matrix(
+  c(1, 1, 1, 
+    1, 2, 4,
+    1, 4, -1),
+  ncol = 3,
+  byrow = FALSE
+)
+y <- c(3, 5, 7)
+hat_beta <- solve(t(X) %*% X) %*% t(X) %*% y
+hat_beta |> signif(1)
+```
+
+q.
+They are still unknown.
+
+r. 
+
+Scalar:
+
+$$
+\begin{aligned}
+y_1&=\beta_0+\beta_1(1)+e_1,\\
+y_2&=\beta_0+\beta_1(2)+e_2,\\
+y_3&=\beta_0+\beta_1(4)+e_3.
+\end{aligned}
+$$
+
+Vector:
+
+Using the same notation as in (e):
+
+We then have that
+
+$$
+\mathbf{Y} = \beta_0 \mathbf{X}_0 + \beta_1 \mathbf{X}_1 + \varepsilon.
+$$
+
+Matrix:
+
+$$
+X=\begin{bmatrix}
+1 & 1 \\
+1 & 2 \\
+1 & 4 
+\end{bmatrix},\qquad
+\mathbf{Y}=X\beta+\varepsilon.
+$$
+
+s.
+$X\in\mathbb{R}^{3\times2},\ \beta^{(1)}\in\mathbb{R}^{2\times1},\ \mathbf y\in\mathbb{R}^{3\times1}, \varepsilon\in\mathbb{R}^{3\times1}$.
+
+t.
+
+We can use R code here:
+
+```{r}
+X <- matrix(c(1, 1, 1, 1, 2, 4), nrow = 3, ncol = 2)
+y <- c(3, 5, 7)
+hat_beta <- solve(t(X) %*% X) %*% t(X) %*% y
+hat_beta
+```
+
+u.
+
+Again, using R code:
+
+```{r}
+fit_vec <- X %*% hat_beta
+fit_vec
+```
+
+v. 
+
+```{r}
+y - fit_vec
+```
+
+w.
+
+Clearly, the fitted values are no longer equal to the actual values and so the errors are now not all zero.
+
+This arises because there are now more observations than explanatory variables.
+
+# Week Three
+
+## Confidence Intervals and Hypothesis Testing
+
+### Individual regression coefficients
+
+a. To construct a 95% confidence interval for $\beta_1$, use the formula:
+
+$$
+\hat{\beta}_1 \pm t^{\alpha/2}_{n - k} \times \hat{se}(\hat{\beta}_1)
+$$
+
+- Degrees of freedom: $df = n - k = 100 - 3 = 97$
+- For a 95% confidence interval, $\alpha = 0.05$, so $\alpha/2 = 0.025$
+- Critical value from t-distribution: $t_{0.025, 97} \approx -1.9848$
+
+Compute the interval:
+
+$$
+2.5 \pm -1.9848 \times 0.5 = 2.5 \pm 0.9924 = [1.5076, 3.4924]
+$$
+
+b. 
+
+For a one-unit increase in $X_1$, the response variable increases by an average of 2.5 units (CI: 1.5076 to 3.4924), holding $X_2$ constant.
+As the confidence does not include zero, we conclude that $X_1$ has a significant effect on the response.
+
+c. 
+
+With 100 observations, the width is 
+
+$$
+3.4924 - 1.5076 = 1.9848
+$$
+
+With 6 observations, the critical value is $t_{0.025, 3} \approx -3.18$, making the width
+
+$$
+2 * 3.18 * 0.5 = 3.18
+$$
+
+The width is therefore $3.18-1.9848=1.1952$ units wider with 6 observations than with 100 observations.
+
+d. No, they do not. The reason is that $\mathrm{E}[s^2]=\sigma^2$, i.e. the expected value is the true variance.
+e. 
+
+As $\symbf{X} = \symbf{1}$, $\symbf{X}'\symbf{X} = n$ and $(\symbf{X}'\symbf{X})^{-1} = 1/n$. Therefore, $\hat{se}(\hat{\beta}_1) = \sqrt{0.05 /n}$.
+
+f. The standard error for $\hat{\beta}_1$ decreases as the sample size increases, whereas the expected value of $s^2$ remains constant. The reason is that the standard error concerns the precision of our estimator, whereas $s^2$ is estimating the true variance.
+
+g. For a sufficiently large $n$, we have that
+
+$$
+(n-k)s^2/\sigma^2 \sim \mathcal{N}(n-k, 2(n-k)).
+$$
+
+Therefore
+
+$$
+s^2 \sim \mathcal{N}(\sigma^2, 2(\sigma^2)^2/(n-k)).
+$$
+
+The standard error of $s^2$ is $\sqrt{2(\sigma^2)^2/(n-k)}$, therefore the standard error of $s^2$ decreases as $n$ increases.
+
+h. 1) decreases, 2) increases and 3) remains constant.
+
+i. (1 + 20) / 2 = 10.5, as the confidence interval is symmetric around the point estimate.
+j. The relevant critical value is $t^{0.025}_{97} \approx -1.9848$, the half-width of the confidence interval is 9.5, and so the standard error is 9.5 / 1.9848 = 4.786.
+k. Not necessarily, as the standard error for individual regression coefficients are multipled by the corresponding diagonal entries in $(\symbf{X}'\symbf{X})^{-1}$, which are not necessarily identical (usually aren't, of course).
+
+
+### Linear combinations of regression coefficients
+
+Consider the following regression model:
+
+$$
+Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_3 + \beta_4 X_4 + e,
+$$
+
+where the errors are iid $N(0, \sigma^2)$.
+
+Suppose that $\hat{\symbf{\beta}}' = \begin{pmatrix} 2.5 & 1.8 & 0.7 & 0.3 & 1 \end{pmatrix}$ is the vector of estimated coefficients, and the estimated variance-covariance matrix of $\hat{\symbf{\beta}}$ is
+
+
+$$
+\begin{pmatrix}
+0.25 & 0.12 & 0.05 & 0.02 & 0.01 \\
+0.12 & 0.36 & 0.08 & 0.03 & 0.02 \\
+0.05 & 0.08 & 0.16 & 0.04 & 0.03 \\
+0.02 & 0.03 & 0.04 & 0.09 & 0.05 \\
+0.01 & 0.02 & 0.03 & 0.05 & 0.04
+\end{pmatrix}.
+$$
+
+a. $H_0: \beta_1 - \beta_2 = 0$ vs $H_1: \beta_1 - \beta_2 \neq 0$. Or, alternatively, $H_0: \beta_1 = \beta_2$ vs $H_1: \beta_1 \neq \beta_2$.
+b. Writing this out in full, we have that
+
+$$
+H_0: \beta_0 + 2\beta_1 + 3\beta_2 = \beta_0 + 3\beta_1 + 2\beta_2,
+$$
+
+where the $\beta_3$ and $\beta_4$ terms do not contribute because $X_3=X_4=0$.
+
+Simplifying the equation, we have that
+
+$$
+H_0: \beta_1 = \beta_2,
+$$
+
+i.e. the same as in part a. Accordingly, 
+
+$$
+H_1: \beta_1 \neq \beta_2.
+$$
+
+c. 
+
+We have that
+
+$$
+\hat{\beta}_3 - \hat{\beta}_1 = 0.3 - 1.8 = 1.5.
+$$
+
+The relevant critical value from the $t$ distribution is $t^{\alpha/2}_{n-5}$.
+
+The estimated variance of $\hat{\beta}_3 - \hat{\beta}_1$ is
+
+$$
+\hat{\mathrm{Var}}(\hat{\beta}_3 - \hat{\beta}_1) = \hat{\mathrm{Var}}(\hat{\beta}_3) + \hat{\mathrm{Var}}(\hat{\beta}_1) - 2\hat{\mathrm{Cov}}(\hat{\beta}_3, \hat{\beta}_1) = 0.09 + 0.36 - 2 \times 0.03 = 0.066.
+$$
+
+Therefore the confidence interval is given by
+
+$$
+1.5 \pm t^{\alpha/2}_{n-5} \times \sqrt{0.066}.
+$$
+
+d. 0.04 / 0.01 = 4.
+
+e. The test statistic is
+
+$$
+t = 1 / \sqrt{0.04} = 5.
+$$
+
+We then have that $|t|=5 > 1.96$, so we reject the null hypothesis.
+
+f. 2 * $\mathrm{Pr}(T_{95}>5)$.
+g. 2 * $\mathrm{Pr}(T_{95}>|t|)$.
+h. $\mathrm{Pr}(T_{95}>5)$
+i. $\mathrm{Pr}(T_{95}>t)$
+j. $\mathrm{Pr}(T_{95}<t$
+
+### Interpreting Confidence Intervals and P-values
+
+a. Since the confidence interval $-0.2 \leq \beta_i \leq 0.5$ includes zero, the effect of $X_i$ is not statistically significant at the 5% level.
+
+b. We cannot conclude that $X_i$ has no effect. The confidence interval suggests that the true effect could be slightly negative, zero, or positive. Lack of statistical significance does not prove the absence of an effect.
+
+c. Our data are only consistent with small effects, and so we conclude that the confidence interval is precise enough to rule out large effects.
+
+d. Our data are consistent with both large positive and negative effects. The magnitude and direction of the effect of the predictor is therefore entirely unclear.
+
+e. It tells us that we did not detect an effect.
+f. No, it does not.
+g. As the sample size is large, the effect is likely precisely estimated, and so presumably any effect is small.
+h. It might still be the case that the p-value is large because the effect is small, but we do not know that because the the effect is likely imprecisely estimated.
+i. Nothing, as a) the effect could be positive or negative, and b) the effect could be small or large.
+j. Without knowing what the estimate actually is, it is difficult to say whether the benefit of the drug is worth the costs (e.g. side effects, financial costs, etc.).
+k. Firstly, celebrate. Secondly, I would a) request a follow-up trial with a larger sample size to obtain a more precise estimate of the effect, and/or b) try put the drug on the market.
+
+### Difference between nominal and empirical coverage
+
+a.
+
+- **Nominal coverage**: The theoretical confidence level set when constructing the interval (e.g., 95%).
+- **Empirical coverage**: The actual proportion of times the confidence interval contains the true parameter when repeated samples are taken.
+
+b.
+Matching empirical coverage to nominal coverage ensures that the confidence intervals are reliable and that decision-making based on these intervals is valid.
+
+c. No, the empirical coverage is what actually matters - the nominal coverage is just a theoretical construct to help us construct the intervals.
+
+d. Yes, the empirical coverage is what actually matters - the nominal coverage is just a theoretical construct to help us construct the intervals. If you have no idea what the empirical coverage is, you have no idea how reliable your intervals are.
+
+e. Nominal coverage is only as accurate as the assumptions, so we need to ensure that the assumptions are met (at least closely) to ensure that the nominal coverage is close to the empirical coverage.
+
+### Using t-Distribution vs. Normal Distribution in Confidence Intervals
+
+a. The t-distribution accounts for the additional uncertainty from estimating $\sigma^2$, especially important in small samples where the estimate of $\sigma^2$ is less precise.
+
+b. The residual degrees of freedom ($n-k$), as the $t$-distribution follows the normal closely only for larger values of $n-k$.
+
+### Critiquing Interpretations of Regression Results
+
+a. The statement is weak because no inferential support is provided.
+
+b. The 95% confidence interval from $0.0$ to $4.0$ suggests that while the lower bound is at zero, the effect could be up to 4.0 units increase in revenue per unit increase in TV spend. It indicates that there is potential for a positive effect, but the evidence is not strong enough to be conclusive.
+
+
+\newpage
+
+
+
+# Week Four
+
+## ANOVA
+
+### Categorical Variables
+
+#### Questions Regarding a Particular Model
+
+##### Initial Understanding
+
+a. $X_{\mathrm{Age}} = X_{\mathrm{Sex}} = 0$. The individual is 0 years old and they are female. $\beta_{\mathrm{Sex}}$ is the increase in mean blood pressure due to being male holding age constant. $\beta_{\mathrm{Age}}$ is the increase in mean blood pressure due to a one year increase in age, holding sex constant.
+b. The individual is 0 years old and male. $\beta_{\mathrm{Sex}}$ is now the increase in mean blood pressure due to being female holding age constant. The sign of $\beta_{\mathrm{Sex}}$ is flipped (i.e. changes from positive to negative, or vice versa).
+c. They are 20 years old and female. $\beta_{\mathrm{Age}}$ is still the increase in mean blood pressure due to a one year increase in age, holding sex constant.
+
+##### Alternative Coding
+
+a.
+  - i. It is the average response across males and females for a 0-year old. This average is given by $\frac{\mathrm{E}[Y|\text{Female, 0-years old}] + \mathrm{E}[Y|\text{Male, 0-years old}]}{2}$, which in terms of the actual variable values is $\frac{\mathrm{E}[Y|X_{\mathrm{Age}} = 0, X_{\mathrm{Sex}} = -1] + \mathrm{E}[Y|X_{\mathrm{Age}} = 0, X_{\mathrm{Sex}} = 1]}{2}$. Substituting in, we have that $\frac{\beta_0 + 0 \times \beta_{\mathrm{Age}} + (-1) \times \beta_{\mathrm{Sex}} + \beta_0 + 0 \times \beta_{\mathrm{Age}} + 1 \times \beta_{\mathrm{Sex}}}{2}$, which reduces to $\frac{2\beta_0}{2}$ = $\beta_0$.
+  - ii. It is the magnitude of change from the overall mean (holding age constant, of course). The direction of the change (increase or decrease) is provided by the specific values of the explanatory variable. For example,  $\mathrm{E}[Y|\text{Female, x-years old}] = \mathrm{E}[Y|X_{\mathrm{Age}} = 0, X_{\mathrm{Sex}} = -1] = \beta_0 -1 \times \beta_{\mathrm{Sex}} + x \times \beta_{\mathrm{Age}}$. Whereas for males, $\mathrm{E}[Y|\text{Male, x-years old}] = \mathrm{E}[Y|X_{\mathrm{Age}} = 0, X_{\mathrm{Sex}} = 1] = \beta_0 + 1 \times \beta_{\mathrm{Sex}} + x \times \beta_{\mathrm{Age}}$.
+b.
+  - i. Same as before - Mean response for females aged zero.
+  - ii. Twice the effect of being male. For a male $x$ years old, $\mathrm{E}[Y|\text{Male, x-years old}] = \mathrm{E}[Y|X_{\mathrm{Age}} = 0, X_{\mathrm{Sex}} = 1] = \beta_0 + 0.5 \times \beta_{\mathrm{Sex}} + x \times \beta_{\mathrm{Age}}$. Therefore, the effect of being male is given by $0.5 \times \beta_{\mathrm{Sex}}$, which is clearly half $\beta_{\mathrm{Sex}}$.
+
+#### Miscellaneous
+
+a. 0 (as each is zero when the other one, so they are orthogonal). To demonstrate, suppose that the first observation took on the second level of the categorical variable, the second observation took on the third level and the third observation took on the first (and that there are only three observations). In this case, $\symbf{X} = \begin{bmatrix} 1 & 1 & 0 \\ 1 & 0 & 1 \\ 1 & 0 & 0 \end{bmatrix}$. Clearly, $\symbf{x}_1' \cdot \symbf{x}_2 = 0$, and so the corresponding regression coefficients are uncorrelated (by our earlier result).
+b. Yes. Without the intercept, they're linearly independent as the linear dependence that arose previusly came about because the the intercept was a linear combination of the three indicator variables.
+
+
+## Model checking
+
+### Introduction
+
+a. It is an observation not well fitted by the model.
+b. It is an observation that can potentially have a large effect on the estiamted regression coefficients, in virtue of being far from other observations (in terms of the $\symbf{X}$ coordinates).
+c.
+
+```{r}
+#| include: false
+set.seed(4)
+plot_tbl <- tibble::tibble(x = seq(-20, 20, by = 4))
+plot_tbl <- plot_tbl |>
+  dplyr::mutate(y = rnorm(11, 0, 2))
+p_points <- ggplot(plot_tbl) +
+  geom_point(aes(x, y), alpha = 0.8) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  lims(x = c(-77, 77), y = c(-30, 30)) +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  labs(
+    x = "Explanatory varible",
+    y = "Response variable"
+  ) +
+  theme(plot.title = element_text(size = 8)) +
+  theme(axis.title = element_text(size = 7))
+
+data_mod_i <- plot_tbl |>
+  dplyr::bind_rows(
+    tibble::tibble(x = 0, y = 0)
+  )
+fit_i <- lm(y ~ x, data = data_mod_i)
+coef_vec_i <- coef(fit_i)
+
+data_mod_ii <- plot_tbl |>
+  dplyr::bind_rows(
+    tibble::tibble(x = 0, y = 20)
+  )
+fit_ii <- lm(y ~ x, data = data_mod_ii)
+coef_vec_ii <- coef(fit_ii)
+
+data_mod_iii <- plot_tbl |>
+  dplyr::bind_rows(
+    tibble::tibble(x = c(65, 65), y = c(-20, 20))
+  )
+fit_iii <- lm(y ~ x, data = data_mod_iii)
+coef_vec_iii <- coef(fit_iii)
+
+data_mod_iv <- plot_tbl |>
+  dplyr::bind_rows(
+    tibble::tibble(x = c(65), y = c(20))
+  )
+fit_iv <- lm(y ~ x, data = data_mod_iv)
+coef_vec_iv <- coef(fit_iv)
+
+p_grid <- cowplot::plot_grid(
+  p_points +
+    ggtitle("i: Non-outlying, low leverage") +
+    geom_point(
+      data = data.frame(x = 0, y = 0),
+      aes(x, y),
+      col = "orange", size = 2
+    ) +
+    geom_abline(
+      intercept = coef_vec_i[1],
+      slope = coef_vec_i[2],
+      alpha = 0.7,
+      col = "dodgerblue",
+      linewidth = 1.2
+    ),
+  p_points +
+    ggtitle("ii: Outlying, low leverage")  +
+    geom_point(
+      data = data.frame(x = 0, y = 20),
+      aes(x, y),
+      col = "orange", size = 2
+    ) +
+    geom_abline(
+      intercept = coef_vec_ii[1],
+      slope = coef_vec_ii[2],
+      alpha = 0.7,
+      col = "dodgerblue",
+      linewidth = 1.2
+    ),
+  p_points +
+    ggtitle("iii: Outlying, high leverage") +
+    geom_point(
+      data = data.frame(x = c(65, 65), y = c(-20, 20)),
+      aes(x, y),
+      col = "orange", size = 2
+    ) +
+    geom_abline(
+      intercept = coef_vec_iii[1],
+      slope = coef_vec_iii[2],
+      alpha = 0.7,
+      col = "dodgerblue",
+      linewidth = 1.2
+    ),
+  p_points +
+    ggtitle("iv: Non-outlying, high leverage") +
+    geom_point(
+      data = data.frame(x = 75, y = 20),
+      aes(x, y),
+      col = "orange", size = 2
+    ) +
+    geom_abline(
+      intercept = coef_vec_iv[1],
+      slope = coef_vec_iv[2],
+      alpha = 0.7,
+      col = "dodgerblue",
+      linewidth = 1.2
+    ),
+  ncol = 2
+)
+
+cowplot::ggsave2(
+  filename = projr::projr_path_get("cache", "p-grid-outliers-soln.pdf"),
+  plot = p_grid, width = 12, height = 12, units = "cm"
+)
+```
+
+```{r}
+#| results: asis
+#| echo: false
+pander::pandoc.image(
+  projr::projr_path_get("cache", "p-grid-outliers-soln.pdf")
+)
+```
+
+### Leverage
+
+a. $\symbf{X}(\symbf{X}^T\symbf{X})^{-1}\symbf{X}^T_{ii}$.
+b. 0 and 1. The reason this is true is that, since $\symbf{H}$ is idempotent, we can show that $h_i = h_i^2 + \sum_{j\neq i}h_{ij}^2$ (proof in notes). As a sum of squared values, it cannot be negative. As $h_i$ is at least as large as itself squared, it cannot be greater than one.
+c. $k/n$. The average value for any leverage point is simply the sum of the leverages divided by the number of points. The sum of the leverages is equal to the trace of $\symbf{H}$, which implies that the sum is equal to $\mathrm{tr}[\symbf{X}(\symbf{X}'\symbf{X})^{-1}\symbf{X}'] = \mathrm{tr}[\symbf{X}'\symbf{X}(\symbf{X}'\symbf{X})^{-1}]=\mathrm{tr}[\symbf{I}]=k$. The result then follows.
+d. 1/n
+e. n/n = 1
+f. $\hat{Y}_i=\symbf{x}_{[i]}'\hat{\symbf{\beta}}=\symbf{x}_{[i]}'(\symbf{X}'\symbf{X})^{-1}\symbf{X}\symbf{Y}$. $\symbf{x}_{[i]}'(\symbf{X}'\symbf{X})^{-1}\symbf{X}$ has one row and $n$ columns, which implies that $\hat{Y}_i$ is a linear combination of the response variables.
+g. $\hat{Y}_i = \sum_{i=1}^n h_{ij}Y_j \Rightarrow \hat{Y}_i = h_{ii}Y_i + \sum_{j\neq i} h_{ij}Y_j \Rightarrow$ the $i$-th observation contributes $h_{ii}Y_i$.
+h. This implies that $\hat{Y}_i = h_iY_i = 1 \times Y_i$ (as, due to the answer in part b, all $h_ij=0$ if $h_ii =1 \; \forall \; i\neq j$).The fitted value is equal to the actual value.
+i. Not necessarily - leverage depends only on the explanatory variables, so it is impossible to determine leverage from the information provided.
+
+# Week Five
+
+## Prediction
+
+### Prediction Intervals
+
+a. Variability in the estimates of the regression coefficients ($\mathrm{Var}[\hat{\symbf{Y}}] = \mathrm{Var}[\symbf{X}\hat{\symbf{\beta}}]$, where $\hat{\symbf{\beta}}$ contributes all the randomness). Alternatively, variability in the responses used to fit the model ($\symbf{Y}$), or, equivalently, variability in the errors of the responses used to fit the model ($\symbf{\epsilon}$).
+b. Variability in the new response (($\mathrm{Var}[Y_f] = \mathrm{Var}[\symbf{x}_f'\symbf{\beta} + \  epsilon_f] = \mathrm{Var}[\epsilon_f]$, so $\epsilon_f$ contributes all the randomness). Alternatively, variabiility in the new responses's error.
+c. Variability in the estimates of the regression coefficients as well as variability in the errors
+d. As $Y_f$ is not part of the dataset used to estimated $\symbf{\beta}$ upon which $\hat{Y}_f$ is based, the two quantities are independent and so the variance of their difference is the sum of the variances.
+e. One uses prediction intervals to predict the range of response variable, rather than the mean response, so an example might be trying to predict the returns on a stock portfolio owned a specific individual. This person is clearly not interested in how precise the estimate of the mean return is ($\mathrm{Var}[Y_i|\symbf{x}_i]$) or what the overall variability is in the "true" model ($\sigma^2$), but the range of their own returns. Another example might be someone trying to predict their mark based on hours studied. They might wish to guard against excessively low marks, and so would be interested in the lower bound of the prediction interval.
+f. As the sample size increases, the variability from estimating the regression coefficients decreases, and so what is left is only the variability in the new response, which is constant and so creates straight-line confidence bands.
+g. For a model with only an intercept, $\symbf{x}_f'(\symbf{X}'\symbf{X})^{-1}\symbf{x}_f=\frac{1}{n}$, and so the half-width of the confidence interval is $t_{n-k-1}^{\alpha/2}\sqrt{s^2(1+1/n)}$.
+
+### Variable Selection Algorithms
+
+Forward selection, as backward selection would not be able to fit the initial model as $(\symbf{X}'\symbf{X})^{-1}$ would not exist.
+
+### Variable Selection Criteria
+
+a. BIC would tend to include more, as the per-variable penalty for BIC for a sample size of 5 is $\ln(5) \approx 1.6$ whereas for AIC the penalty is 2.
+b. AIC, as the per-variable for BIC is not $\ln(1000)\approx 6.9$.
+c.
+
+For $v$ variables, $AIC(v)=n\mathrm{ln}(RSS_v) + 2v-n\mathrm{ln}(n)$.
+
+
+Taking the difference in AIC between a model with $r$ variables and another model with $r+1$ variables, we get
+
+$$
+\begin{aligned}
+AIC(r) - AIC(r+1) &= n\mathrm{ln}(RSS_r) + 2r - n\mathrm{ln}(n) - n\mathrm{ln}(RSS_{r+1}) - 2r - 2 + n\mathrm{ln}(n), \\
+&= n\mathrm{ln}\left(\frac{RSS_r}{RSS_{r+1}} \right) - 2.
+\end{aligned}
+$$
+
+Setting above equal to zero, we have that
+
+$$
+\begin{aligned}
+\frac{RSS_r}{RSS_{r+1}} &= e^{2/n}, \\
+\Rightarrow RSS_{r+1} &= RSS_{r}e^{-2/n}.
+\end{aligned}
+$$
+
+Therefore the RSS must decrease by at least $1-e^{-2/n}$ for the AIC to select a model with $r+1$ variables over a model with $r$ variables.
+
+For a model with $10$ observations, the RSS must decrease by at least $1-e^{-2/10}\approx 0.18$% for the AIC to select a model with $r+1$ variables over a model with $r$ variables. For a model with one thousand observations, the required decrease is only $1-e^{-2/1000}\approx 0.002$%.
+
+
+
+### Hypothesis Testing
+
+Rather unpersuasive. Even if each coefficient's true value was 0 (i.e. no relationship), then with a statistical significance level of 0.05 we would expect on average 200 * 0.05 = 10 of the coefficients to be statistically significant. If one of the p-values were extremely low (say, 0.0000001), then that would be more persuasive, but they're all only slightly less than 0.05 and so we would expect to see this even simply by chance.
+
+### Training/Test Split Size
+
+As the size of the training set increases, the model estimates become more precise and so the prediction error decreases.
+
+However, as the size of the test set decreases, its estimate of the average prediction error decreases in precision.
+
+So the trade-off is between model performance and accuracy of the estimating model performance.
+
+
+
+
+## Transformations
+
+### Transforming Y or X
+
+#### Transforming Y
+
+a.
+In the transformed model $\log(Y) = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \epsilon$, the coefficient $\beta_1$ represents the expected change in $\log(Y)$ for a one-unit increase in $X_1$, holding $X_2$ constant. Specifically, it indicates that $Y$ is expected to change by a factor of $e^{\beta_1}$ for each one-unit increase in $X_1$.
+
+b.
+In terms of the original $Y$ variable, $\beta_1$ implies that a one-unit increase in $X_1$ is associated with a multiplicative change of $e^{\beta_1}$ in $Y$. For small values of $\beta_1$, this approximates to a percentage change of $100 \times \beta_1\%$ in $Y$.
+
+c. 
+As before, the coefficient $\beta_1$ represents the expected change for a one-unit increase in $X_1$, holding $X_2$ constant, but now for $\sqrt{Y}$.
+
+d.
+We lack a direct interpretation of $\beta_1$ in the original $Y$ scale when $Y$ is squared.
+To note the effect of X1 and X2 on Y, we could plot the fitted values of Y against X1 and X2, holding the other variable constant.
+
+e.
+The residuals will become less variable at higher fitted values of Y.
+If the variance increased with the fitted values of Y, this would be an improvement.
+If the variance was constant or decreased with the fitted values of Y, this would be a deterioration.
+
+
+#### Transforming X
+
+a. 
+The coefficient $\beta_1$ represents the expected change in $Y$ for a one-unit increase in $\log(X_1)$, holding $X_2$ constant.
+
+b.
+The relationship between $X_1$ and $Y$ is expected to be logarithmic, with the effect of $X_1$ on $Y$ decreasing as $X_1$ increases.
+
+c.
+The coefficient $\beta_1$ indicates the expected change in $Y$ for a one-unit increase in ${X_1}^2$, holding $X_2$ constant.
+
+d. 
+The relationship between $X_1$ and $Y$ is expected to be quadratic, with the effect of $X_1$ on $Y$ increasing at an increasing rate.
+
+e.
+Transforming only $X_1$ will not directly address heteroscedasticity unless the transformation also stabilizes variance.
+
+### Interaction terms
+
+#### Fitted Values and Interpretation
+
+a. $\mathrm{E}[Y|\text{Female, x-years old}] = \mathrm{E}[Y|X_{\mathrm{Age}} = x, X_{\mathrm{Sex}} = 0]$, which after substituting is equal to $\beta_0 + 0 \times \beta_{\mathrm{Sex}} + x \times \beta_{\mathrm{Age}} + 0 \times x \times \beta_{\mathrm{Sex}:\mathrm{Age}} = \beta_0 + x\beta_{\mathrm{Age}}$.
+b. $\mathrm{E}[Y|\text{Male, x-years old}] = \mathrm{E}[Y|X_{\mathrm{Age}} = x, X_{\mathrm{Sex}} = 1]$, which after substituting is equal to $\beta_0 + 1 \times \beta_{\mathrm{Sex}} + x \times \beta_{\mathrm{Age}} + 1 \times x \times \beta_{\mathrm{Sex}:\mathrm{Age}} = \beta_0 + x \times \beta_{\mathrm{Age}}$ and after simplifying is $\beta_0 + \beta_{\mathrm{Sex}} + x(\beta_{\mathrm{Age}} + \beta_{\mathrm{Sex}:\mathrm{Age}})$.
+c. It is the increase in males relative to females of the effect of a one-year increase of age on average blood pressure.
+d. It is increase in the average blood pressure of females for a one-year increase in age.
+e. It is the increase in the average blood pressure of males for a one-year increase in age.
+
+#### Estimation, Interpretation and Hypothesis Testing
+
+##### Model Structure
+
+a.
+The model formula is:
+
+$$
+Y = \beta_0 + \beta_{\text{GroupB}} \text{GroupB} + \beta_{\text{GroupC}} \text{GroupC} + \beta_X X + \beta_{\text{GroupB:X}} (X \times \text{GroupB}) + \beta_{\text{GroupC:X}} (X \times \text{GroupC}) + \epsilon
+$$
+
+
+b.
+
+$$
+\begin{bmatrix}
+1 & 0 & 0 & 0 & 0 & 0 \\
+\end{bmatrix}
+$$
+
+c. 
+
+$$
+\begin{bmatrix}
+1 & 0 & 1 & 0 & 0 & 0 \\
+\end{bmatrix}
+$$
+
+d. 
+$$
+\begin{bmatrix}
+1 & 0 & 0 & 3 & 0 & 0 \\
+\end{bmatrix}
+$$
+
+e. 
+$$
+\begin{bmatrix}
+1 & 1 & 0 & 3 & 3 & 0 \\
+\end{bmatrix}
+$$
+
+
+##### Fitted Values
+
+a.
+For $X = 0$:
+
+- **Group A**: $Y = \beta_0 = 8$
+- **Group B**: $Y = \beta_0 + \beta_{\text{GroupB}} = 8 - 2.3 = 5.7$
+- **Group C**: $Y = \beta_0 + \beta_{\text{GroupC}} = 8 -1.5 = 6.5$
+
+b.
+For $X = 1$:
+
+- **Group A**: $Y = \beta_0 + 1 \times \beta_X = 8 + 1.5 = 9.5$
+- **Group B**: $Y = \beta_0 + \beta_{\text{GroupB}} + 1 \times \beta_X + 1 \times \beta_{\text{GroupB:X}} = 5.7 + 1.5 + 1.9 = 9.1$
+- **Group C**: $Y = \beta_0 + \beta_{\text{GroupC}} + 1 \times \beta_X + 1 \times \beta_{\text{GroupC:X}} = 6.5 + 1.5 + 4.7 = 12.7$
+
+##### Effects
+
+a.
+$\beta_{X:GroupB} = 1.9$; the effect of $X$ is 1.9 units greater in Group B compared to Group A.
+
+b.
+$\beta_{X:GroupC} = 4.7$; the effect of $X$ is 4.7 units greater in Group C compared to Group A.
+
+c.
+$\beta_{X:GroupC} - \beta_{X:GroupB}  = 4.7 - 1.9 = 2.8$. The effect of $X$ is 2.8 units greater in Group C compared to Group B.
+
+d. $\beta_X = 1.5$; for Group A, a one-unit increase in $X$ increases $Y$ by 1.5 units.
+
+e. $\beta_X + \beta_{\text{GroupB:X}} = 3.4$; for Group B, a one-unit increase in $X$ increases $Y$ by 3.4 units.
+
+f. $\beta_X + \beta_{\text{GroupC:X}} = 6.2$; for Group C, a one-unit increase in $X$ increases $Y$ by 6.2 units.
+
+g.
+$\beta_{\text{GroupB}} = -2.3$; at $X = 0$, Group B's $Y$ is 2.3 units less than Group A's.
+
+
+h.
+$\beta_{\text{GroupB}} + 4 \times \beta_{\text{GroupB:X}} = -2.3 + 4 \times 1.9 = 6.7$. At $X = 4$, Group B's $Y$ is 6.7 units higher than Group A's.
+
+i.
+At what value of $X$ is the fitted value the same for groups A and B?
+
+We need that
+
+$$
+\beta_0 + \beta_X X = \beta_0 + \beta_{\text{GroupB}} + \beta_X X + \beta_{\text{GroupB:X}} X.
+$$
+
+This implies that
+
+$$
+\beta_{\text{GroupB}} + \beta_{\text{GroupB:X}} X = 0.
+$$
+
+Solving for $X$ gives
+
+$$
+X = -\frac{\beta_{\text{GroupB}}}{\beta_{\text{GroupB:X}}} = -\frac{-2.3}{1.9} \approx 1.21.
+$$
+
+j.
+State the estimated effect of belonging to Group C compared to Group B at $X = 0$.
+$\beta_{\text{GroupC}} - \beta_{\text{GroupB}} = -1.5 - (-2.3) = 0.8$. At $X = 0$, Group C's $Y$ is 0.8 units higher than Group B's.
+
+k.
+$\beta_{\text{GroupC}} + 4 \times \beta_{\text{GroupC:X}} - \beta_{\text{GroupB}} - 4 \times \beta_{\text{GroupB:X}} = -1.5 + 4 \times 4.7 - (-2.3) - 4 \times 1.9 = 12.7$.
+At $X = 4$, Group C's $Y$ is 18.7 units higher than Group B's.
+
+
+##### Plot
+
+Plot the fitted values for each group as a function of $X$, for $X$ ranging from 0 to 4.
+
+```{r}
+#| eval: false
+#| echo: true
+x_vec <- c(0, 4)
+y_group_a <- 8 + 1.5 * x_vec
+y_group_b <- 5.7 + (1.5 + 1.9) * x_vec
+y_group_c <- 6.5 + (1.5 + 4.7) * x_vec
+plot_tbl <- tibble::tibble(
+  x = rep(x_vec, 3),
+  y = c(y_group_a, y_group_b, y_group_c),
+  group = rep(c("A", "B", "C"), each = length(x_vec))
+)
+ggplot(plot_tbl, aes(x = x, y = y, color = group)) +
+  cowplot::theme_cowplot() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white"),
+  ) +
+  background_grid(major = "xy") +
+  geom_line() +
+  labs(title = "Fitted Values for Each Group",
+       x = "X",
+       y = "Y")
+```
+
+```{r}
+#| eval: true
+#| echo: false
+x_vec <- c(0, 4)
+y_group_a <- 8 + 1.5 * x_vec
+y_group_b <- 5.7 + (1.5 + 1.9) * x_vec
+y_group_c <- 6.5 + (1.5 + 4.7) * x_vec
+plot_tbl <- tibble::tibble(
+  x = rep(x_vec, 3),
+  y = c(y_group_a, y_group_b, y_group_c),
+  group = rep(c("A", "B", "C"), each = length(x_vec))
+)
+library(ggplot2)
+p <- ggplot(plot_tbl, aes(x = x, y = y, color = group)) +
+  cowplot::theme_cowplot() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white"),
+  ) +
+  theme(
+    legend.title = element_blank(),
+  ) +
+  cowplot::background_grid(major = "xy") +
+  geom_line(linewidth = 1) +
+  labs(x = "X",
+       y = "Y") +
+  scale_color_manual(values = RColorBrewer::brewer.pal(3, "Set1"))
+path_fig <- projr::projr_path_get(
+  "cache", "fig", "question_bank",
+  "interactions", "p-group.pdf"
+)
+ggsave(
+  path_fig,
+  p,
+  units = "cm",
+  height = 8,
+  width = 10
+)
+```
+
+```{r}
+#| echo: false
+#| results: asis
+knitr::include_graphics(path_fig)
+```
+
+
+##### Hypothesis Testing
+
+a.
+$H_0: \beta_{\text{GroupB:X}} = 0$
+
+b. 
+$H_0: \beta_{\text{GroupC:X}} = 0$
+
+c.
+$H_0: \beta_{\text{GroupB:X}} = \beta_{\text{GroupC:X}}$
+
+d. 
+$H_0: \beta_{\text{GroupB:X}} = \beta_{\text{GroupC:X}} = 0$
+
+d.
+$H_0: \beta_X = 0$
+
+f. 
+$H_0: \beta_X + \beta_{\text{GroupC:X}} = 0$
+
+g.
+$H_0: \beta_X = \beta_{\text{GroupB:X}} = 0 = \beta_{\text{GroupC:X}} = 0$
+
+h. 
+$H_0: \beta_0 = 0$
+
+i.
+$H_0: \beta_0 + \beta_{\text{GroupC}} = 0$
+
+j. 
+$H_0: \beta_0 = \beta_{\text{GroupB}} = beta_{\text{GroupC}} = 0$
+
+k.
+$H_0: \beta_{\text{GroupB}} = 0$
+
+l.
+$H_0: \beta_{\text{GroupB}} + 3 \times \beta_{\text{GroupB:X}} = 0$
+
+
+m.
+$H_0: \beta_{\text{GroupB}} + x \times \beta_{\text{GroupB:X}} = \beta_{\text{GroupC}} + x \times \beta_{\text{GroupC:X}} = 0$
+
+
+#### Calculations and Inference
+
+We run the code to reproduce the model fit and $(\symbf{X}'\symbf{X})^{-1}$ here:
+
+```{r}
+set.seed(2106)
+n_obs <- 60
+crop_vec <- sample(0:1, size = n_obs, replace = TRUE)
+fertilizer_vec <- rnorm(n_obs)
+yield_vec <- 100 + 10 +
+  fertilizer_vec * ifelse(crop_vec, 5, -5) +
+  rnorm(n_obs, mean = 0, sd = 5)
+yield_tbl <- tibble::tibble(
+  yield = yield_vec, crop = crop_vec, fertilizer = fertilizer_vec
+  )
+fit_yield <- lm(yield ~ crop*fertilizer, data = yield_tbl)
+X_mat <- model.matrix(fit_yield)
+XtX_mat_inv <- solve(t(X_mat) %*% X_mat) |> signif(2)
+```
+
+
+a. For corn, the effect of an additional unit of fertilizer is to increase the mean yield by $\hat{\beta}_{\mathrm{Fertilizer}} = -5.623$. For wheat, the effect of an additional unit of fertilizer is to increase the mean yield by $\hat{\beta}_{\mathrm{Fertilizer}} + \beta_{\mathrm{Crop}:\mathrm{Fertilizer}} = -5.623 + 11.087 = 5.464$. Therefore, additional fertilizer decreases corn yield but increases wheat yield.
+b. We can simply read the p-value off the summary table as $1.03 \times 10^{-8}$ (for the $t$-test where the null hypothesis is that $\beta_{\mathrm{Crop}:\mathrm{Fertilizer}} = 0$). This is clearly less than 0.05, and so we reject the null hypothesis and conclude that the effect of fertilizer on yield depends on the crop.
+c.
+
+For there to be no effect of fertilizer, we need both $\beta_{\mathrm{Fertilizer}}=0$ and $\beta_{\mathrm{Crop}:\mathrm{Fertilizer}}=0$.
+To help see this, imagine that $\beta_{\mathrm{Fertilizer}}=0$. Would there be no effect of fertilizer? Not necessarily, because in that case the effect of fertilizer amongst wheat is $\beta_{\mathrm{Fertilizer}}+ \beta_{\mathrm{Crop}:\mathrm{Fertilizer}} = 0 + \beta_{\mathrm{Crop}:\mathrm{Fertilizer}} = \beta_{\mathrm{Crop}:\mathrm{Fertilizer}}$.
+So, if $\beta_{\mathrm{Crop}:\mathrm{Fertilizer}}\neq0$, then there is possibly an effect of fertilizer - on wheat.
+An effect of fertilizer on either crop (or both crops) means that there is an effect of fertilizer.
+
+We need that both $\beta_{\mathrm{Fertilizer}}$ and $\beta_{\mathrm{Crop}:\mathrm{Fertilizer}}$ are equal to 0.
+It would not be enough for their sum, for example, to be zero (as that could be the case even if neither were non-zero, as the terms could cancel out).
+So, we need to conduct a simultaneous hypothesis test.
+This means that we need to use the $F$-test.
+
+The null hypothesis is that both $\beta_{\mathrm{Fertilizer}}$ and $\beta_{\mathrm{Crop}:\mathrm{Fertilizer}}$ are equal to 0.
+The alternate hypothesis is that at least one of them is non-zero.
+
+The test statistic and associated distribution is
+
+$$
+\frac{(\symbf{L}\hat{\symbf{\beta}})'(\symbf{L(X'X)^{-1}L'})^{-1}(\symbf{L}\hat{\symbf{\beta}})}{2s^2} \sim F_{2, 56}
+$$
+
+where $\symbf{L} = \begin{bmatrix} 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}$.
+
+Calculate the above in `R` as follows:
+
+```{r}
+L_mat <- matrix(c(0, 0, 1, 0, 0, 0, 0, 1), nrow = 2, ncol = 4, byrow = TRUE)
+# taken from summary of model fit
+s2 <- 5.344^2
+coef_vec <- c(109.345, 0.949, -5.62, 11.087)
+# calculate f-stat
+f_stat <- (
+  t(L_mat %*% coef_vec) %*%
+    solve(L_mat %*% XtX_mat_inv %*% t(L_mat)) %*%
+    (L_mat %*% coef_vec)
+  ) / (2 * s2)
+# calculate p-value
+p_val <- 1 -
+  pf(
+    f_stat,
+    df1 = nrow(L_mat),
+    df2 = nrow(yield_tbl) - length(coef(fit_yield))
+    )
+p_val
+```
+
+We check our work using the `car::linearHypothesis` function:
+
+```{r}
+hypothesis <- c("fertilizer = 0", "crop:fertilizer = 0")
+test <- car::linearHypothesis(fit_yield, hypothesis)
+
+# Print the test results
+test
+```
+
+
+```{r}
+#| include: false
+#| eval: false
+#|
+# manual - alternative
+# -----------------
+C_mat <- XtX_mat_inv[3:4, 3:4]
+coef_vec <- coef(fit_yield)[3:4]
+s2 <- summary(fit_yield)$sigma^2
+f_stat <- (t(coef_vec) %*% solve(C_mat) %*% coef_vec) / (2 * s2)
+p_val <- 1 - pf(f_stat, df1 = nrow(C_mat), df2 = nrow(yield_tbl) - length(coef(fit_yield)))
+
+# anova
+# -----------------
+
+# Fit the full model
+full_model <- lm(yield ~ crop*fertilizer, data = yield_tbl)
+
+# Fit the reduced model
+reduced_model <- lm(yield ~ crop, data = yield_tbl)
+
+# Perform the likelihood ratio test
+test_result <- anova(reduced_model, full_model)
+test_result
+# car package f test
+# ------------------
+# Test the significance of the variables wt and hp
+hypothesis <- c("fertilizer = 0", "crop:fertilizer = 0")
+test <- car::linearHypothesis(fit_yield, hypothesis)
+
+# Print the test results
+test
+
+# cat package f test (alternate)
+# ------------------
+hypothesis <- L_mat
+test <- car::linearHypothesis(fit_yield, hypothesis)
+F_statistic <- test$F[1]
+df_num <- test$df[1]
+df_den <- test$df[2]
+
+# Print the results
+cat("F-statistic:", F_statistic, "\n")
+cat("Degrees of freedom (numerator):", df_num, "\n")
+cat("Degrees of freedom (denominator):", df_den, "\n")
+```
+
+```{r}
+#| include: false
+data_tidy_bank <- read.table(projr::projr_path_get("raw-data", "bank.txt"), header = TRUE) |>
+  tibble::as_tibble()
+
+model_full <-  lm (Y ~ ., data = data_tidy_bank)
+
+# manual - alternative
+# -----------------
+match_vec <- c(1, 4, 6, 7, 8)
+C_mat <- vcov(model_full)[match_vec, match_vec]
+coef_vec <- coef(model_full)[match_vec]
+s2 <- summary(model_full)$sigma^2
+f_stat <- (t(coef_vec) %*% solve(C_mat) %*% coef_vec) / (2 * s2)
+p_val <- pf(
+  f_stat,
+  df1 = nrow(C_mat),
+  df2 = nrow(data_tidy_bank) - length(coef(model_full)),
+  lower.tail = FALSE
+)
+
+# manual - assignment (okay, this doesn't really help)
+# ------------------
+
+X_mat <- data_tidy_bank|>
+  dplyr::select(-Y) |>
+  dplyr::mutate(Intercept = 1) |>
+  dplyr::select(Intercept, everything()) |>
+  as.matrix()
+y_vec <- data_tidy_bank[, "Y"] |>
+  as.matrix()
+beta_vec <- solve(t(X_mat) %*% X_mat) %*% t(X_mat) %*% y_vec
+pred_vec <- X_mat %*% beta_vec
+s2 <- sum((y_vec - pred_vec)^2) / (nrow(X_mat)- ncol(X_mat))
+MSE <- s2
+MSR <- sum((pred_vec - mean(y_vec))^2) / (ncol(X_mat) - 1)
+f_stat <- MSR / MSE
+p_val <- pf(
+  f_stat,
+  df1 = ncol(X_mat) - 1,
+  df2 = nrow(X_mat) - ncol(X_mat),
+  lower.tail = FALSE
+)
+p_val |> signif(3)
+
+# anove - matches slides
+# ------------------
+
+
+model_red <- lm (Y ~ X1 + X2 + X4 + X8 + 0, data = data_tidy_bank)
+test_result <- anova(model_red, model_full)
+test_result
+```
+
+d.
+The effect of fertilizer for corn is given by $\beta_{\mathrm{Fertilizer}}$.
+Accordingly, the 95% confidence interval is given by
+
+$$
+\hat{\beta}_{\mathrm{Fertilizer}} \pm t_{n-k}^{\alpha/2}\sqrt{\mathrm{Var}[\hat{\beta}_{\mathrm{Fertilizer}}]}.
+$$
+
+With $\hat{\beta}_{\mathrm{Fertilizer}} = -5.62$, $n=60$, $k=4$, $\alpha=0.05$ and $\mathrm{Var}[\hat{\beta}_{\mathrm{Fertilizer}}]=1.6$, this leads to
+
+$$
+-5.62 \pm 2 \times \sqrt{1.6} = -5.62 \pm 2.45 = [-8.07, -3.17].
+$$
+
+This is similar to that yielded by `confint`:
+
+```{r}
+confint(fit_yield)[3, , drop = FALSE] |> signif(4)
+```
+
+Differences are mostly removed when no rounding is performed early:
+```{r}
+(
+  coef(fit_yield)[3] + c(-1, 1) * qt(0.975, df = 60) * sqrt(vcov(fit_yield)[3,3])
+) |>
+  signif(4)
+```
+
+e.
+
+The effect of an additional unit of fertilizer for wheat is given by $\beta_{\mathrm{Fertilizer}} + \beta_{\mathrm{Crop}:\mathrm{Fertilizer}}$.
+
+Accordingly, the 95% confidence interval is given by
+
+$$
+\hat{\beta}_{\mathrm{Fertilizer}} + \hat{\beta}_{\mathrm{Crop}:\mathrm{Fertilizer}} \pm t_{n-k}^{\alpha/2}\sqrt{\mathrm{Var}[\hat{\beta}_{\mathrm{Fertilizer}} + \hat{\beta}_{\mathrm{Crop}:\mathrm{Fertilizer}}]}.
+$$
+
+We have that $\hat{\beta}_{\mathrm{Fertilizer}} + \hat{\beta}_{\mathrm{Crop}:\mathrm{Fertilizer}} = -5.623 + 11.087 = 5.464$.
+
+The calculation for the variance is more involved, but can be worked out as follows:
+
+$$
+\mathrm{Var}[\hat{\beta}_{\mathrm{Fertilizer}} + \hat{\beta}_{\mathrm{Crop}:\mathrm{Fertilizer}}] =
+\begin{bmatrix} 0 & 0 & 1 & 1 \end{bmatrix} \mathrm{Var}[\hat{\beta}] \begin{bmatrix} 0 \\ 0 \\ 1 \\ 1 \end{bmatrix}.
+$$
+
+We perform the matrix multiplication as follows:
+
+```{r}
+mat_row <- matrix(c(0, 0, 1, 1), nrow = 1)
+var_beta_sum <- mat_row %*% vcov(fit_yield) %*% t(mat_row)
+var_beta_sum |> signif(3)
+```
+
+Plugging these values into the formula for the confidence interval, we have that the 95% confidence interval is given by
+
+$$
+5.464 \pm 2 \times \sqrt{1.08} = 5.464 \pm 2.1 = [3.304, 7.624].
+$$
+
+We cannot read this confidence interval directly from the model output as it involves two terms.
+We can simply set wheat as the reference level for $\symbf{X}_{\mathrm{Crop}}$ and then read off the confidence interval for $\beta_{\mathrm{Fertilizer}}$ (this sets $\beta_{\mathrm{Crop}:\mathrm{Fertilizer}}$ to zero when the crop is wheat, which is what we want).
+
+We do this as follows:
+
+```{r}
+yield_tbl_relevel <- yield_tbl |>
+  dplyr::mutate(
+    crop = as.numeric(crop == 0)
+  )
+fit_yield_relevel <- lm(yield ~ crop*fertilizer, data = yield_tbl_relevel)
+confint(fit_yield_relevel)[3, , drop = FALSE] |> signif(4)
+```
+
+This is similar enough to before that we won't bother recomputing with the exact intermediate figures.
+
+f.
+
+For a corn field with fertilizer level $x_{\mathrm{Fertilizer}}$, the average yield is
+
+$$
+\beta_0 + x_{\mathrm{Fertilizer}}\beta_{\mathrm{Fertilizer}}.
+$$
+
+For a wheat field, the average yield is
+
+$$
+\beta_0 + \beta_{\mathrm{Crop}} + x_{\mathrm{Fertilizer}}\beta_{\mathrm{Fertilizer}} + x_{\mathrm{Fertilizer}}\beta_{\mathrm{Crop}:\mathrm{Fertilizer}},
+$$
+
+which is equivalent to
+
+$$
+\beta_0 + \beta_{\mathrm{Crop}} + x_{\mathrm{Fertilizer}}(\beta_{\mathrm{Fertilizer}} + \beta_{\mathrm{Crop}:\mathrm{Fertilizer}}).
+$$
+
+As such, the effect of an additional unit of fertilizer for corn fields is $\beta_{\mathrm{Fertilizer}}$, whereas the effect of an additional unit of fertilizer for wheat fields is $\beta_{\mathrm{Fertilizer}} + \beta_{\mathrm{Crop}:\mathrm{Fertilizer}}$.
+The effect has therefore changed, i.e. been modified.
+
+In our case above, the estimated effect of an additional unit of fertilizer for corn fields is -5.623, whereas the estimated effect of an additional unit of fertilizer for wheat fields is 5.464.
+As neither of the confidence intervals for the effect of fertilizer for corn or wheat overlap zero, we conclude that there is an effect of fertilizer but that it is different for corn and wheat.
+
+Note that this is a contrived example, and it's unlikely for fertilizer to be harmful for corn but beneficial for wheat.
+However, this gets the point across more than were, say, the effect of fertilizer marginally stronger for corn than wheat but good for both.
+
+g.
+This implies the null hypothesis that $\beta_{\mathrm{Crop}} = \beta_{\mathrm{Fertilizer}} = \beta_{\mathrm{Crop}:\mathrm{Fertilizer}} = 0$, i.e. that all terms in the model are null except for the intercept.
+The results of this test are displayed at the bottom of the output from `summary(fit_yield)`. The p-value is $7.1\times 10^{-8}$, and so we safely reject the null hypothesis that neither fertilizer nor crop affect yield.
+
+h.
+Yes, it would as we now need an extra column for the main effect of the third-level of crop type.
+We also need an extra column for the interaction between the third-level of crop type and fertilizer.
+This leads to the following model form:
+
+
+$$
+\begin{aligned}
+\symbf{Y} = & \symbf{1}\beta_0 +
+\symbf{X}_{\mathrm{Wheat}} \beta_{\mathrm{Wheat}} + \symbf{X}_{\mathrm{Barley}} \beta_{\mathrm{Barley}} + \symbf{X}_{\mathrm{Fertilizer}} \beta_{\mathrm{Fertilizer}} + \\
+& \symbf{X}_{\mathrm{Wheat}:\mathrm{Fertilizer}}\beta_{\mathrm{Wheat}:\mathrm{Fertilizer}} + \symbf{X}_{\mathrm{Barley}:\mathrm{Fertilizer}}\beta_{\mathrm{Barley}:\mathrm{Fertilizer}} + \symbf{\epsilon}.
+\end{aligned}
+$$
+
+i. For this to be true, we need that $\beta_{\mathrm{Barley}:\mathrm{Fertilizer}} = 0$.
+A $t$-test would be appropriate.
+j. For this to be true, we need that $\beta_{\mathrm{Wheat}:\mathrm{Fertilizer}} = \beta_{\mathrm{Barley}:\mathrm{Fertilizer}}$. This is equivalent to $\beta_{\mathrm{Wheat}:\mathrm{Fertilizer}} - \beta_{\mathrm{Barley}:\mathrm{Fertilizer}} = 0$. A $t$-test on $\symbf{l}'\symbf{\beta}$ would be appropriate, where $\symbf{l}= \begin{bmatrix} 0 & 0 & 0 & 0 & 1 & -1 \end{bmatrix}$.
+
+---
+
+##  Gauss-Markov theorem
+
+### Basics
+
+a.
+  - i. It is linear in the response variables, i.e. it is a linear combination of $\symbf{Y}$ (remember $\hat{\symbf{\beta}}=(\symbf{X}'\symbf{X})^{-1}\symbf{X}'\symbf{Y})$.
+  - ii. Its expected value is the same as the true value (i.e. $\mathrm{E}[\hat{\symbf{\beta}}] = \symbf{\beta}$).
+  - iii. Any linear combination of the estimated regression coefficients has the lowest possible variability (among unbiased, linear regression coefficients).
+
+### Validity
+
+a. Yes
+b. No
+c. No - variance must be constant.
+
+### Deeper Understanding
+
+a. No, as the parameter estimates are then biased. For example, suppose you model blood pressure against drug (either you take the drug, or you do not take the drug). Suppose also that only males take the drug, and only females do not take the drug, and that males and females have different average blood pressure. Then the coefficient of the effect of taking the drug will include the effect both of the drug and of being male, and so will be biased. For example, imagine that males have high blood pressures. Then the estimate for the effect of the drug will be higher (on average) than what it truly is.
+b. The average squared distance from the true value for either $\beta_i$ is 1, whereas for $\hat{\symbf{\beta}}$ is is 5. So the estimator $\symbf{0}$ has lower variance, and is better in that sense. Of course, it is biased but $\hat{\symbf{\beta}}$ is not, and so $\hat{\symbf{\beta}}$ is better in that sense.
+c. No, as the variance increases with the mean.
+
+\newpage
+
+
+# Week Six
+
+## Bootstrapping
+
+### Sampling with replacement
+
+a.  
+"Sampling with replacement" means that when creating each bootstrap sample, each data point from the original dataset can be selected multiple times or not at all.
+
+b.
+If we did not sample with replacement, then each bootstrap sample would be identical to the original sample.
+By sampling with replacement, we treat the original sample as if it is an infinite population, which makes sense because the original sample is a draw from a (theoretical) infinite population and that is what we are trying to mimick. 
+
+### Role of Bootstrapping in Inference
+
+a.  
+The primary purpose of bootstrapping in statistical inference is to estimate the sampling distribution of an estimator. This allows for the construction of confidence intervals and hypothesis tests without relying on strong parametric assumptions about the underlying population distribution.
+b. 
+Bootstrapping uses the empirical data to generate resamples to help assess sampling variability, whereas traditional approaches use only the original sample and statistics derived directly from it, such as the observed  variability.
+c.  
+Bootstrapping may make fewer assumptions, which means there are fewer assumptions to violate.
+
+### Limitations of traditional methods
+
+a.  
+The traditional $t$-interval method assumes that the sampling distribution of the estimator (typically the sample mean) is approximately normal and symmetric. It also assumes that the sample standard error is independent of the estimator.
+
+b.
+Bootstrap estimates the sampling distribution through resampling, rather than purely through inference based on statistical assumptions and the original sample.
+
+### Asymmetric bootstrap confidence intervals
+
+a.
+
+- Bootstrap Percentile Confidence Interval:  
+   This method involves resampling with replacement to create many bootstrap samples, calculating the estimator for each sample, and then using the empirical percentiles (e.g., 2.5th and 97.5th percentiles) of these estimates to form the confidence interval.
+
+- Bootstrap $t$-Interval: 
+   This approach involves estimating a $t$ statistic for each bootstrap sample, and replacing the quantiles in the original $t$-distribution-based confidence interval with the corresponding quantiles from the bootstrap $t$-distribution. This method is more robust for skewed distributions. 
+
+b. 
+
+It performs better in most common scenarios, as the percentile method tends to produce confidence intervals that are too narrow and tends to estimate the bounds imprecisely.
+These effects are highly exaggerated for small sample sizes.
+
+### Non-parametric Nature of Bootstrapping
+
+Bootstrapping (as we have described it) is considered a non-parametric method because it does not assume any specific parametric form for the underlying population distribution. 
+
+---
+
+
+## Principal Component Analysis
+
+### Calculation and Application
+
+#### Preparation
+
+```{r}
+if (!requireNamespace("DataTidy23RodoHonsMult", quietly = TRUE)) {
+  if (!requireNamespace("remotes", quietly = TRUE)) {
+    install.packages("remotes")
+  }
+  remotes::install_github("MiguelRodo/DataTidy23RodoHonsMult@2024")
+}
+
+# Load libraries
+library(ggplot2)
+library(dplyr)
+library(DataTidy23RodoHonsMult)
+data("data_tidy_mali", package = "DataTidy23RodoHonsMult")
+```
+
+```{r}
+# Prep the data
+data_tidy_mali <- data_tidy_mali |>
+  filter(dist_rd < 500, family < 100, cattle < 50)
+data_tidy_mali <- data_tidy_mali |>
+  select(family, dist_rd, cotton, maize, cattle)
+data_tidy_mali <- scale(data_tidy_mali)
+data_tidy_mali <- as.data.frame(data_tidy_mali)
+```
+
+```{r}
+# Compute the covariance matrix
+cov_matrix <- cov(data_tidy_mali)
+cov_matrix |> signif(2)
+```
+
+```{r}
+# Perform eigen-decomposition
+eig_decomp <- eigen(cov_matrix)
+# eigenvalues
+eig_val_vec <- eig_decomp$values
+eig_val_vec <- eig_val_vec |> setNames(paste0("EigenValue", 1:length(eig_val_vec)))
+eig_val_vec |> signif(2)
+# eigenvectors
+eig_vec_mat <- eig_decomp$vectors
+colnames(eig_vec_mat) <- paste0("EigenVector", 1:ncol(eig_vec_mat))
+rownames(eig_vec_mat) <- colnames(cov_matrix)
+eig_vec_mat |> signif(2)
+```
+
+#### Questions
+
+a. We standardised the variables to have unit variance, and that is what is the diagonals of the covariance matrix are.
+
+b. We can answer this using code as follows
+
+```{r}
+eig_vec_mat[, 1] %*% matrix(c(1, 0.5, 1, 0, 0), ncol = 1)
+```
+
+By hand, this looks like:
+
+$$
+0.51 \times 1 + 0.026 \times 0.5 + 0.53 \times 1 + 0.5 \times 0 + 0.45 \times 0 = 1.03
+$$
+
+c. We can answer this using code as follows
+
+```{r}
+eig_vec_mat[, 3] %*% c(1, 0.5, 1, 0, 0)
+```
+
+By hand, this looks like:
+
+$$
+-0.24 \times 1 + -0.052 \times 0.5 + -0.17 \times 1 + -0.37 \times 0 + 0.88 \times 0 = -0.44
+$$
+
+d. The variance of the first principal component is the first eigenvalue, which is 2.9.
+
+e. The variance of the fourth principal component is the fourth eigenvalue, which is 0.33.
+
+f. The original variables have been scaled and have unit variance, as shown by the variance-covariance matrix.
+There are five variables, so the total variance is therefore five.
+
+g. The total variance of the principal components is the sum of the eigenvalues, which is 5.0.
+This is necessarily equal to the total variance of the original variables.
+
+h. The proportion of variance explained by the first principal component is the first eigenvalue divided by the total variance, which is 2.9 / 5.0 = 0.58.
+
+i. The proportion of variance explained by the fifth principal component is the fifth eigenvalue divided by the total variance, which is 0.23 / 5.0 = 0.046.
+
+j. The proportion of variance explained by the first two principal components is the sum of the first two eigenvalues divided by the total variance, which is (2.9 + 1.0) / 5.0 = 0.78.
+
+k. Together all the principal components explain all the variance, so the proportion is 1.
+It can also be worked out by summing the eigenvalues and dividing by the total variance (5/5 = 1).
+
+l. Using code, this looks like the following:
+
+```{r}
+#| include: false
+scree_tbl <- tibble::tibble(eigenvalue = eig_val_vec) |>
+  dplyr::mutate(
+    index = seq_len(dplyr::n()),
+    prop_var = eigenvalue / sum(eigenvalue) * 1e2
+  )
+p <- ggplot(
+    scree_tbl,
+    aes(x = index, y = prop_var)) +
+  geom_point() +
+  geom_line() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme( 
+    panel.background = element_rect(fill = "white"), 
+    plot.background = element_rect(fill = "white") 
+  ) +
+  labs(x = "Principal component index", y = "Variation explained (%)") +
+  scale_x_continuous(breaks = seq_len(nrow(scree_tbl))) +
+  lims(y = c(0, 100))
+path_p <- projr::projr_path_get("cache", "fig", "pca", "p-scree.png")
+UtilsGGSV::ggsave2(
+  plot = p,
+  filename = path_p,
+  width = 4.5,
+  height = 4.25
+)
+```
+
+```{r}
+#| echo: true
+#| eval: false
+scree_tbl <- tibble::tibble(eigenvalue = eig_val_vec) |>
+  dplyr::mutate(
+    index = seq_len(dplyr::n()),
+    prop_var = eigenvalue / sum(eigenvalue) * 1e2
+  )
+ggplot(
+    scree_tbl,
+    aes(x = index, y = prop_var)) +
+  geom_point() +
+  geom_line() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme( 
+    panel.background = element_rect(fill = "white"), 
+    plot.background = element_rect(fill = "white") 
+  ) +
+  labs(x = "Principal component index", y = "Variation explained (%)") +
+  scale_x_continuous(breaks = seq_len(nrow(scree_tbl))) +
+  lims(y = c(0, 100))
+```
+
+```{r}
+#| echo: false
+knitr::include_graphics(path_p)
+```
+
+m. There is a (fairly apparent) elbow at the second principal component, after which the decrease in variation explained is linear. So, we would retain two principal components.
+
+Note that this can be a bit subjective, and in this case one could possibly also choose 3 components.
+
+n. The first component explains over 50% of the variation and the second explains over 25%, so retaining two principal components is reasonable as the remaining components explain similar amounts of variation to each other.
+
+o. The first principal component weights all variables except distance to road positively and roughly equally.
+These variables are all related to the size of the household and amount of farming activity, so the first principal component is a proxy for household wealth and size.
+
+p. The second principal component places virtually all weight on the distance to the nearest road, so it is essentially just that variable.
+
+### Deeper Understanding
+
+a.  
+The variance of the lowest-variance principal component is 0 because $\symbf{X}$ not being full rank implies at least one eigenvalue of $\symbf{X}'\symbf{X}$ is zero.
+
+b.  
+The regression coefficients are uncorrelated because the principal components are orthogonal.
+
+c.  
+The principal components are $\symbf{a}_1 = \begin{pmatrix} 1 \\ 0 \end{pmatrix}$ and $\symbf{a}_2 = \begin{pmatrix} 0 \\ 1 \end{pmatrix}$ with variances 2 and 1, respectively. This is because the first element of $\symbf{X}$ has higher variance and is uncorrelated with the second element.
+
+d.  
+A coefficient vector longer than one is incorrect because each principal component should be a single direction. Fix: Use unit-length (normalized) coefficient vectors.
+
+e.  
+We select the first $k$ components because they capture the most variance. Arbitrary subsets might miss significant variability and reduce effectiveness.
+
+f.  
+Choosing all components adds noise from low-variance components, leading to redundancy and potential overfitting. They often carry little useful information.
+
+g.  
+Choose the first two principal components as they capture the highest variance, providing the most informative representation of the data.
+
+h.  
+Plotting principal components reduces dimensionality, highlights major patterns, and removes multicollinearity, making the visualization clearer and more insightful.
+
+i.  
+PCA is biased toward variables with larger scales, which can dominate the principal components. This occurs in datasets with mixed units, like height (cm) and weight (kg).
+
+j.  
+Standardize the variables by scaling them to have a mean of zero and a standard deviation of one. This ensures all variables contribute equally to PCA.
+
+
