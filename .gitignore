@@ -44,6 +44,13 @@ w3/*.rmarkdown
 w4/*.rmarkdown
 w5/*.rmarkdown
 w6/*.rmarkdown
+w0/*.log
+w1/*.log
+w2/*.log
+w3/*.log
+w4/*.log
+w5/*.log
+w6/*.log
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 _raw_data/**
 _reference/non_git/**
