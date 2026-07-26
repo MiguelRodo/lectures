@@ -16,5 +16,5 @@ build:
       - raw-content
       - docs
       - output
-  scripts: w0/CommentChatGPT.qmd
+  scripts: w1/SlidesRegW1S1Intro.qmd
 
