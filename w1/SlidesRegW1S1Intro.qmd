@@ -313,7 +313,7 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 # Introduction to `R`
 
 - Online lecture:
-  - Day: Teuesday, 28 July
+  - Day: Tuesday, 28 July
   - Time: 2pm
   - Link: Pending
 
