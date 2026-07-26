@@ -1,8 +1,11 @@
 directories:
   raw-data:
     path: _raw_data
-  raw-reference:
+  raw-reference-git:
     path: _reference
+    ignore-git: no
+  raw-reference-non-git:
+    path: _reference/non_git
   raw-content:
     path: _content
   docs:
@@ -12,7 +15,7 @@ build:
     slides-2026-sta2005s:
       content:
       - raw-data
-      - raw-reference
+      - raw-reference-non-git
       - raw-content
       - docs
       - output

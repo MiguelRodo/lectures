@@ -1,0 +1,82 @@
+---
+title: STA2005S Regression Tutorial One
+subtitle: Questions
+format:
+  pdf:
+    embed-resources: true
+    include-in-header:
+      text: |
+        \usepackage{graphicx} % Allows including images
+        \usepackage{booktabs} 
+        \usepackage{amsmath}
+        \usepackage{url}
+        \usepackage{subfigure}
+        \usepackage{xcolor}
+        \usepackage{amsthm,amsfonts,amssymb,amscd,amsxtra}
+        \usepackage{pgfpages}
+        \usepackage{animate}
+        \usepackage[backend=bibtex,style=verbose-trad2]{biblatex}
+        \bibliography{bibliography} 
+        \usepackage{mathpazo}
+        \usepackage{unicode-math}
+---
+
+# Question One
+
+a) What is $\begin{bmatrix} \symbf{I}_2 \symbf{0}_{2\times 1}\end{bmatrix} \begin{bmatrix} \symbf{0}_{2\times 2} \\ \symbf{C}_{1\times 2} \end{bmatrix}$ equal to, for $\symbf{C}=\begin{bmatrix} a & b \end{bmatrix}$?
+
+b) Suppose that instead we have $\begin{bmatrix} \symbf{I}_2 \symbf{0}_{2\times 1}\end{bmatrix} \begin{bmatrix} \symbf{0}_{2\times 2} \\ \symbf{C}_{2\times 2} \end{bmatrix}$. What problem now arises?
+
+# Question Two
+
+Suppose that $\symbf{A}=\begin{bmatrix} \symbf{I}_k & \symbf{R}_{k\times k} \\ C_{k\times k} & B_{k \times k} \end{bmatrix}$. Provide values for $\symbf{C}$ and $\symbf{B}$ that make $\symbf{A}$ idempotent, with workings.
+
+# Question Three
+
+For each property below, state whether for a matrix with that property there in general exists a matrix $\symbf{C}$ that factorises the matrix as $\symbf{C}\symbf{C}'$. If it does exist, then find $\symbf{C}$.
+
+Note that it's not all the above properties simultaneously. It's the properties *separately*, i.e. the matrix in c) is not necessarily positive definite or symmetric. 
+
+a). Positive definite
+
+b). Symmetric
+
+c). Idempotent
+
+# Question Four
+
+Suppose that $X_k \sim \mathcal{N}(0, k)$ for $i \in \mathbb{N}^{+}$, e.g $X_1 \sim \mathcal{N}(0, 1)$ and $X_2 \sim \mathcal{N}(0,2)$. Let $X_i$ be independent of $X_j$ for $i\neq j$. Using these random variables, answer the questions below.
+
+a). Construct an $\mathcal{N}(0,1)$ random variable.
+
+b). Construct a $\chi^2_1$ random variable.
+
+c). Construct a $\chi^2_3$ random variable.
+
+d). Construct a $t$_3-distributed random variable (i.e. a $t$ distribution with 3 degrees of freedom)
+
+e). Construct an $F_{1,3}$-distributed random variable (i.e $F$ distribution with 1 and 3 degrees of freedom).
+
+f). Construct an $F_{4,3}$-distributed random variable.
+
+Note that there are many correct answers to the above questions.
+
+# Question Five
+
+Consider the random vector $\symbf{X}:n\times 1$ with moment-generating function $M_{\symbf{X}}(t)=\exp \left[ \symbf{t}'\symbf{a}+\frac{1}{2} \symbf{t}'\symbf{Q}\symbf{t} \right]$.
+
+a). Write down the mean of $\symbf{X}$.
+
+b). If $\symbf{X} \sim \mathcal{N}(0, 1)$, then what are $\symbf{a}$ and $\symbf{Q}$? Write down the moment-generating function of $\symbf{X}$. 
+
+c). If $\symbf{Q}$ is a diagonal matrix, then what can we conclude regarding the elements of $\symbf{X}$?
+
+d). Suppose that $\symbf{X}\in\mathcal{R}^3$, $\symbf{a}=\symbf{0}$ and $\symbf{Q}=(1-\rho)\symbf{I}_3 + \rho \symbf{J}_3$, where $\symbf{J}$ is a $3\times 3$ matrix of ones. Derive the distribution of $\symbf{Y}=\begin{bmatrix} -1 & 0 & 1 \\ 0 & -1 & 1 \end{bmatrix}\symbf{X}$, and then write the moment-generating function of $\symbf{Y}$.
+
+# Question Six
+
+If $\symbf{X} \sim \mathcal{N}(\symbf{\mu}, \symbf{\Sigma})$, show that $(\symbf{X}-\symbf{\mu})'\symbf{\Sigma}^{-1}(\symbf{X}-\symbf{\mu})\sim\chi_p^2$.
+
+# Question Seven
+
+For $\symbf{X}_p \sim \mathcal{N}(\symbf{0}, \symbf{\Sigma})$ and $\symbf{A}_{p\times p}$ a diagonal matrix with positive values on the diagonal, find the distribution of $\symbf{Q}=(\symbf{AX})'(\symbf{A\Sigma A})^{-1}(\symbf{AX})$.

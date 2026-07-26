@@ -1,0 +1,389 @@
+---
+title: STA2005S 2025
+subtitle: Linear regression test
+author: Department of Statistical Sciences, University of Cape Town
+format:
+  pdf:
+    embed-resources: true
+    self-contained: true
+    include-in-header:
+      text: |
+        \usepackage{graphicx} % Allows including images
+        \usepackage{booktabs} 
+        \usepackage{amsmath}
+        \usepackage{url}
+        \usepackage{subfigure}
+        \usepackage{xcolor}
+        \usepackage{amsthm,amsfonts,amssymb,amscd,amsxtra}
+        \usepackage{pgfpages}
+        \usepackage{animate}
+        \usepackage{mathpazo}
+        \usepackage{unicode-math}
+        \setmainfont{TeX Gyre Termes}
+execute:
+  echo: false 
+---
+
+---
+
+\begin{center}
+PAGES: 7
+
+QUESTIONS: 3
+
+TOTAL MARKS AVAILABLE: 52
+
+MAXIMUM MARKS: 50
+\end{center}
+
+---
+
+```{r}
+#| include: false
+library(tibble)
+library(ggplot2)
+theme_cowplot_bg <- function(font_size = 14) {
+  cowplot::theme_cowplot(font_size = font_size) +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white")
+  )
+}
+```
+
+# General linear model formulation
+
+In a general linear model, we have that $\symbf{Y}= \symbf{X}\beta + \symbf{\epsilon}$ where $\symbf{Y}$ is an $n \times 1$ vector of responses, $\symbf{X}$ is a fixed $n \times k$ matrix of predictors and $\symbf{\epsilon}$ is an $n \times 1$ vector of errors.
+In addition, $\mathrm{E}[\symbf{\epsilon}] = \symbf{0}$ and $\mathrm{E}[\symbf{\epsilon}\symbf{\epsilon}'] = \sigma^2\symbf{I}$.
+Finally, suppose that $\symbf{X}$ is full column rank (i.e. no column is a linear combination of any other columns) and $n>k$ (i.e. more observations than parameters).
+
+# Question One (3 marks)
+
+For each question, state one model assumption likely violated and why.
+One exception: violations to the assumption of normality are not considered.
+
+**a.** Modelling exam score against the number of hours slept the night before. \hfill  \mbox{(1 mark)}
+
+**b.**
+Modelling annual electricity usage against number of residents in an apartment building, where the number of residents varies widely between apartment buildings. \hfill \mbox{(1 mark)}
+
+**c.** Modelling daily temperature against day of the month in one city during December. \hfill  \mbox{(1 mark)}
+
+# Question Two (20 marks)
+
+**a.** State the MLE for $\symbf{\beta}$, and derive its distribution. \hfill \mbox{(5 marks)}
+
+**b.** Derive the $t$-statistic for testing $H_0: \beta_j = \beta_j^{(0)}$ versus $H_a: \beta_j \neq \beta_j^{(0)}$. \hfill \mbox{(5 marks)}
+
+**c.** Let $\mathbf{A}\in\mathbb{R}^{n\times n}$ be idempotent of rank $k$, so there exists orthonormal $\mathbf{P}$ with
+
+$$
+\mathbf{P}^\top \mathbf{A}\mathbf{P}
+=\begin{bmatrix}\mathbf{I}_k&\mathbf{0}\\ \mathbf{0}&\mathbf{0}\end{bmatrix}.
+$$
+
+Let $\mathbf{B}\in\mathbb{R}^{n\times n}$ satisfy $\mathbf{B}\mathbf{A}= \mathbf{0}$ and define $\mathbf{C}=\mathbf{B}\mathbf{P}$.
+Show that the first $k$ columns of $\mathbf{C}$ are zero vectors (i.e. $\mathbf{C}=(\mathbf{0},\mathbf{C}_2)$). \hfill  \mbox{(4 marks)}
+
+**d.** Does the expected value of $s^2$ vary with sample size $n$? Justify your answer. \hfill  \mbox{(2 marks)}
+
+**e.** Suppose that $s^2 = 0.05$. What is the standard error of $\hat{\beta}_0$ in an intercept-only model with sample size $n$? \hfill  \mbox{(2 marks)}
+
+**f.** Derive the distribution of $\frac{n\hat{\sigma}^2{_{\mathrm{MLE}}}}{\sigma^2}$, where $\hat{\sigma}^2_{\mathrm{MLE}}$ is the maximum likelihood estimator for $\sigma^2$. You may start with any result or theorem in the notes. \hfill \mbox{(2 marks)}
+
+# Question Three (29 marks)
+
+We are studying how **monthly electricity consumption** (kWh) in households depends on **house size** (square metres), **appliance type** (three categories), and **neighbourhood** (two categories).
+
+```{r}
+#| include: false
+set.seed(10)
+n <- 40
+house_size <- rnorm(n, mean = 120, sd = 25) 
+appliance <- sample(c("basic", "standard", "smart"), n, replace = TRUE)
+neighbourhood <- sample(c("urban", "suburban"), n, replace = TRUE)
+consumption <- 200 + 1.5 * house_size +
+  -15 * (appliance == "smart") + 5 * (appliance == "standard") +
+  -20 * (neighbourhood == "urban")
+consumption <- pmax(consumption, 0)  # Ensure non-negative mean
+consumption <- rpois(n, lambda = pmax(consumption, 0))  # Ensure positive consumption
+# consumption <- rnbinom(n, size = 0.1, mu = consumption)
+consumption[24] <- 290
+data_tbl <- tibble::tibble(
+  consumption = consumption,
+  house_size = house_size,
+  appliance = appliance,
+  neighbourhood = neighbourhood
+)
+```
+
+Here are a few rows of the data:
+
+```{r}
+data_tbl[c(2, 5, 17), ]
+```
+
+@tbl-summary displays summary statistics for the continuous variables:
+
+```{r}
+summary_mat <- rbind(
+  summary(data_tbl$consumption),
+  summary(data_tbl$house_size)
+) |>
+  tibble::as_tibble()
+summary_mat |>
+  dplyr::mutate(
+    Variable = c("consumption", "house_size")
+  ) |>
+  dplyr::select(Variable, everything()) |>
+  dplyr::rename(
+    Min = Min.,
+    Max = Max.,
+    Mean = Mean,
+    Median = `Median`,
+    Q1 = `1st Qu.`,
+    Q3 = `3rd Qu.`
+  ) |>
+  knitr::kable(digits = 2, caption = "Summary statistics for continuous variables {#tbl-summary}")
+```
+
+@tbl-appliance and @tbl-neighbourhood show the counts for the categorical variables:
+
+```{r}
+#| echo: false
+#| results: asis
+tbl_appliance <- table(data_tbl$appliance) |>
+  as.data.frame()
+colnames(tbl_appliance) <- c("Level", "Count")
+tbl_appliance |>
+  knitr::kable(caption = "Counts for appliance types {#tbl-appliance}")
+```
+
+```{r}
+#| echo: false
+#| results: asis
+tbl_neighbourhood <- table(data_tbl$neighbourhood) |>
+  as.data.frame()
+colnames(tbl_neighbourhood) <- c("Level", "Count")
+tbl_neighbourhood |>
+  knitr::kable(caption = "Counts for neighbourhood types {#tbl-neighbourhood}")
+```
+
+We fit the model:
+
+```{r}
+fit_tbl <- data_tbl |>
+  dplyr::mutate(
+    appliance = factor(appliance, levels = c("basic", "standard", "smart")),
+    neighbourhood = factor(neighbourhood, levels = c("suburban", "urban"))
+  )
+fit <- lm(consumption ~ house_size + appliance + neighbourhood, data = fit_tbl)
+summary(fit)
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| results: asis
+#| include: false
+xxi <- solve(t(model.matrix(fit)) %*% model.matrix(fit))
+knitr::kable(xxi, digits = 4, caption = "(X'X)^{-1}")
+```
+
+@tbl-xxi displays the  $\symbf{(X'X)}^{-1}$ matrix rounded to 4 decimals:
+
+Table: $\symbf{(X'X)}^{-1}$ {#tbl-xxi}
+
+|                   | (Intercept)| house_size| appliancestandard| appliancesmart| neighbourhoodurban|
+|:------------------|-----------:|----------:|-----------------:|--------------:|------------------:|
+|(Intercept)        |      0.7494|    -0.0056|           -0.1075|        -0.1233|            -0.0439|
+|house_size         |     -0.0056|     0.0001|            0.0000|        -0.0001|            -0.0004|
+|appliancestandard  |     -0.1075|     0.0000|            0.1668|         0.1016|             0.0037|
+|appliancesmart     |     -0.1233|    -0.0001|            0.1016|         0.1894|             0.0527|
+|neighbourhoodurban |     -0.0439|    -0.0004|            0.0037|         0.0527|             0.1222|
+
+@tbl-t-quantiles displays some possibly-useful quantiles:
+
+```{r}
+#| echo: false
+#| results: asis
+#| warning: false
+#| message: false
+# compute and present t-quantiles in a compact labeled table
+dfs <- c(35, 39, 40)
+probs <- c(0.025, 0.05, 0.975)
+qmat <- t(sapply(dfs, function(df) qt(probs, df)))
+colnames(qmat) <- c("q(0.025)", "q(0.05)", "q(0.975)")
+q_tbl <- tibble::tibble(
+  `Degrees of freedom` = dfs,
+  `0.025` = qmat[, "q(0.025)"],
+  `0.05`  = qmat[, "q(0.05)"],
+  `0.975` = qmat[, "q(0.975)"]
+)
+knitr::kable(q_tbl, digits = 3, caption = "Selected t-quantiles {#tbl-t-quantiles}")
+```
+
+For example, the 0.025 quantile with 39 degrees of freedom is found in the second row, first column: -2.023.
+
+## Part A (21 marks)
+
+**a.** Write down the model’s mean structure (e.g., $E[Y] = \beta_0 + \beta_{\text{HouseSize}} X_{\text{HouseSize}} + \ldots$). \hfill \mbox{(1 mark)}
+
+**b.** For appliance and neighbourhood, what are the reference levels?\hfill \mbox{(2 marks)}
+
+**c.** Write down the row of the design matrix for a household with house size of 120$m^2$, appliance type “basic” located in a “suburban” neighbourhood.  \hfill \mbox{(1 mark)}
+
+**d.** Interpret the effect of house_size on electricity consumption. \hfill \mbox{(2 marks)}
+
+**e.** Calculate a confidence interval for the effect of standard appliances compared to basic appliances. No need to work out the final CI, just putting the numbers in place is good enough. \hfill \mbox{(3 marks)}.
+
+**f.** State the null hypotheses for assessing the following:
+
+\begin{itemize}
+  \item[I.] Whether appliance type is affecting electricity consumption. \hfill \mbox{(1 mark)}
+  \item[II.] Whether smart appliances have the same effect as standard appliances. \hfill \mbox{(1 mark)}
+  \item[III.] Whether the average effect of not using basic appliances is the same as living in an urban neighbourhood. \hfill \mbox{(1 mark)}
+\end{itemize}
+
+**g.** Consider whether we have demonstrated that neighbourhood has an effect or not on electricity consumption. \hfill \mbox{(2 marks)}
+
+**h.** Suppose that the house_size and neighbourhood regression parameter estimators are uncorrelated (zero covariance).
+What is the standard error of the effect of an urban neighbourhood and a house_size of 130$m^2$ compared to a suburban neighbourhood and a house_size of 0$m^2$? Again, no need to perform the final calculation, but do substitute in all available numbers. \hfill \mbox{(3 marks)}
+
+**i.** Explain whether any of the explanatory variables are uncorrelated with the intercept term. \hfill \mbox{(2 marks)}
+
+**j.** The intercept is highly statistically significant (p<0.0001) and large (227, roughly half the maximum observed consumption). Comment on whether this estimate is plausible. Why might the intercept be so far from zero? \hfill \mbox{(2 marks)}
+
+## Part B (8 marks)
+
+**a.** Is the model accurately modelling electricity consumption? \hfill \mbox{(1 mark)}
+
+**b.** Comment on the model validation plot in @fig-residuals. \hfill \mbox{(1 mark)}
+
+```{r}
+#| include: false
+plot_tbl_res <- tibble::tibble(
+  fitted = fit$fitted.values,
+  residuals = fit$residuals
+)
+# ind <- fit$fitted.values < 300 & fit$residuals < -20
+p <- ggplot(plot_tbl_res, aes(x = fitted, y = residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    x = "Fitted values",
+    y = "Residuals"
+  ) +
+  theme_cowplot_bg() +
+  cowplot::background_grid(major = "xy", minor = "none")
+path_p <- projr::projr_path_get(
+  "cache", "test", "p-residuals.pdf"
+)
+ggplot2::ggsave(
+  filename = path_p,
+  plot = p,
+  width = 8,
+  height = 8,
+  units = "cm",
+  dpi = 300
+)
+```
+
+![Residuals against fitted values.](`r path_p`){#fig-residuals}
+
+**c.** With reference to @tbl-normality-tests and @fig-qq, comment on the normality assumption. \hfill \mbox{(2 marks)}
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| results: asis
+#| label: tab-normality-tests
+shapiro_test <- shapiro.test(fit$residuals)
+ks_test <- ks.test(fit$residuals, "pnorm", mean = mean(fit$residuals), sd = sd(fit$residuals))
+
+results_tbl <- tibble::tibble(
+  Test = c("Shapiro-Wilk", "Kolmogorov-Smirnov"),
+  Statistic = c(shapiro_test$statistic, ks_test$statistic),
+  `P-value` = c(shapiro_test$p.value, ks_test$p.value)
+)
+fs <- summary(fit)$fstatistic
+Fval <- unname(fs["value"])
+df1  <- unname(fs["numdf"])
+df2  <- unname(fs["dendf"])
+Fp   <- pf(Fval, df1, df2, lower.tail = FALSE)
+r_2 <- summary(fit)$r.squared
+adj_r_2 <- summary(fit)$adj.r.squared
+results_tbl <- dplyr::bind_rows(
+  results_tbl,
+  tibble::tibble(
+    Test = c("Overall F-test", "R-squared", "Adjusted R-squared"),
+    Statistic = c(Fval, r_2, adj_r_2),
+    `P-value` = c(Fp, NA, NA)
+  )
+)
+knitr::kable(results_tbl, digits = 3,
+  caption = "Selected test statistics {#tbl-normality-tests}")
+```
+
+```{r}
+#| include: false
+# Residuals (vector). Keep your source:
+res <- plot_tbl_res$residuals
+n   <- length(res)
+pp  <- ppoints(n)
+sims <- 1000
+set.seed(42)
+
+# Standardise residuals and use standard normal quantiles
+z <- sort(as.numeric(scale(res, center = TRUE, scale = TRUE)))
+theo_q <- qnorm(pp)
+
+# Monte-Carlo pointwise 95% envelope under N(0,1)
+sim_mat <- replicate(sims, sort(rnorm(n)))
+lower <- apply(sim_mat, 1, quantile, probs = 0.025)
+upper <- apply(sim_mat, 1, quantile, probs = 0.975)
+
+# QQ reference line via least squares (quartile line alternative also fine)
+ab <- coef(lm(z ~ theo_q))
+intercept_q <- unname(ab[1])
+slope_q     <- unname(ab[2])
+
+env_df <- tibble::tibble(
+  theo = theo_q, sample = z, lower = lower, upper = upper
+)
+
+p <- ggplot(env_df, aes(x = theo)) +
+  geom_line(aes(y = lower), colour = "grey30", linetype = "dashed") +
+  geom_line(aes(y = upper), colour = "grey30", linetype = "dashed") +
+  geom_abline(intercept = intercept_q, slope = slope_q,
+              colour = "dodgerblue") +
+  geom_point(aes(y = sample), size = 1.5, alpha = 0.8) +
+  labs(
+    x = "Theoretical quantiles (N(0,1))",
+    y = "Standardised residuals"
+  ) +
+  theme_cowplot_bg() +
+  cowplot::background_grid(major = "xy", minor = "none") +
+  coord_equal()
+path_p_qq <- projr::projr_path_get(
+  "cache", "test", "p-residuals-qq.pdf"
+)
+ggplot2::ggsave(
+  filename = path_p_qq,
+  plot = p,
+  width = 10,
+  height = 10,
+  units = "cm",
+  dpi = 300
+)
+```
+
+![QQ-plot of residuals (with 95% confidence band)](`r path_p_qq`){#fig-qq}
+
+**d.** Explain the difference between an observation being an outlier versus an observation being influential. \hfill \mbox{(2 marks)}
+
+**e.** State the result demonstrating that residual variance decreases with leverage. Justify why one would expect residual variance to decrease with leverage. \hfill \mbox{(2 marks)}
+
+

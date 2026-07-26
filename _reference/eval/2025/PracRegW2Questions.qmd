@@ -1,0 +1,46 @@
+---
+title: "Practice Questions: Crop Yield Regression"
+format: html
+---
+
+# Practice Questions: Crop Yield Regression
+
+*Context:* You have data from 200 experimental plots measuring how three environmental/management factors affect crop output. The response is **yield** (tonnes per hectare), and the predictors are **rainfall** (mm), **temperature** (degrees Celsius) and **fertiliser** (kg/ha).
+
+You will explore these relationships graphically, fit simple and multiple linear models, and even compute regression coefficients “by hand.”
+
+## Part A: Simulated Data
+
+First, simulate the data in `R` (copy and paste the code below):
+
+```{r}
+set.seed(2025)
+n           <- 200
+rainfall    <- runif(n, 200, 800)         # mm per season
+temperature <- runif(n, 10,  30)          # degrees C average
+fertiliser  <- runif(n,  50, 250)         # kg/ha
+yield       <- 1.5 +
+               0.004 * rainfall +
+              -0.10  * temperature +
+               0.008 * fertiliser +
+               rnorm(n, 0, 0.5)
+simdata     <- data.frame(yield, rainfall, temperature, fertiliser)
+```
+
+1. For each of the four variables (`yield`, `rainfall`, `temperature`, `fertiliser`), compute and report the mean, median, standard deviation, min, max.
+2. Plot a histogram of `yield`, and describe its overall shape (symmetric, skewed, outliers).
+3. Based on these summary statistics, comment briefly on any notable features (e.g. unusually wide ranges or evidence of skewness).
+4. Create scatterplots of `yield` against `rainfall`.
+5. Draw a multi-panel figure including scatterplots of each variable against every other variable  (i.e. response versus explanatory and explanatory versus explanatory).
+6. Calculate the Pearson correlation between each predictor and `yield`. 
+7. Reading the relevant help file, calculate the Spearman correlation between each predictor and `yield`.
+8. Create a factor `rain_cat` by cutting `rainfall` into three equal-sized groups (hint: try `cut` function).
+9. Produce a boxplot of `yield` by `rain_cat`.
+10. Fit a simple linear regression of `yield` against `rainfall`. Display the results using `summary`.
+11. Construct the design matrix for the simple linear regression of `yield` against `rainfall`.
+12. Using the formula $\hat{\beta}=(X'X)^{-1}X'Y$, manually calculate the estimated regression coefficients.
+13. Compare your answer in `12` to that in `10`.
+14. Fit a multiple linear regression model of `yield` against `rainfall`, `temperature` and `fertiliser`.
+15. Compare the results in question `14` to the simulation code at the top. 
+16. On a scatterplot of `rainfall` vs `yield`, overlay your manual regression line.
+

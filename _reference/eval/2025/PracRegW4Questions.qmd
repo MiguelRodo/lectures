@@ -1,0 +1,562 @@
+---
+title: "Confidence Intervals, Contrasts, and Global Tests in Multiple Regression"
+subtitle: "Third R Practical — CIs for coefficients, contrasts, nested-model ANOVA, and if–else coverage checks"
+format:
+  html:
+    self-contained: true
+    code-fold: false
+    toc: true
+    toc-depth: 3
+execute:
+  warning: false
+  message: false
+---
+
+# Main practical
+
+## Part A: Confidence intervals and nested-model tests
+
+We work with the multiple regression model
+
+$$
+y_i \;=\; \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \varepsilon_i, 
+\quad \varepsilon_i \overset{\text{iid}}{\sim} \mathcal N(0, \sigma^2),\quad i=1,\dots,n.
+$$
+
+### 1. Construct the data
+
+```{r}
+set.seed(2025)
+
+# Baseline parameters
+n       <- 100
+beta_0  <- 2
+beta_1  <- +0.8
+beta_2  <- -0.8
+sigma   <- 1.5
+
+# Simulate correlated predictors with Corr(x1, x2) ~ 0.4 using a simple construction
+rho     <- 0.4
+x1      <- rnorm(n, mean = 0, sd = 1)
+eta     <- rnorm(n, mean = 0, sd = 1)
+x2      <- rho * x1 + sqrt(1 - rho^2) * eta
+
+# Response
+y <- beta_0 + beta_1 * x1 + beta_2 * x2 + rnorm(n, 0, sigma)
+
+dat <- data.frame(y, x1, x2)
+head(dat, 5)
+```
+
+### 2. Fit the full model and inspect the summary
+
+```{r}
+fit_full <- lm(y ~ x1 + x2, data = dat)
+summary(fit_full)
+```
+
+### 3. Inference for a single regression coefficient $\beta_1$
+
+#### Calculating required quantities
+
+a. Construct the design matrix $\mathbf{X}$, save it as `X`. Compare it to `dat` as well as the output of `model.matrix()`.
+
+```{r}
+#| include: false
+X <- cbind(1, dat[, c("x1", "x2")]) |> as.matrix()  # add intercept column
+colnames(X) <- c("(Intercept)", "x1", "x2")
+```
+
+b. Calculate the estimated regression coefficients $\hat{\mathbf{\beta}}$. Save the coefficient for $\beta_1$ as `b1_hat`.
+
+As from last week, this is given by
+
+```{r}
+y_mat <- matrix(dat$y, ncol = 1)  # response vector as a matrix
+beta_vec <- solve(t(X) %*% X) %*% t(X) %*% y_mat
+beta_vec |> signif(3)
+```
+
+We can double check this against the output of `coef(fit_full)`:
+
+```{r}
+coef(fit_full) |> signif(3)
+```
+
+Saving the coefficient for $\beta_1$ as `b1_hat`:
+
+```{r}
+b1_hat <- beta_vec[2]
+b1_hat |> signif(3)
+```
+
+c. Calculate the unbiased estimator of $\sigma^2$ using the residuals from `fit_full`. Compare it to the output of `summary(fit_full)$sigma`.
+
+The unbiased estimator of $\sigma^2$ is given by
+
+$$
+s^2 = \frac{\sum_{i=1}^n\hat{e}_i^2}{n - k},
+$$
+
+Let's first obtain these quantities and then combine them.
+
+We know from the simulation that $n$ is 100 and $k$ is 3 (intercept, $x_1$, $x_2$).
+However, it is less error-prone to calculate these values automatically rather than hard-coding them.
+
+One way to set `n` and `k` is to use the dimensions of the design matrix `X`:
+
+```{r}
+n <- nrow(X)  # number of observations
+k <- ncol(X)  # number of parameters (including intercept)
+```
+
+Now, we need the residuals from the fitted model `fit_full`:
+
+```{r}
+resid_vec <- residuals(fit_full)  # residuals from the full model
+```
+
+**Extra info**: If you run `?residuals.lm`, you'll see that there are various definitions of residuals, but the default `"working"` is the difference between the observed and fitted values, which is what we want here.
+
+Now, we can compute the unbiased estimator of $\sigma^2$:
+
+```{r}
+s2 <- sum(resid_vec^2) / (n - k)
+s2 |> signif(3)
+```
+
+Examining the output of `summary(fit_full)$sigma`:
+
+```{r}
+summary(fit_full)$sigma |> signif(3)
+```
+
+They are not the same - the `summary()` output gives the **standard deviation** of the residuals, while we computed the **variance**. To get the standard deviation, we take the square root:
+
+```{r}
+sqrt(s2) |> signif(3)
+```
+
+d. Compute the estimated covariance matrix of $\hat{\mathbf{\beta}}$. Compare it to the output of `vcov(fit_full)`.
+
+The formula for the covariance matrix of the estimated coefficients $\hat{\beta}$ is given by
+
+$$
+\widehat{\mathrm{Var}}(\hat\beta)\;=\;s^2\,(X^\top X)^{-1},
+$$
+
+```{r}
+cov_manual <- s2 * solve(t(X) %*% X)
+cov_manual |> signif(3)
+```
+
+Compare this to the output of `vcov(fit_full)`:
+
+```{r}
+cov_builtin <- vcov(fit_full)
+cov_builtin |> signif(3)
+```
+
+We can check if they are equal:
+
+```{r}
+all.equal(cov_manual, cov_builtin)
+```
+
+**Extra info**: We use `all.equal()` instead of `identical` because there may be small numerical differences due to the way arithmetic works in R for real numbers (so-called "floating-point" numbers). The `tolerance` argument allows for a small margin of error. We can see that `identical` regards these covariance matrices are different:
+
+```{r}
+identical(cov_manual, cov_builtin)  # should be FALSE due to numerical precision
+```
+
+If we sum over the squared differences, we can see how close they are:
+
+```{r}
+sum((cov_manual - cov_builtin)^2)
+```
+
+The above is very small but non-zero, hence the different results between `all.equal()` and `identical()`.
+
+e. Calculate the standard error of $\hat{\beta}_1$.
+
+We just extract the diagonal element corresponding to $\hat{\beta}_1$ from the covariance matrix:
+
+```{r}
+se_b1 <- sqrt(cov_manual["x1", "x1"])
+se_b1 |> signif(3)
+```
+
+**Important**:
+Do *not* round (`round`) or truncate (`signif`) the standard error before using it in further calculations, as this can lead to incorrect results.
+Same goes for any other intermediate quantities.
+Always use the full precision of the number.
+We just use `signif()` here for display purposes.
+
+For example, do *not* truncate before saving the value to `se_b1_signif` (as below), and then use `se_b1_signif` in further calculations:
+
+```{r}
+se_b1_signif <- sqrt(cov_manual["x1", "x1"]) |>
+  signif(3)  # this is wrong for further calculations!
+```
+
+#### Confidence interval 
+
+f. Calculate the confidence interval for $\beta_1$.
+
+The formula for the confidence interval is
+
+$$
+\hat\beta_1 \pm t_{1-\alpha/2,\,n-k}\,\widehat{\mathrm{SE}}(\hat\beta_1),
+$$
+
+Setting $\alpha = 0.05$ (for a 95% CI), we need the t-critical value for $n-k$ degrees of freedom, which we can obtain using the `qt()` function:
+
+```{r}
+t_crit <- qt(1 - 0.05 / 2, df = n - k)
+t_crit |> signif(3)
+```
+
+**Tip**: If we had not automatically calculated $n$ and $k$ but hardcoded them, if the data changed we would have had to spot all these small places in which $n$ and $k$ are used. By using the dimensions of the design matrix (or whatever other way), we avoid this problem.
+
+We can calculate the half-width ($t_{1-\alpha/2,\,n-k} \times \mathrm{SE}(\hat\beta_1)$) of the confidence interval as follows:
+
+```{r}
+half_width <- t_crit * se_b1
+half_width |> signif(3)
+```
+
+The confidence interval is just the point estimate $\hat\beta_1$ plus/minus the half-width:
+
+```{r}
+lb <- b1_hat - half_width
+ub <- b1_hat + half_width
+ci_beta1 <- c(lb, ub)
+ci_beta1 |> signif(3)
+```
+
+We can compare this against the output of `confint(fit_full)`:
+
+```{r}
+confint(fit_full) |> signif(3)
+```
+
+Amazing.
+
+#### P-value
+
+g. Calculate the p-value for the hypothesis test $H_0: \beta_1 = 0$. Compare the answer to `summary(fit_full)`.
+
+The t-statistic for $\hat\beta_1$ is given by
+
+$$
+t = \frac{\hat\beta_1}{\mathrm{SE}(\hat\beta_1)}.
+$$
+
+To repeat what we mentioned in class, this is based on 
+
+$$
+\frac{\hat{\beta_1} - \beta_1}{\widehat{\mathrm{SE}}(\hat{\beta}_1)} \sim t_{n-k},
+$$
+
+but setting the null hypothesis $\beta_1 = 0$.
+
+Calculating the t-statistic:
+
+```{r}
+t_stat_b1 <- b1_hat / se_b1
+t_stat_b1 |> signif(3)
+```
+
+Now we can calculate the p-value using the t-distribution:
+
+```{r}
+p_value_b1 <- 2 * pt(abs(t_stat_b1), df = n - k, lower.tail = FALSE)
+p_value_b1 |> signif(3)
+```
+
+We can compare this to the output of `summary(fit_full)`:
+
+```{r}
+summary(fit_full)
+```
+
+The $t$-statistic and p-value for $\hat\beta_1$ match.
+
+#### Inference for $\beta_2$
+
+h. Calculate the confidence interval and p-value for $\beta_2$.
+i. **Extra**: If you would like to practice for loops, use a for loop to calculate the confidence intervals for $\beta_0$, $\beta_1$, and $\beta_2$. But I would suggest doing this once you've completed the remainder of the practical, which covers multiple hypothesis testing and `if`/`else` statements.
+
+### 4. Simultaneous hypothesis testing for $\beta_1$ and $\beta_2$
+
+Suppose we want to test the hypothesis $H_0: \beta_1 = 0, \beta_2 = 0$, where the alternative is $H_1: \text{At least one of }\beta_1\text{ and }\beta_2 \text{ not equal to }0$.
+
+a. State the null hypothesis in the form $\symbf{L\beta}=\symbf{L\beta}^{(0)}$.
+b. Construct the matrix $\symbf{L}$ for the hypothesis test, and save it as `L`.
+
+We can construct $\symbf{L}$ as follows:
+
+```{r}
+L <- matrix(
+  c(0, 1, 0,  # first row for beta_1
+    0, 0, 1),   # second row for beta_2
+  byrow = TRUE,
+  ncol = 3
+)
+L
+```
+
+The $F$-statistic for the hypothesis test is given by
+
+$$
+F = \frac{(\symbf{L}\hat{\symbf{\beta}})^{\top}(\symbf{LC}\symbf{L}^{\top})^{-1}(\symbf{L}\hat{\symbf{\beta}})}{qs^2}
+$$
+
+where $q$ is the number of restrictions (here, $q=2$).
+
+In general, there are the following quantities involved in the $F$-statistic:
+
+- $\symbf{L}$, 
+- $\hat{\symbf{\beta}}$,
+- $\symbf{C}=(\symbf{X}^{\top}\symbf{X})^{-1}$,
+- $s^2$, and
+- $q$.
+
+We already have $\symbf{L}$, $\hat{\symbf{\beta}}$ and $s^2$ from the previous steps.
+
+b. Calculate $\symbf{C}$.
+
+```{r}
+C <- solve(t(X) %*% X)  # (X'X)^{-1}
+C |> signif(3)
+```
+
+c. Calculate $q$.
+
+$q$ is simply the number of restrictions, which is the number of rows in $\symbf{L}$:
+
+```{r}
+q_val <- nrow(L)
+```
+
+I saved it as `q_val` as there is a built-in function `q()` in R, so we avoid confusion.
+
+d. Calculate the $F$-statistic for the hypothesis test.
+
+To make the final calculation more readable, let us first calculate $\symbf{L}\hat{\symbf{\beta}}$ and then $(\symbf{LC}_{22}\symbf{L}^{\top})^{-1}$:
+
+```{r}
+L_beta <- L %*% beta_vec  # L * beta_hat
+L_C_Lt_inv <- solve(L %*% C %*% t(L))  # (L * C * L')^{-1}  
+```
+
+We can first compute the numerator and denominator separately:
+
+```{r}
+numerator   <- t(L_beta) %*% L_C_Lt_inv %*% L_beta
+denominator <- q_val * s2
+```
+
+```{r}
+f_stat_b1_b2 <- numerator / denominator
+f_stat_b1_b2 |> signif(3)
+```
+
+d. Calculate the p-value for the $F$-test.
+
+The p-value for the $F$-test can be calculated using the `pf()` function, which gives the cumulative distribution function of the $F$-distribution:
+
+```{r}
+p_value_f_test <- pf(f_stat_b1_b2, df1 = q_val, df2 = n - k, lower.tail = FALSE)  
+p_value_f_test
+```
+
+As compared to the $t-stat$ p-value, we do not multiply by 2, as the $F$-test is inherently a two-tailed test (it tests whether the linear combination of coefficients is significantly different from zero in either direction).
+
+e. Compare the p-value to the output of `summary(fit_full)`.
+
+The F-statistic at the bottom of the summary output tests the null hypothesis that all non-intercept coefficients are zero, which is equivalent to our hypothesis $H_0: \beta_1 = 0, \beta_2 = 0$.
+
+```{r}
+summary(fit_full)
+```
+
+Again, they match.
+
+f. Calculate the $F$-statistic for the hypothesis test $H_0: \beta_0 = 0, \beta_1 = 0, \beta_2 = 0$.
+
+## Part B: Programming — `if`, `else`, `ifelse`, `&&`, `||`, `&`, `|` and coverage
+
+### Conditions
+
+#### Individual conditions
+
+Often we need to check whether something is true or false.
+
+For this, we use **conditions**. A condition is an expression that evaluates to either `TRUE` or `FALSE`.
+
+For example, this is a condition:
+
+```{r}
+3 < 5
+```
+
+This evaluates to `TRUE`, because 3 is indeed less than 5.
+
+There are various conditional operators in `R`, such as:
+
+- `<` (less than)
+- `<=` (less than or equal to)
+- `>` (greater than)
+- `>=` (greater than or equal to)
+- `==` (equal to)
+- `!=` (not equal to)
+
+We can use these conditions involving things other than numbers, such as strings:
+
+```{r}
+"hello" != "goodbye"
+```
+
+Various other functions return `TRUE` or `FALSE`, often starting with `is.` like `is.numeric()` but often not, like `grepl`:
+
+```{r}
+is.numeric("abc")  # checks if "abc" is numeric
+grepl("hello", "he")  # checks if "hello" contains "he"
+```
+
+a. Write a condition that checks whether the string "hello" is equal to "world".
+b. Write a condition that evaluates to `TRUE` when comparing "hello" and "world".
+c. Write a condition that checks whether the number 10 is greater than 3.
+
+#### Combining conditions
+
+We can combine conditions using logical operators:
+
+- `&` (element-wise AND):
+
+Every condition needs to be `TRUE` for the whole expression to be `TRUE`.
+This evaluates to `TRUE` as both conditions are `TRUE`:
+
+```{r}
+TRUE & TRUE
+is.numeric(3) & is.numeric(5)
+3 < 6 & 5 > 2
+```
+
+It is FALSE if at least one condition is `FALSE`:
+
+```{r}
+TRUE & FALSE
+is.numeric("abc") & is.numeric(5)
+3 < 6 & 5 < 2
+```
+
+- `|` (element-wise OR):
+
+At least one condition needs to be `TRUE` for the whole expression to be `TRUE`.
+This evaluates to `TRUE` as at least one condition is `TRUE`:
+
+```{r}
+TRUE | FALSE
+is.numeric(3) | is.numeric("abc")
+3 < 6 | 5 < 2
+```
+
+a. Write a condition that checks whether the number 3 is less than 5 **and** the number 10 is less than 8.
+b. Write a condition that checks whether the number 3 is less than 5 **or** the number 10 is less than 8.
+
+### `if`/`else` statements
+
+Conditions are useful for controlling which code is run based on whether a condition is `TRUE` or `FALSE`.
+
+To do this, we use `if` and `else` statements.
+
+For example, suppose we wish to generate a message as to whether a p-value was statistically significant or not.
+Suppose the p-value observed is 0.03:
+
+```{r}
+p_val <- 0.03
+```
+
+Then, we run a different message depending on whether the p-value is less than 0.05:
+
+```{r}
+if (p_val < 0.05) {
+  "Significant, you may publish your paper"
+} else {
+  "Not significant, hack it further"
+}
+```
+
+`if` and `else` are used to control what code is run based on a condition.
+The syntax is as follows:
+
+if (condition) {
+
+  # code to execute if condition is TRUE
+
+} else {
+
+  # code to execute if condition is FALSE
+
+}
+
+If the condition is `TRUE`, only the code inside the first block is executed; if it is `FALSE`, only the code inside the `else` block is executed.
+
+Note that `condition` must evaluate to a *single* `TRUE` or `FALSE` value.
+
+For example, this throws an error, as the condition is not of type `logical`:
+
+```{r}
+#| error: TRUE
+if ("abc") {
+  "This will not run"
+} else {
+  "This will also not run"
+}
+```
+
+This, too, will not run as the condition is not a single `TRUE` or `FALSE`:
+
+```{r}
+#| error: true
+if (c(TRUE, TRUE)) {
+  "This will not run"
+} else {
+  "This will also not run"
+}
+```
+
+a. Write an `if`/`else` block that checks whether the number `2` is contained in the interval `c(1, 3)`. If it is, print "2 is in the interval"; otherwise, print "2 is not in the interval".
+b. Write an `if`/`else` block that checks whether the string "hello" is equal to "world" OR if `3` is a number. If it is, print "Hello world!"; otherwise, print "Goodbye world!".
+c. Generate an error by using an inappropriate condition in an `if`/`else`
+
+### `ifelse` function
+
+For conditions that evaluate to a vector of `TRUE` and `FALSE`, we can use the `ifelse()` function, which is vectorised:
+
+```{r}
+ifelse(c(TRUE, FALSE), "This is TRUE", "This is FALSE")
+```
+
+An `ifelse()` statement has the following syntax:
+
+`ifelse(condition_vector, yes_vector, no_vector)`
+
+where `condition_vector` is a vector of `TRUE` and `FALSE` values, `yes_vector` is the value to return when the condition is `TRUE`, and `no_vector` is the value to return when the condition is `FALSE`.
+
+a. Use `ifelse()` to create a vector that contains "Yes" if the number is greater than 5 and "No" otherwise, for the numbers `1`, `3`, `5`, `7`, and `9`.
+
+```{r}
+numbers <- c(1, 3, 5, 7, 9)
+ifelse(numbers > 5, "Yes", "No")
+```
+
+b. Use `ifelse()` to create a vector that contains "Even" if the number is even and "Odd" if the number is odd, for the numbers `1`, `2`, `3`, `4`, and `5`. Hint: use the check if the number divided by 2 has a remainder of 0, i.e. `<number> %% 2 == 0`, e.g. `4 %% 2 == 0` is `TRUE` as 4 is even and so `4 %% 2` returns `0` but `5 %% 2 == 0` is `FALSE` as 5 is odd and so `5 %% 2` returns `1`.
+c. Generate an error by using an inappropriate condition in `ifelse()`. Something of a trick question.
+
+# Extension material
+
+None this week, sorry folks.
+The prac is perhaps rather long already.

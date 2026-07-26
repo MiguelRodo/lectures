@@ -1,0 +1,902 @@
+---
+title: "Analysis of Variance, Model Checking and R Functions"
+subtitle: "Fourth R Practical"
+format:
+  html:
+    embed-resources: true
+    code-fold: false
+    toc: true
+    toc-depth: 3
+execute:
+  warning: false
+  message: false
+---
+
+# Learning outcomes
+
+- Part A: Application of ANOVA to test for effects of categorical variables in regression models.
+- Part B: Understanding and writing functions in R.
+- Part C: Model validation for regression models.
+
+# Introduction
+
+We are studying how **crop yield** (kg per hectare) depends on annual **rainfall** (mm), **fertiliser type** (three categories), and **region** (two categories).
+
+We simulate some data:
+
+```{r}
+#| echo: true
+#| warning: false
+#| message: false
+set.seed(7)
+n <- 20
+rainfall <- rnorm(n, mean = 500, sd = 80)
+fertiliser <- sample(c("none", "organic", "chemical"), n, replace = TRUE)
+region <- sample(c("north", "south"), n, replace = TRUE)
+yield <- 20 + 0.08 * rainfall +
+  5 * (fertiliser == "organic") + 10 * (fertiliser == "chemical") +
+  -3 * (region == "south") +
+  rnorm(n, 0, 8)
+
+data_tbl <- tibble::tibble(
+  yield = yield,
+  rainfall = rainfall,
+  fertiliser = fertiliser,
+  region = region
+)
+```
+
+Here are a few rows of the data:
+
+```{r}
+data_tbl[c(2, 5, 17), ]
+```
+
+Here are the summary statistics for the explanatory variables:
+
+```{r}
+data_tbl$rainfall |> summary() |> signif(2)
+```
+
+Here are the counts for the categorical variables:
+
+```{r}
+table(data_tbl$fertiliser)
+table(data_tbl$region)
+```
+
+# Main Practical
+
+## Part A: ANOVA
+
+Suppose we fit the model `yield ~ fertiliser` to the data above.
+
+**a.** Calculate the between-group sum of squares.
+
+We need the overall mean, the per-level means and counts, and then we can calculate the sum of squares between groups.
+
+Firstly, calculate the overall mean:
+
+```{r}
+# overall mean
+y_bar <- mean(data_tbl$yield)
+```
+
+Now, calculate the per-level means and counts, and then the sum of squares between groups:
+
+```{r}
+# per-level calculations
+# - none
+ind_none <- data_tbl$fertiliser == "none"
+y_none <- mean(data_tbl$yield[ind_none])
+n_none <- sum(ind_none)
+ss_none <- n_none * (y_none - y_bar)^2
+# - organic
+ind_organic <- data_tbl$fertiliser == "organic"
+y_organic <- mean(data_tbl$yield[ind_organic])
+n_organic <- sum(ind_organic)
+ss_organic <- n_organic * (y_organic - y_bar)^2
+# - chemical
+ind_chemical <- data_tbl$fertiliser == "chemical"
+n_chemical <- sum(ind_chemical)
+y_chemical <- mean(data_tbl$yield[ind_chemical])
+ss_chemical <- n_chemical * (y_chemical - y_bar)^2
+```
+
+Finally, sum these to get the total between-group sum of squares:
+
+```{r}
+# total
+ss_between <- ss_none + ss_organic + ss_chemical
+ss_between |> signif(3)
+```
+
+Alternatively, using a loop:
+
+```{r}
+fert_vec <- unique(data_tbl$fertiliser)
+ss_between_loop <- 0
+y_bar <- mean(data_tbl$yield)
+for (x in fert_vec) {
+  ind_curr <- data_tbl$fertiliser == x
+  n_curr <- sum(ind_curr)
+  y_curr <- mean(data_tbl$yield[ind_curr])
+  ss_between_loop <- ss_between_loop + n_curr * (y_curr - y_bar)^2
+}
+ss_between_loop |> signif(3)
+```
+
+**b.** Calculate the within-group sum of squares.
+
+```{r}
+ss_within_none <- sum((data_tbl$yield[ind_none] - y_none)^2)
+ss_within_organic <- sum((data_tbl$yield[ind_organic] - y_organic)^2)
+ss_within_chemical <- sum((data_tbl$yield[ind_chemical] - y_chemical)^2)
+ss_within <- ss_within_none + ss_within_organic + ss_within_chemical
+ss_within |> signif(3)
+```
+
+**c.** Calculate the F statistic.
+
+```{r}
+n_group <- length(unique(data_tbl$fertiliser))
+n_total <- nrow(data_tbl)
+f_stat <- (ss_between / (n_group - 1)) / (ss_within / (n_total - n_group))
+f_stat |> signif(3)
+```
+
+Out of interest, we note that `ss_within + ss_between` equals the total sum of squares:
+
+```{r}
+ss_total <- sum((data_tbl$yield - y_bar)^2)
+ss_total |> signif(3)
+(ss_within + ss_between) |> signif(3)
+```
+
+**d.** Calculate the p-value for the F statistic.
+
+```{r}
+pf(f_stat, df1 = n_group - 1, df2 = n_total - n_group, lower.tail = FALSE) |> signif(3)
+```
+
+**e.** Fit a reduced model and use the `anova` function to get the p-value for the effect of fertiliser.
+
+```{r}
+lm_reduced <- lm(yield ~ 1, data = data_tbl)
+lm_full_e <- lm(yield ~ fertiliser, data = data_tbl)
+anova(lm_reduced, lm_full_e)
+```
+
+**f.** Compare the p-value to the individual p-values for the coefficients in the `summary` output:
+
+```{r}
+summary(lm(yield ~ fertiliser, data = data_tbl))$coefficients |> signif(2)
+```
+
+They are not the same, as the p-value from the `anova` function is for the overall effect of `fertiliser`, while the p-values from the `summary` output are for the individual coefficients comparing each level of `fertiliser` to the reference level.
+
+However, whilst they are not the same, we note that the overall p-value (0.092) lies in between the individual p-values for the coefficient (0.031 and 0.25).
+
+**g.** Calculate the ANOVA F-stat using the first approach above for the model of `yield ~ region`. Verify it against the `anova` and `summary` outputs.
+
+**h.** Suppose we fit the model `lm(yield ~ rainfall + region + fertiliser)`. Using the `anova` function, obtain the p-values for the following null hypotheses:
+
+- *1.* Fertiliser has no effect on yield.
+
+We fit a reduced model without fertiliser and compare it to the full model:
+
+```{r}
+lm_full_h <- lm(yield ~ rainfall + region + fertiliser, data = data_tbl)
+lm_red <- lm(yield ~ rainfall + region, data = data_tbl)
+anova(lm_red, lm_full_h)
+```
+
+Alternatively, as the full model has `fertiliser` included last, we could directly use the `anova` function without using the reduced model:
+
+```{r}
+anova(lm_full_h) # Type I ANOVA table
+```
+
+We note that we would obtain a different p-value if we changed the order of the variables in the model formula, using the `anova` function directly on the full model, as it uses Type I ANOVA:
+
+```{r}
+anova(lm(yield ~ fertiliser + rainfall + region, data = data_tbl)) # different p-value for fertiliser
+```
+
+Alternatively, we could use the `Anova` function from the `car` package to get a Type II ANOVA table, which does not depend on the order of variables in the model formula:
+
+```{r}
+car::Anova(lm_full_h, type = 2) # Type II ANOVA table
+car::Anova(lm(yield ~ fertiliser + rainfall + region, data = data_tbl), type = 2) # Type II ANOVA table
+```
+
+- *2.* Neither fertiliser nor region have an effect on yield.
+
+- **i.** Obtain the p-values for the following null hypotheses, using whatever approach you prefer: 
+
+
+- *1.* organic fertiliser has no effect on yield, compared to no fertiliser.
+
+This is a test of a single coefficient, so we can use the `summary` output:
+
+```{r}
+lm_full_i <- lm(yield ~ rainfall + region + fertiliser, data = data_tbl)
+summary(lm_full_i)$coefficients |> signif(2)
+```
+
+However, the default reference level for `fertiliser` is "chemical" (as it comes first alphabetically) so we need to refit the model with "none" as the reference level:
+
+```{r}
+data_tbl_i <- data_tbl |>
+  dplyr::mutate(
+    fertiliser = factor(fertiliser, levels = c("none", "organic", "chemical")),
+    region = factor(region, levels = c("north", "south"))
+  )
+```
+
+```{r}
+lm(yield ~ rainfall + region + fertiliser, data = data_tbl_i) |>
+  summary() |> broom::tidy()
+```
+
+The p-value here is 0.0531.
+
+If we were to use the `anova` function with `full` and reduced models, we would need to fit a reduced model without the "organic" level of fertiliser.
+This can be done by creating the column `fertiliser_chemical` which is `"chemical"` if `fertiliser` is `"chemical"` and `"not_chemical"` otherwise.
+
+```{r}
+lm_full_i_2 <- lm(yield ~ rainfall + region + fertiliser, data = data_tbl_i)
+data_tbl_i <- data_tbl_i |>
+  dplyr::mutate(
+    fertiliser_chemical = ifelse(fertiliser == "chemical", "chemical", "not_chemical")
+    )
+data_tbl_i[["fertiliser_chemical"]] <- factor(data_tbl_i[["fertiliser_chemical"]], levels = c("not_chemical", "chemical"))
+lm_red <- lm(yield ~ rainfall + region + fertiliser_chemical, data = data_tbl_i)
+anova(lm_red, lm_full_i_2)
+```
+
+The p-value is the same as from `summary`.
+
+Comparing the design matrices between full and reduced, we can see that the full model design matrix has an additional column `fertiliserorganic` that allows it to differentiate `"none"` from `"organic"`, in addition to a column `fertiliserchemical` that allows it to differentiate `"none"` from `"chemical"`:
+
+```{r}
+model.matrix(lm_full_i_2)[1:5, ]
+```
+
+By contrast, the reduced model fit only has a column to account for whether `chemical` fertiliser was used or not, `fertiliser_chemicalchemical`:
+
+```{r}
+model.matrix(lm_red)[1:5, ]
+```
+
+It matches the `fertiliserchemical` column from the full model's design matrix.
+
+- *2.* Organic fertiliser has no effect on yield, compared to chemical fertiliser.
+
+**j.** Using the `anova` function, obtain the p-value for the following null hypothesis: Fertiliser has no effect on yield, controlling only for rainfall.
+
+So, here we need to change our full model, as we're only controlling for rainfall (i.e. only including rainfall besides fertiliser).
+
+```{r}
+lm_full <- lm(yield ~ rainfall + fertiliser, data = data_tbl)
+lm_red <- lm(yield ~ rainfall, data = data_tbl)
+anova(lm_red, lm_full)
+```
+
+**k.** Using the `anova` function, obtain the p-value for the following null hypothesis: Fertiliser has no effect on yield, controlling neither for rainfall nor region.
+
+## Part B: Functions
+
+In `R`, functions are essentially parameterised, reusable pieces of code that can be concisely reused.
+
+### Demonstration
+
+For example, previously we calculated the between-group sum of squares as follows, for the `"none"` group:
+
+```{r}
+# overall mean
+y_bar <- mean(data_tbl$yield)
+# per-level calculations
+# - none
+ind_none <- data_tbl$fertiliser == "none"
+y_none <- mean(data_tbl$yield[ind_none])
+n_none <- sum(ind_none)
+ss_none <- n_none * (y_none - y_bar)^2
+```
+
+To calculate it for each of the other groups, we had to repeat the same code, changing only the group name.
+
+We could have extracted the common code into a function, and then called that function for each group.
+For example, we first define the function:
+
+```{r}
+calc_ss_between_grp <- function(.data, grp_var, grp_level, resp_var) {
+  # data: data frame or tibble. Contains the variables of interest.
+  # grp_var: character. column name in `data` for the grouping variable.
+  # grp_level: character. level of `grp_var` to calculate the sum of squares for.
+  # resp_var: character. column name in `data` for the response variable.
+  # returns: numeric. The sum of squares between groups for the specified group level.
+
+  # overall mean
+  y_bar <- mean(.data[[resp_var]])
+
+  # per-level calculations
+  ind_curr <- .data[[grp_var]] == grp_level
+  n_curr <- sum(ind_curr)
+  y_curr <- mean(.data[[resp_var]][ind_curr])
+  ss_curr <- n_curr * (y_curr - y_bar)^2
+  # functions return the final evaluated expression (i.e. the final "thing")
+  ss_curr
+}
+```
+
+Now, we can call this function for the each group:
+
+```{r}
+ss_none <- calc_ss_between_grp(data_tbl, "fertiliser", "none", "yield")
+ss_organic <- calc_ss_between_grp(data_tbl, "fertiliser", "organic", "yield")
+ss_chemical <- calc_ss_between_grp(data_tbl, "fertiliser", "chemical", "yield")
+ss_total <- ss_none + ss_organic + ss_chemical
+ss_total |> signif(3)
+```
+
+We could make this even more concise by using a loop:
+
+```{r}
+fert_vec <- unique(data_tbl$fertiliser)
+ss_between_loop <- 0
+y_bar <- mean(data_tbl$yield)
+for (x in fert_vec) {
+  ss_between_loop <- ss_between_loop + calc_ss_between_grp(data_tbl, "fertiliser", x, "yield")
+}
+ss_between_loop |> signif(3)
+```
+
+Finally, the entire loop could be extracted into a function:
+
+```{r}
+calc_ss_between <- function(.data, grp_var, resp_var) {
+  # data: data frame or tibble. Contains the variables of interest.
+  # grp_var: character. column name in `data` for the grouping variable.
+  # resp_var: character. column name in `data` for the response variable.
+  # returns: numeric. The sum of squares between groups for the specified group level.
+  grp_vec <- unique(.data[[grp_var]])
+  ss_between <- 0
+  for (x in grp_vec) {
+    ss_between <- ss_between + calc_ss_between_grp(.data, grp_var, x, resp_var)
+  }
+  ss_between
+}
+```
+
+```{r}
+calc_ss_between(data_tbl, "fertiliser", "yield") |> signif(3)
+```
+
+This has several key advantages:
+
+- **Reusability**: The function can be reused with different datasets, grouping variables, and response variables without rewriting the code.
+- **Clarity**: The function name and parameters provide a clear understanding of what the code does, making it easier to read and maintain.
+- **Maintainability**: If the logic for calculating the sum of squares needs to change, it only needs to be updated in one place (the function definition) rather than in multiple places throughout the code.
+- **Readability**: The main script becomes shorter and more focused on the high-level logic rather than the implementation details.
+
+As you write more complex analyses, functions become *critical* for not ending up with unmanageably long, confusing and error-prone code.
+
+### The structure of a function
+
+Defining a function in `R` uses the following syntax:
+
+```
+<function_name> <- function(<arg1>, <arg2>, ...) {
+  # function body
+  # ...
+  <return_value>
+}
+```
+
+For example, in the function `calc_ss_between_grp` defined above:
+
+- `<function_name>` is `calc_ss_between_grp`
+- `<arg1>`, `<arg2>`, ... are `data`, `grp_var`, `grp_level`, and `resp_var`
+- `<function_body>` contains the code that calculates the sum of squares for the specified group level.
+- The function implicitly returns the value of the last evaluated expression, which is `ss_curr` in this case.
+
+**a.** Write a function to square each number in a vector.
+
+```{r}
+square_number <- function(x) {
+  x^2
+}
+square_number(c(1, 2, 3, 4, 5)) # gadzooks
+```
+
+**b.** Write a function to cube a number, and then add 1.
+
+**c.** Write a function that takes the following arguments: I) a dataframe and II) the name of a column containing numeric data (e.g. "response"). It then adds another column called "value_squared" to the dataframe, which contains the square of the values in the specified column. The dataframe is then returned.
+
+```{r}
+add_squared_column <- function(.data, col_name) {
+  new_col_name <- paste0(col_name, "_squared")
+  .data[[new_col_name]] <- .data[[col_name]]^2
+  .data
+}
+```
+
+Note: I used `.data` instead of `data` as the argument name to avoid doubling up on the name of the `data` function in `R`.
+
+**d.** Create a function that takes the same arguments as in part (c), but instead of adding a column with the squared values, it adds a column with the cubed values and then adds 1.
+
+### Key function concepts 
+
+- The following things are the most important to be aware of when using functions:
+  - *Scope*
+    - Variables defined inside a function are local to that function and cannot be accessed outside of it.
+    - Functions can access variables from the parent environment (where the function was defined).
+  - *Default arguments*
+    - You can specify default values for function arguments.
+  - *Early returns*
+    - Use `return(<value>)` to return a value early from a function.
+    - Any code after a `return` statement will not be executed.
+  - *Debugging functions*
+    - Use `browser()`, `debug()` or `debugonce()` to step through a function as it executes.
+
+#### Scope
+
+Suppose we write the following function that adds 1 to a number:
+
+```{r}
+dem_fn_scope <- function(x) {
+  y <- x + 1
+  y
+}
+```
+
+Internally, it creates the variable `y` to store the result, before returning it.
+
+Let's run that function:
+
+```{r}
+dem_fn_scope(5)
+```
+
+What happens if we try to access `y` outside of the function?
+
+```{r}
+#| error: true
+y
+```
+
+We get an error, because `y` is not defined outside of the function.
+
+In general, this is what we want - we want to avoid cluttering the global environment with variables that are only needed inside the function.
+This is called **local scope**, i.e. variables defined inside a function are local to that function and cannot be accessed outside of it.
+
+The full picture is more complicated, as functions can access variables from the so-called "parent" environment (where the function was defined).
+But the main idea is that variables defined inside a function are only visible to that function, and not to the outside world.
+
+For further details of why this works the way it does, see the [Lexical scoping](https://adv-r.hadley.nz/functions.html#lexical-scoping) section of *Advanced R* by Hadley Wickham.
+For the real nitty-gritty, see also the [Environments](https://adv-r.hadley.nz/environments.html) chapter of *Advanced R* (which can be read after finishing the section on functions)
+
+**a.** Write a function that has a variable only defined inside the function, and then try to access that variable outside of the function.
+
+#### Default arguments
+
+When defining a function, you can specify default arguments for its parameters.
+If the user does not provide a value for that parameter when calling (running) the function, the default value will be used.
+
+For example, we can modify the `calc_reciprocal` function to have a default argument for `x`:
+
+```{r}
+calc_reciprocal <- function(x = 1) {
+  1 / x  # Return the reciprocal for non-zero input
+}
+```
+
+Now, the user can call the function without providing a value for `x`, and it will use the default value of 1:
+
+```{r}
+calc_reciprocal()
+```
+
+If the user provides a value for `x`, that value will be used instead of the default:
+
+```{r}
+calc_reciprocal(2)
+```
+
+The above example is clearly not a good use case of default arguments, but it illustrates the concept.
+
+Complicated functions that have many parameters often use default arguments to simplify the function calls for common use cases.
+For example, the `lm` function has many parameters, most of which have default values, such as `model = TRUE` (which means to return the model frame used in fitting the model).
+See `?lm` for more details.
+The default arguments can be seen in the `Usage` section of the help page.
+
+**a.** Write a function that by default returns the vector squared, but can also return `x^a` for any value of `a` specified by the user.
+
+```{r}
+power_number <- function(x, a = 2) {
+  x^a
+}
+power_number(x = 4)    # returns 16, a is implicitly 2
+power_number(x = 4, a = 3) # returns 64, overrides default value of a with 3
+```
+
+**b.** Write a function that takes a dataframe and the name of a column, and by default adds a column with the squared values, but can also add a column with the cubed values if specified by the user.
+
+#### Early returns
+
+Sometimes, we want to return a value from a function before reaching the end of the function body.
+
+For example, suppose we want to write a function that calculates the reciprocal of a number, but we want to handle the case where the input is zero (to avoid division by zero).
+
+```{r}
+calc_reciprocal <- function(x) {
+  if (x == 0) {
+    return(NA)  # Return NA for zero input
+  }
+  1 / x  # Return the reciprocal for non-zero input
+}
+```
+
+If the input `x` is zero, the function will return `NA` (`return(NA)`) and then exit the function immediately.
+The code `1 / x` will not be executed in that case.
+
+If we had not used `return(NA)` in the `if` statement, the function would have continued to the next line and attempted to calculate `1 / 0`, resulting in an error.
+
+```{r}
+calc_reciprocal(5)
+calc_reciprocal(0)
+```
+
+In `R`, it is not strictly incorrect to explicitly return the final line, as follows:
+
+```{r}
+calc_reciprocal <- function(x) {
+  if (x == 0) {
+    return(NA)  # Return NA for zero input
+  }
+  return(1 / x)  # Return the reciprocal for non-zero input
+}
+```
+
+But it is better style to omit the final `return`, as then only early returns use `return()`, making it clearer when the function is exiting early.
+
+**a.** Write a function that returns a vector raised to the power of `a` (`x^a` by default for `x` the initial vector), but returns `NA` if any element of the vector is negative.
+
+```{r}
+calc_power <- function(x, a = 2) {
+  if (any(x < 0)) {
+    return(NA)  # Return NA if any element is negative
+  }
+  x^a  # Return the vector raised to the power of a
+}
+```
+
+**b.** Write a function that takes a dataframe and the name of a column, and by default adds a column with the squared values, but returns the original dataframe if any value in the specified column is negative.
+
+#### Debugging functions
+
+As a function has its own local scope, it can be tricky to debug functions, as you cannot directly access the variables inside the function from the global environment (i.e. the "standard" place you are in `R`).
+What you really want to do is get into the function's local environment as it is running, so you can inspect the variables and see what is going wrong.
+
+There are several ways to do this:
+
+##### `browser()`
+
+You can insert the `browser()` function call at any point in your function. This is a command that you put as part of the function body (i.e. the code that the function runs), and causes the function to pause for you to interact with it (i.e. give you the prompt back so you can run commands).
+
+For example, we can add `browser()` to the `calc_reciprocal` function:
+
+```{r}
+#| eval: false
+calc_reciprocal <- function(x = 1) {
+  browser()  # Pause here for debugging
+  if (x == 0) {
+    return(NA)  # Return NA for zero input
+  }
+  1 / x  # Return the reciprocal for non-zero input
+}
+```
+
+Now, when we call the function, it will pause at the `browser()` line.
+
+The `browser()` call can be placed anywhere in the function body (i.e. not just the first line), and you can have multiple `browser()` calls in a function if you want to pause at different points.
+
+Re-define `calc_reciprocal` with `browser()` and then call it.
+Once you're in browser mode, check if you have `x` defined, and what its value is.
+Then, type `c` to continue running the function until it exits.
+
+**a.** Add a `browser()` call to the `calc_power` function you wrote above, and then call it with a vector that contains a negative number. Check that the function would exit early in that case.
+
+##### `debug()` and friends
+
+You can use the `debug()` function to mark a function for debugging.
+This means that the next time you call the function, it will automatically enter the browser mode at the start of the function.
+So, it's equivalent to re-defining the function with `browser()` at the start, but you don't have to change the function definition.
+This is especially important for debugging functions that are part of packages, as you cannot (or should not) change the function definition directly.
+
+For example, you can step into the `lm` function when you call it:
+
+```{r}
+#| eval: false
+debug(lm)
+```
+
+Now, you can call `lm` as normal, and it will enter browser mode at the start of the function:
+
+```{r}
+#| eval: false
+lm(yield ~ rainfall + fertiliser, data = data_tbl)
+```
+
+Once a function has had `debug` called on it, it will remain in debug mode for the rest of the R session (or until you turn off debugging for that function).
+Typically, this is not what you want, so you should turn off debugging for the function once you're done:
+
+```{r}
+#| eval: false
+undebug(lm)
+```
+
+To avoid having to remember to turn off debugging, you can use `debugonce()` instead of `debug()`
+This will cause the function to enter debug mode only the next time it is called, and then automatically turn off debugging for subsequent calls.
+
+For example, in the code below, only the first call to `lm` will enter debug mode:
+
+```{r}
+#| eval: false
+debugonce(lm)
+lm(yield ~ rainfall + fertiliser, data = data_tbl)  # enters debug mode
+lm(yield ~ rainfall + fertiliser, data = data_tbl)  # does not enter debug mode
+```
+
+**a.** Use `debugonce()` to step into the `calc_power` function you wrote above, and then call it with a vector that contains a negative number. Check that the function would exit early in that case.
+
+### Where to keep function definitions
+
+When writing functions, you need to decide where to keep the function definitions.
+Functions need to be defined (i.e. the code that defines the function needs to be run) before you can use them.
+
+`R` packages typically have a `R/` directory that contains the function definitions.
+When you load the package, all the functions in the `R/` directory are loaded and available for use.
+
+Opinions vary, but I keep them in the `R/` directory even for small projects that are not packages, as it keeps the function definitions separate from the main analysis code and follows a common convention.
+`R` packages use `src/` for non-`R` code (e.g. `C++`), so I avoid that directory for `R` code.
+
+To load these functions, you can use the `source()` function to run the code in the file that contains the function definitions.
+The code below shows how to source all the `R/` files in a project:
+
+```{r}
+#| eval: false
+# list all files in the R/ directory
+fn_vec <- list.files("R", pattern = "\\.R$", full.names = TRUE)
+# source each file to load the functions.
+for (i in seq_along(fn_vec)) {
+  source(fn_vec[i])
+}
+```
+
+**a.** Write a script `power.R` saved to some directory (e.g. `R/`), that contains the function `power_number` you wrote above.
+Then, in a new R session, use `source()` to load the function, and then call it.
+
+# Supplementary content
+
+## Part C: Model validation
+
+**a.** Fit the model `lm(yield ~ rainfall + fertiliser + region)` to the data above, and save it to `fit_b`.
+
+```{r}
+fit_b <- lm(yield ~ rainfall + fertiliser + region, data = data_tbl)
+```
+
+**b.** Extract `R^2` and `R^2_adj` from the model summary.
+
+These are shown in the `summary` output:
+
+```{r}
+summary_b <- summary(fit_b)
+summary_b
+```
+
+So, let's examine the summary object to see where these values are stored:
+
+```{r}
+summary_b |> names()
+```
+
+Clearly, `r.squared` and `adj.r.squared` are the names of the elements we want:
+
+```{r}
+c(
+  "R^2" = summary_b$r.squared,
+  "R^2_adj" = summary_b$adj.r.squared
+) |>
+  signif()
+```
+
+**c.** Plot the residuals against the fitted values. Comment on the plot.
+
+We extract the residuals using the `residuals` function, and the fitted values using the `fitted` function:
+
+```{r}
+res_fit <- tibble::tibble(
+  residuals = residuals(fit_b),
+  fitted = fitted(fit_b)
+)
+res_fit
+```
+
+```{r}
+plot(res_fit$fitted, res_fit$residuals,
+  xlab = "Fitted values",
+  ylab = "Residuals"
+)
+```
+
+There does not appear to be any obvious pattern in the residuals, such as non-constant variance, suggesting that the linear model is appropriate.
+With twenty observations, however, detecting deviations is only likely for severe departures from the assumptions.
+
+**d.** Divide the residuals by the estimated standard deviation of the response. Plot these against the internally-studentised residuals, and then plot the internally-studentised residuals against the externally-studentised residuals. Comment on the plots.
+
+```{r}
+res_fit[["res_std"]] <- res_fit[["residuals"]] /summary_b$sigma
+# alternatively, could use `res_fit[["res_std"]] <- residuals(fit_b, type = "pearson")`
+res_fit[["res_int_stud"]] <- rstandard(fit_b) # internally-studentised residuals
+res_fit[["res_ext_stud"]] <- rstudent(fit_b) # externally-studentised residuals
+res_fit
+```
+
+```{r}
+par(mfrow = c(1, 2)) # 1x2 layout
+plot(res_fit$res_std, res_fit$res_int_stud,
+  xlab = "Standardised residuals",
+  ylab = "Internally-studentised residuals"
+)
+abline(0, 1, col = "red") # y=x line
+plot(res_fit$res_int_stud, res_fit$res_ext_stud,
+  xlab = "Internally-studentised residuals",
+  ylab = "Externally-studentised residuals"
+)
+abline(0, 1, col = "red") # y=x line
+par(mfrow = c(1, 1)) # reset layout
+```
+
+Brief note: these plots are not particularly diagnostic plots, but rather illustrative plots to show the relationships between the different types of residuals.
+
+The first plot shows that the internally studentised residuals ($\hat{e}_i/\sqrt{s^2 \times (1 - h_i)}$) are close to the standardised residuals ($\hat{e}_i/\sqrt{s^2}$).
+This indicates that no points have especially high leverage ($h_i$).
+We note that the internally-studentised residuals tend to be particularly larger in magnitude than the standardised residuals in the tails, indicating that points with larger residuals tend to have higher leverage.
+
+The internally-studentised residuals are closer to the externally-studentised residuals ($\hat{e}_i/\sqrt{s^2_{(i)} \times (1 - h_i)}$) than they are to the standardised residuals.
+This indicates that using out-of-sample estimates of the residual standard deviation ($s^2_{(i)}$) makes a smaller difference than incorporating leverage ($h_i$).
+Almost by definition, the difference between externally- and internally-studentised residuals is largest in the tails.
+This makes sense as the estimate of the standard deviation is driven up most by larger residuals, so removing a point with a large residual will have the largest effect on the estimate of the standard deviation.
+
+```{r}
+#| include: false
+res_fit |>
+  dplyr::mutate(
+    res_int_manual = res_std * 1/(sqrt(1 - hatvalues(fit_b)))
+  )
+```
+
+**e.** Plot a histogram of the residuals, alongside a QQ plot. Compare the two.
+
+```{r}
+par(mfrow = c(1, 2)) # 1x2 layout
+hist(res_fit$res_std,
+  xlab = "Residuals",
+  main = "Histogram",
+  freq = FALSE
+)
+lines(seq(-4, 4, length.out = 100), dnorm(seq(-4, 4, length.out = 100)), col = "red") # normal density
+qqnorm(res_fit$res_std) # QQ plot
+lines(seq(-4, 4, length.out = 100), seq(-4, 4, length.out = 100), col = "red") # y=x line
+par(mfrow = c(1, 1)) # reset layout
+```
+
+The histogram shows a close match with the normal distribution, apart from a slight peak between -0.5 and 0 and dip between -1 and 0.5.
+
+The QQ-plot shows the same pattern, with reasonably close match to the normal distribution, apart from a slight S-shape indicating slightly heavier tails than the normal distribution.
+
+Out of interest, we calculate the Kolmogorov-Smirnov test statistic and p-value for the normal distribution:
+
+```{r}
+ks.test(res_fit$res_std, "pnorm", mean = 0, sd = 1)
+```
+
+The p-value is very large, as one would expect.
+Similarly, the Shapiro-Wilk test also gives a very large p-value:
+
+```{r}
+shapiro.test(res_fit$res_std)
+```
+
+**f.** Plot the leverage values against the externally-studentised residuals, alongside a plot of leverage against Cook's distance.
+
+```{r}
+res_fit[["leverage"]] <- hatvalues(fit_b)
+res_fit
+```
+
+```{r}
+par(mfrow = c(1, 2)) # 1x2 layout
+plot(res_fit$leverage, res_fit$res_ext_stud,
+  xlab = "Leverage",
+  ylab = "Externally-studentised residuals"
+)
+res_fit$cooks <- cooks.distance(fit_b)
+plot(res_fit$leverage, res_fit$cooks,
+  xlab = "Leverage",
+  ylab = "Cook's distance"
+)
+par(mfrow = c(1, 1)) # reset layout
+```
+
+Average leverage is $k/n$, which is equal to 
+
+```{r}
+ncol(model.matrix(fit_b)) / nrow(model.matrix(fit_b))
+```
+
+Leverage ranges fairly uniformly from 0.15 to 0.35, indicating no points with especially high leverage.
+The externally-studentised residuals have one point almost 2 in magnitude and over 0.3 in leverage.
+
+Exploring this point:
+
+```{r}
+# find which point it is
+ind_vec <- which(
+  abs(res_fit$res_ext_stud) > 1.5 & res_fit$leverage > 0.25
+)
+# outlier and leverage stats
+res_fit[ind_vec,]
+# data frame entries
+data_tbl[ind_vec, ]
+```
+
+This observation had high rainfall (675mm, when the simulated mean was 500mm with sd of 80mm, so two sd's above the mean) with presumably low yield given the high rainfall.
+
+As Cook's distance is a function of both leverage and the externally-studentised residuals, it is not surprising that the point with high leverage and high externally-studentised residual also has the highest Cook's distance (comparing the table above to the earlier plot of Cook's distance against leverage).
+
+Considering Cook's distance further, three points have a clear visual separation from the rest, with Cook's distances above 0.2.
+
+```{r}
+# find which point it is
+ind_vec <- which(
+  res_fit$cooks > 0.2
+)
+# outlier and leverage stats
+res_fit[ind_vec,]
+# data frame entries
+data_tbl[ind_vec, ]
+```
+
+The first two have lower yield than expected, and the third has higher yield than expected.
+
+Overall, nothing especially stands out as being problematic.
+It appears that one model can represent the data well, without any points being overly influential.
+
+**g.** Simulate the data below:
+
+```{r}
+set.seed(7)
+n <- 20
+rainfall <- rnorm(n, mean = 500, sd = 80)
+rainfall[c(6, 10)] <- rainfall[c(1, 4)] + 200 # add two high leverage points
+fertiliser <- sample(c("none", "organic", "chemical"), n, replace = TRUE)
+region <- sample(c("north", "south"), n, replace = TRUE)
+yield <- 20 + 0.08 * rainfall +
+  5 * (fertiliser == "organic") + 10 * (fertiliser == "chemical") +
+  -6 * (region == "south") +
+  rpois(n, lambda = 8)
+yield[c(1, 4)] <- yield[c(1, 4)] + 30 # add two outliers
+data_tbl <- tibble::tibble(
+  yield = yield,
+  rainfall = rainfall,
+  fertiliser = fertiliser,
+  region = region
+)
+```
+
+Fit the following model to the data: `lm(yield ~ rainfall + fertiliser)` (i.e. drop `region`). Repeat parts (b) to (f) above.
+

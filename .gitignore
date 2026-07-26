@@ -46,7 +46,7 @@ w5/*.rmarkdown
 w6/*.rmarkdown
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 _raw_data/**
-_reference/**
+_reference/non_git/**
 _content/**
 docs/**
 _tmp/**

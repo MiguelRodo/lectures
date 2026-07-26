@@ -5,6 +5,8 @@
 ^_raw_data$
 ^_reference/
 ^_reference$
+^_reference/non_git/
+^_reference/non_git$
 ^_content/
 ^_content$
 ^docs/

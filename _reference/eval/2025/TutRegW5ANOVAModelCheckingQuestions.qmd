@@ -1,0 +1,164 @@
+---
+title: STA2005S Regression Tutorial Four
+subtitle: Questions
+format:
+  pdf:
+    embed-resources: true
+    include-in-header:
+      text: |
+        \usepackage{graphicx} % Allows including images
+        \usepackage{booktabs} 
+        \usepackage{amsmath}
+        \usepackage{url}
+        \usepackage{subfigure}
+        \usepackage{xcolor}
+        \usepackage{amsthm,amsfonts,amssymb,amscd,amsxtra}
+        \usepackage{pgfpages}
+        \usepackage{animate}
+        \usepackage[backend=bibtex,style=verbose-trad2]{biblatex}
+        \bibliography{bibliography} 
+        \usepackage{mathpazo}
+        \usepackage{unicode-math}
+---
+
+# Introduction
+
+We are studying how **crop yield** (kg per hectare) depends on annual **rainfall** (mm), **fertiliser type** (three categories), and **region** (two categories).
+
+We simulate some data:
+
+```{r}
+#| include: true
+set.seed(7)
+n <- 20
+rainfall <- rnorm(n, mean = 500, sd = 80)
+fertiliser <- sample(c("none", "organic", "chemical"), n, replace = TRUE)
+region <- sample(c("north", "south"), n, replace = TRUE)
+yield <- 20 + 0.08 * rainfall +
+  5 * (fertiliser == "organic") + 10 * (fertiliser == "chemical") +
+  -3 * (region == "south") +
+  rnorm(n, 0, 8)
+
+data_tbl <- tibble::tibble(
+  yield = yield,
+  rainfall = rainfall,
+  fertiliser = fertiliser,
+  region = region
+)
+```
+
+Here are a few rows of the data:
+
+```{r}
+data_tbl[c(2, 5, 17), ]
+```
+
+Here are the summary statistics for the explanatory variables:
+
+```{r}
+data_tbl$rainfall |> summary() |> signif(2)
+```
+
+Here are the counts for the categorical variables:
+
+```{r}
+table(data_tbl$fertiliser)
+table(data_tbl$region)
+```
+
+We fit the model:
+
+```{r}
+fit_tbl <- data_tbl |>
+  dplyr::mutate(
+    fertiliser = factor(fertiliser, levels = c("none", "organic", "chemical")),
+    region = factor(region, levels = c("north", "south"))
+  )
+fit <- lm(yield ~ rainfall + fertiliser + region, data = fit_tbl)
+summary(fit)
+```
+
+# Questions
+
+## Interpreting the model
+
+**a.** Write down the model’s mean structure (e.g., $E[Y] = \beta_0 + \beta_{\text{Rainfall}} X_{\text{Rainfall}} + \ldots$).
+
+**b.** For fertiliser and region, what are the reference levels?
+
+**c.** Write down the row of the design matrix for a farm with rainfall of 500 mm, fertiliser type “none,” and located in the “south” region.
+
+**d.** Suppose there is an effect for region, but no effect for fertiliser. Sketch (roughly) the fitted values against rainfall for the two regions.
+
+**e.** If there were an effect for fertiliser, how many separate lines would you expect to see in the plot from part (d) if you plotted a line for each combination of categorical variable levels? Briefly explain your answer.
+
+**f.** Write down the null hypotheses for the effect of fertiliser tested in the `summary(lm(...))` output above.
+
+**g.** Using the output, does the model suggest there is an effect of region on yield? Has it demonstrated conclusively that there is a large effect?
+
+**h.** Provide the p-value for testing the joint null hypothesis that rainfall, fertiliser, and region have no effect on yield.
+
+**i.** Comment on whether the null hypothesis that $\beta_{\text{rainfall}} = 0$ is likely of practical interest. Propose alternative statistics with practical relevance.
+
+**j.** Compare the model estimates to the true values used to simulate the data. How close are they? How could this be improved?
+
+**k.** Comment on why the estimated intercept is so far from the true value (10.1 vs 20).
+
+**l.** Provide the full and reduced models for testing the following null hypotheses (can use words, or symbols or even R code - whatever is quickest and sufficiently clear):k
+
+- *1.* Fertiliser has no effect on yield.
+- *2.* Neither fertiliser nor region have an effect on yield.
+- *3.* Organic fertiliser has no effect on yield, compared to no fertiliser.
+- *4.* Organic fertiliser has no effect on yield, compared to chemical fertiliser.
+- *5.* Fertiliser has no effect on yield, controlling only for rainfall.
+- *6.* Fertiliser has no effect on yield, controlling neither for rainfall nor region.
+
+## Model validation
+
+**a.** Comment on how well the model captures the variability in the response.
+
+**b.** What is the correlation between the fitted values and the response?
+
+**c.** Suppose that the true model were
+
+$$
+\mathbb E(\text{yield}\mid X)=
+\beta_0+\beta_1\,\text{rainfall}.
+$$
+
+Have we violated any model assumptions with our model mean structure?
+
+**d.** Suppose that the true model were
+
+$$
+\mathbb E(\text{yield}\mid X)=
+\beta_0+\beta_1\,\text{rainfall}^2.
+$$
+
+Have we violated any model assumptions with our model mean structure?
+
+**e.** Image that we increased the range of observed rainfall to between 0 and 1000 mm. Comment on the plausibility of the linear relationship between yield and rainfall.
+
+**f.** Comment on the residuals vs fitted values plot (@fig-resid-f), explaining whether any model assumptions appear to be violated. Why does it appear to fan out in the middle?
+
+```{r}
+#| include: false
+path_p <- projr::projr_path_get("cache", "tut_reg_w5_ano_model_checking", "p-val-f.pdf")
+pdf(path_p)
+plot(resid(fit), fitted(fit))
+dev.off()
+plot_tbl <- tibble::tibble(
+  fitted = fitted(fit),
+  resid = resid(fit)
+)
+library(ggplot2)
+p <- ggplot(data = plot_tbl, aes(x = fitted, y = resid)) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  labs(x = "Fitted values", y = "Residuals") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray20") +
+  geom_point()
+ggplot2::ggsave(filename = path_p, plot = p, width = 6, height = 4)
+```
+
+![Residuals versus fitted values](`r path_p`){#fig-resid-f}
