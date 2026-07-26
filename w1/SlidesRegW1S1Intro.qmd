@@ -344,8 +344,7 @@ path_p <- projr::projr_path_get("raw-data","img", "corr_reg.png")
 # Office hours
 
 - Room: 5.52 PD Hahn (fifth floor, down the corridor from stats reception)
-- Time: TBC once class rep is appointed
-- Day: TBC
+- Time and day: TBC once class rep is appointed
 - Purpose: any content-related questions
 - May also email for other times, if need be
 
