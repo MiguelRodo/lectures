@@ -1,6 +1,6 @@
 Package: Lectures
 Title: Lecture content
-Version: 0.1.0
+Version: 0.1.0-1
 Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"))
 Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
 Description: Lecture and practice material.
