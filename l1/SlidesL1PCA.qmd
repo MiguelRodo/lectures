@@ -16,6 +16,7 @@ nocite: |
 ---
 
 ```{r}
+#| label: setup
 #| include: false
 library(tibble)
 library(dplyr)
@@ -131,11 +132,8 @@ The theorem proofs and supplementary derivations are collapsed by default in the
 Dimensionality reduction may help with:
 
 - visualising datasets with many variables;
-- identifying groups of correlated variables;
-- reducing storage and computation;
-- reducing the number of inputs supplied to a later model;
-- filtering out directions containing little variation; and
-- constructing a compact representation of the original data.
+- identifying groups of correlated variables; and
+- reducing storage and computation.
 
 ### Practical examples of PCA
 
@@ -232,7 +230,8 @@ knitr::include_graphics(
 
 The reconstruction uses only **`r k_image` of the `r ncol(V)` available principal components**, while retaining **`r sprintf("%.1f%%", 100 * cumulative_variance[k_image])` of the total variance**.
 
-Using fewer components requires less information to represent the image, but produces a progressively less accurate reconstruction. This illustrates the central trade-off in dimensionality reduction.
+Using fewer components requires less information to represent the image, but produces a progressively less accurate reconstruction.
+This illustrates the central trade-off in dimensionality reduction.
 
 ## Principal component analysis
 
@@ -267,6 +266,7 @@ Thus, a projection score is also a linear combination of the original variables.
 Suppose we have two correlated variables, such as height and weight. The variables below have been centred and standardised so that the origin represents the mean of each variable.
 
 ```{r}
+#| label: data-height-weight
 #| include: false
 set.seed(2106)
 hw_tbl <- tibble::tibble(
@@ -282,7 +282,9 @@ hw_tbl <- tibble::tibble(
 ```
 
 ```{r}
+#| label: fig-height-weight-scatter
 #| echo: false
+#| fig-cap: "Standardised height and weight measurements in the simulated example."
 
 ggplot(hw_tbl, aes(x = height, y = weight)) +
   geom_vline(xintercept = 0, colour = "gray50") +
@@ -319,7 +321,9 @@ y=\frac{1}{\sqrt{2}}\times1.2+\frac{1}{\sqrt{2}}\times0.3=1.06.
 $$
 
 ```{r}
+#| label: fig-height-weight-projection
 #| echo: false
+#| fig-cap: "Projection of one observation onto a candidate direction through the standardised height and weight data."
 projection_plot(
   list(c(1 / sqrt(2), 1 / sqrt(2))),
   alpha_points = 0.18
@@ -337,7 +341,9 @@ projection_plot(
 Consider three possible directions. The coefficients are normalised to have unit length before the projected variance is calculated.
 
 ```{r}
+#| label: fig-candidate-directions
 #| echo: false
+#| fig-cap: "Three candidate projection directions for the standardised height and weight data."
 candidate_tbl <- tibble::tribble(
   ~direction, ~raw_a1, ~raw_a2,
   "Mostly weight", 0.5, 2,
@@ -382,7 +388,9 @@ ggplot(plot_candidate_tbl, aes(x = height, y = weight)) +
 ```
 
 ```{r}
+#| label: tbl-candidate-direction-variance
 #| echo: false
+#| tbl-cap: "Normalised candidate directions and the variance of their resulting projection scores."
 candidate_tbl |>
   dplyr::select(direction, a1, a2, projected_variance) |>
   dplyr::mutate(across(where(is.numeric), ~ signif(.x, 3))) |>
@@ -468,7 +476,9 @@ $$
 - The second component contrasts height and weight. It is relatively high for observations that are tall relative to their weight.
 
 ```{r}
+#| label: fig-first-two-principal-directions
 #| echo: false
+#| fig-cap: "The first two orthogonal projection directions for the standardised height and weight data."
 projection_plot(
   list(
     c(1 / sqrt(2), 1 / sqrt(2)),
@@ -688,6 +698,7 @@ $$
 A scree plot displays the variance, or the proportion of variance, associated with each component. A visible elbow may suggest a useful number of components, but it is a heuristic rather than an automatic rule.
 
 ```{r}
+#| label: data-scree-example
 #| include: false
 example_vcov <- matrix(
   c(
@@ -710,7 +721,9 @@ scree_tbl <- tibble::tibble(
 ```
 
 ```{r}
+#| label: fig-example-scree
 #| echo: false
+#| fig-cap: "Proportion of variance explained by each principal component in the seven-variable example."
 
 ggplot(scree_tbl, aes(x = component, y = proportion)) +
   geom_line(colour = "dodgerblue") +
@@ -734,28 +747,18 @@ Possible considerations include:
 
 - cumulative variance explained;
 - the scree-plot elbow;
-- whether the retained components are interpretable;
-- the quality of reconstruction;
 - performance in a downstream task; and
 - the purpose of the analysis.
 
 There is no universally correct proportion of variance that must be retained.
 
-## Centring and scaling
+When we are plotting data, we are typically limited to 1 or 2 dimensions.
+In this case, we may choose to retain only 2 components, even if they explain a relatively small proportion of the total variance.
+The fact that they only explain a small proportion of variation serves to guide our interpretation of the plot, as it indicates we must not place too much emphasis on the apparent separation of points in the plot.
 
-### Centring
+## Variance standardisation
 
-PCA is applied to variation around the mean, so variables should ordinarily be centred:
-
-$$
-x_{ij}^{\text{centred}}=x_{ij}-\bar{x}_j.
-$$
-
-Without centring, the first direction can be dominated by the location of the data relative to the origin rather than by the shape of the cloud of observations.
-
-### Variance standardisation
-
-One may also divide each centred variable by its standard deviation:
+One may divide each centred variable by its standard deviation:
 
 $$
 z_{ij}=\frac{x_{ij}-\bar{x}_j}{s_j}.
@@ -765,17 +768,19 @@ This is equivalent to performing PCA on the correlation matrix rather than the c
 
 Scaling may be appropriate when:
 
-- variables use different units;
-- their numerical scales differ greatly; or
-- differences in variance are not substantively meaningful.
+- variables use different units, or
+- their numerical scales differ greatly.
 
-Scaling is a modelling choice, not an automatic requirement. It changes the question from “which directions contain the most raw variance?” to “which directions contain the most variance after each variable has been given equal marginal variance?”
+Scaling is a modelling choice, not an automatic requirement.
+It changes the question from “which directions contain the most raw variance?” to “which directions contain the most variance after each variable has been given equal marginal variance?”
+The correlation between variables, rather than their individual variances, therefore guides the analysis.
 
 ### Standardisation example
 
 Consider the covariance matrix
 
 ```{r}
+#| label: covariance-standardisation-example
 cov_mat_scale <- matrix(
   c(1, 4, 4, 100),
   nrow = 2
@@ -786,6 +791,7 @@ cov_mat_scale
 Its eigendecomposition is
 
 ```{r}
+#| label: eigendecomposition-covariance-example
 eigen(cov_mat_scale) |>
   purrr::map(~ signif(.x, 3))
 ```
@@ -793,6 +799,7 @@ eigen(cov_mat_scale) |>
 The corresponding correlation matrix is
 
 ```{r}
+#| label: correlation-standardisation-example
 sd_inv <- diag(1 / sqrt(diag(cov_mat_scale)))
 cor_mat_scale <- sd_inv %*% cov_mat_scale %*% sd_inv
 cor_mat_scale
@@ -801,6 +808,7 @@ cor_mat_scale
 with eigendecomposition
 
 ```{r}
+#| label: eigendecomposition-correlation-example
 eigen(cor_mat_scale) |>
   purrr::map(~ signif(.x, 3))
 ```
@@ -809,7 +817,8 @@ The principal directions differ substantially because the second variable has a 
 
 ## Sample principal components
 
-In practice, the population covariance matrix is unknown. PCA is therefore performed using the centred sample data matrix $\mathbf{X}_c$ or its sample covariance matrix.
+In practice, the population covariance matrix is unknown.
+PCA is therefore performed using the centred sample data matrix $\mathbf{X}_c$ or its sample covariance matrix.
 
 For centred data,
 
@@ -828,11 +837,13 @@ where the columns of $\mathbf{P}$ are the loading vectors.
 For the height and weight data:
 
 ```{r}
+#| label: sample-height-weight-covariance
 hw_cov <- cov(hw_tbl)
 hw_cov |> signif(3)
 ```
 
 ```{r}
+#| label: sample-height-weight-eigendecomposition
 eigen(hw_cov) |>
   purrr::map(~ signif(.x, 3))
 ```
@@ -846,6 +857,7 @@ We use measurements on Painted Turtles [@jolicoeur_mosimann60].
 The package installation need only be run once:
 
 ```{r}
+#| label: install-painted-turtles-data
 #| eval: false
 if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
@@ -859,6 +871,7 @@ remotes::install_github(
 Load the data:
 
 ```{r}
+#| label: load-painted-turtles-data
 data(
   "data_tidy_turtle",
   package = "DataTidy23RodoHonsMult"
@@ -870,7 +883,9 @@ data_tidy_turtle
 ### The measurements are highly correlated
 
 ```{r}
+#| label: fig-painted-turtles-measurements
 #| echo: false
+#| fig-cap: "Turtle height plotted against length and width, shown by sex."
 plot_turtle_tbl <- data_tidy_turtle |>
   tidyr::pivot_longer(
     length:width,
@@ -902,9 +917,11 @@ Because the measurements are strongly correlated, they may be summarised well by
 
 ### Fitting PCA with `prcomp()`
 
-We log-transform the measurements and allow `prcomp()` to centre them. We do not scale here because all three variables are comparable physical measurements on a log scale.
+We log-transform the measurements and allow `prcomp()` to centre them.
+We do not scale here because all three variables are comparable physical measurements on a log scale.
 
 ```{r}
+#| label: fit-painted-turtles-pca
 pr_obj <- prcomp(
   ~ log(length) + log(width) + log(height),
   data = data_tidy_turtle,
@@ -914,23 +931,28 @@ pr_obj <- prcomp(
 pr_obj
 ```
 
-The `rotation` matrix contains the loading vectors. The first component has coefficients of similar magnitude, so it behaves like an overall size component.
+The `rotation` matrix contains the loading vectors.
+The first component has coefficients of similar magnitude, so it behaves like an overall size component.
 
 ### Variance explained
 
 ```{r}
+#| label: summarise-painted-turtles-pca
 summary(pr_obj)
 ```
 
 The first component accounts for almost all of the variation in these three highly correlated measurements.
 
 ```{r}
+#| label: fig-painted-turtles-scree
+#| fig-cap: "Variances of the principal components in the Painted Turtles PCA."
 plot(pr_obj)
 ```
 
 ### Principal component scores
 
 ```{r}
+#| label: painted-turtles-scores
 pr_obj$x |>
   head() |>
   signif(3)
@@ -949,16 +971,40 @@ A biplot displays both observations and variables in a low-dimensional principal
 - Approximately perpendicular arrows suggest weak association in the displayed dimensions.
 
 ```{r}
+#| label: fig-painted-turtles-biplot
+#| fig-cap: "Biplot of the Painted Turtles PCA, showing observation scores and variable loading directions."
 biplot(pr_obj, scale = 0)
 ```
 
-A biplot is an approximation whenever fewer than all components are displayed. Its interpretation should therefore be considered alongside the proportion of variance explained by the displayed components.
+A biplot is an approximation whenever fewer than all components are displayed.
+Its interpretation should therefore be considered alongside the proportion of variance explained by the displayed components.
+
+Key aspects to interpret:
+
+- Which (groups of) observations separate from the rest?
+  - Source: position of the points.
+- Which variables are correlated?
+  - Source: angle between the arrows.
+- Which variables are important for the displayed components?
+  - Source: length of the arrows.
+- Which variables are driving the separation of the observations?
+  - Source: which arrows point in the direction of the separated points.
+
+## Note on interpreting principal components
+
+Interpret each componeNt in terms of which original variables have large coefficients in the loading vector. Do *not* simply restate all the coefficient loadings, but attempt to summarise them in some way.
+For example, a component with positive coefficients for all variables may be interpreted as an overall size component, while a component with negative coefficients for some variables and positive coefficients for others may be interpreted as a contrast between those variables.
+
+A sign change in the coefficients does not change the overall interpretation of the component, but it does change the direction of the scores.
+If the loadings for either of the size or contrast components were multipled by $-1$, then their interpretations would stay the same, except that large positive scores would become large negative scores, and vice versa.
+For the size example, a large positive score would switch from meaning a large turtle to meaning a small turtle.
 
 ## PCA is a linear method
 
 PCA is effective when the important structure can be represented by a linear subspace. It may not provide a useful one- or two-dimensional representation when the structure is strongly curved or otherwise nonlinear.
 
 ```{r}
+#| label: data-structure-examples
 #| include: false
 set.seed(5077)
 n <- 120
@@ -994,11 +1040,24 @@ structure_tbl <- dplyr::bind_rows(
   curve_tbl,
   ring_tbl,
   noise_tbl
-)
+) |>
+  dplyr::mutate(
+    pattern = factor(
+      pattern,
+      levels = c(
+        "Linear",
+        "Curved",
+        "Ring",
+        "No obvious structure"
+      )
+    )
+  )
 ```
 
 ```{r}
+#| label: fig-structure-examples
 #| echo: false
+#| fig-cap: "Four two-dimensional datasets illustrating linear, curved, circular and unstructured patterns."
 
 ggplot(structure_tbl, aes(x = x, y = y)) +
   geom_point(alpha = 0.7, colour = "dodgerblue", size = 1.2) +
@@ -1021,17 +1080,6 @@ ggplot(structure_tbl, aes(x = x, y = y)) +
 #| fig-cap: "Proportion of variance explained by each principal component for the four example datasets."
 
 structure_scree_tbl <- structure_tbl |>
-  dplyr::mutate(
-    pattern = factor(
-      pattern,
-      levels = c(
-        "Linear",
-        "Curved",
-        "Ring",
-        "No obvious structure"
-      )
-    )
-  ) |>
   dplyr::group_by(pattern) |>
   dplyr::group_modify(
     \(data, group) {
@@ -1096,7 +1144,7 @@ This limitation motivates nonlinear dimension-reduction methods studied later in
 3. Later components capture the greatest remaining variation while being orthogonal to earlier components.
 4. Loading vectors describe the directions; scores locate observations along those directions; eigenvalues give component variances.
 5. The proportion of variance explained helps assess how much information is retained.
-6. Centring is fundamental, while scaling is a modelling choice that can change the result substantially.
+6. Scaling is a modelling choice that can change the result substantially.
 7. PCA captures linear structure and may not reveal important nonlinear patterns.
 
 ## Conceptual checks

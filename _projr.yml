@@ -11,5 +11,17 @@ directories:
   docs:
     path: docs
 build:
-  scripts: l1/SlidesL1PCA.qmd
+  scripts:
+  - l1/SlidesL1PCA.qmd
+  - l1/PracL1PCA.qmd
+  github:
+    archive-2026-sta5077z:
+      content:
+      - raw-data
+      - raw-reference-non-git
+      - docs
+    latest-2026-sta5077z:
+      content: raw-content
+dev:
+  scripts: l1/PracL1PCA.qmd
 

@@ -1,8 +1,7 @@
 Package: Lectures
 Title: Lecture content
-Version: 0.0.0-1
-Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role =
-        c("aut", "cre"))
+Version: 0.1.0
+Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role = c("aut", "cre"))
 Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
 Description: Lecture and practice material.
 License: CC BY 4.0
@@ -12,7 +11,6 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 Depends: R (>= 4.1.0)
-Imports: broom, car, cffr, codemeta, cowplot, dplyr, ggforce, ggplot2,
-        ggrepel kableExtra, knitr, MASS, projr, purrr, quarto, remotes,
-        scales, stringr, tibble, tidyr, jpeg
+Imports: broom, car, cffr, codemeta, cowplot, dplyr, ggforce, ggplot2, ggrepel kableExtra, knitr, MASS, projr, purrr, quarto, remotes, scales,
+                stringr, tibble, tidyr, jpeg, tidyverse
 Remotes: SATVILab/projr
