@@ -1,4 +1,12 @@
 directories:
+  raw-data:
+    path: _raw_data
+  raw-reference-git:
+    path: _reference
+    ignore-git: no
+  raw-reference-non-git:
+    path: _reference/non_git
+  raw-content:
+    path: _content
   docs:
     path: docs
-
