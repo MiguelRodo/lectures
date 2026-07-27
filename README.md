@@ -1,6 +1,6 @@
 # Lecture material
 
-This repository is for generating lecture material for the course specified by <year>-<course> in the branch name.
+This repository is for generating lecture material for the course specified by `<year>-<course>` in the branch name.
 
 ## Contact
 
