@@ -8,9 +8,21 @@
 ^_output$
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
+^_raw_data/
+^_raw_data$
+^_reference/
+^_reference$
+^_reference/non_git/
+^_reference/non_git$
+^_content/
+^_content$
+^docs/
+^docs$
+^_tmp/
+^_tmp$
+^_output/
+^_output$
 ^_projr\.yml$
 ^README\.Rmd$
-^_archive/
-^_archive$
 # End of projr section
 

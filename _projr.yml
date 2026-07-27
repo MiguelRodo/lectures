@@ -10,3 +10,6 @@ directories:
     path: _content
   docs:
     path: docs
+build:
+  scripts: l1/SlidesL1PCA.qmd
+
