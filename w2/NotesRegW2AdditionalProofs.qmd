@@ -1,0 +1,496 @@
+---
+title: "Regression Week II: Additional proofs for the general linear model"
+author: "Yovna Junglee, edited by Miguel Rodo"
+institute: University of Cape Town
+date: today
+format:
+  html:
+    embed-resources: true
+    toc: true
+    number-sections: true
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# Set-up and notation
+
+We work with the general linear model
+$$
+Y=X\boldsymbol\beta+\mathbf e,
+\qquad
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n),
+$$
+where:
+
+- $Y$ is an $n\times 1$ response vector,
+- $X$ is an $n\times k$ design matrix,
+- $\boldsymbol\beta$ is a $k\times 1$ vector of regression coefficients,
+- $\mathbf e$ is an $n\times 1$ error vector.
+
+In a model with $p$ predictors and an intercept, $k=p+1$.
+
+Throughout these proofs, assume that $X$ has full column rank. Then $X^TX$ is invertible and the least-squares estimator is
+$$
+\hat{\boldsymbol\beta}=(X^TX)^{-1}X^TY.
+$$
+
+Define the fitted values, residuals, hat matrix and residual-maker matrix by
+$$
+\hat Y=X\hat{\boldsymbol\beta},
+\qquad
+\hat{\mathbf e}=Y-X\hat{\boldsymbol\beta},
+$$
+$$
+H=X(X^TX)^{-1}X^T,
+\qquad
+M=I_n-H.
+$$
+
+Thus
+$$
+\hat Y=HY,
+\qquad
+\hat{\mathbf e}=MY.
+$$
+
+# Distribution of $\hat{\boldsymbol\beta}$
+
+## Theorem
+
+Under the model assumptions,
+$$
+\hat{\boldsymbol\beta}
+\sim
+N_k\left(\boldsymbol\beta,\sigma^2(X^TX)^{-1}\right).
+$$
+
+## Proof
+
+Since
+$$
+Y=X\boldsymbol\beta+\mathbf e
+$$
+and
+$$
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n),
+$$
+we have
+$$
+Y\sim N_n(X\boldsymbol\beta,\sigma^2I_n).
+$$
+
+Now write
+$$
+\hat{\boldsymbol\beta}
+=(X^TX)^{-1}X^TY
+=BY,
+$$
+where
+$$
+B=(X^TX)^{-1}X^T.
+$$
+
+Because $\hat{\boldsymbol\beta}$ is a linear transformation of a multivariate normal random vector, it is also multivariate normal. Its mean is
+$$
+\begin{aligned}
+E(\hat{\boldsymbol\beta})
+&=E(BY)\\
+&=B E(Y)\\
+&=(X^TX)^{-1}X^T X\boldsymbol\beta\\
+&=\boldsymbol\beta.
+\end{aligned}
+$$
+
+Its covariance matrix is
+$$
+\begin{aligned}
+\operatorname{Cov}(\hat{\boldsymbol\beta})
+&=\operatorname{Cov}(BY)\\
+&=B\operatorname{Cov}(Y)B^T\\
+&=(X^TX)^{-1}X^T(\sigma^2I_n)X\{(X^TX)^{-1}\}^T\\
+&=\sigma^2(X^TX)^{-1}X^TX(X^TX)^{-1}\\
+&=\sigma^2(X^TX)^{-1}.
+\end{aligned}
+$$
+
+Here we used the fact that $X^TX$ is symmetric, so $(X^TX)^{-1}$ is also symmetric.
+
+Therefore
+$$
+\hat{\boldsymbol\beta}
+\sim
+N_k\left(\boldsymbol\beta,\sigma^2(X^TX)^{-1}\right).
+$$
+
+# The MLE of $\sigma^2$ is biased
+
+## Theorem
+
+The maximum likelihood estimator
+$$
+\hat\sigma^2
+=
+\frac{1}{n}(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta})
+=
+\frac{RSS}{n}
+$$
+is a biased estimator of $\sigma^2$.
+
+## Proof
+
+The residual vector can be written as
+$$
+\hat{\mathbf e}=Y-X\hat{\boldsymbol\beta}=MY,
+$$
+where
+$$
+M=I_n-X(X^TX)^{-1}X^T.
+$$
+
+First, note that $M$ is symmetric:
+$$
+\begin{aligned}
+M^T
+&=\{I_n-X(X^TX)^{-1}X^T\}^T\\
+&=I_n-X\{(X^TX)^{-1}\}^TX^T\\
+&=I_n-X(X^TX)^{-1}X^T\\
+&=M.
+\end{aligned}
+$$
+
+Next, note that $M$ is idempotent:
+$$
+\begin{aligned}
+M^2
+&=\{I_n-X(X^TX)^{-1}X^T\}\{I_n-X(X^TX)^{-1}X^T\}\\
+&=I_n-2X(X^TX)^{-1}X^T
++X(X^TX)^{-1}X^TX(X^TX)^{-1}X^T\\
+&=I_n-2X(X^TX)^{-1}X^T
++X(X^TX)^{-1}X^T\\
+&=I_n-X(X^TX)^{-1}X^T\\
+&=M.
+\end{aligned}
+$$
+
+The residual sum of squares is
+$$
+\begin{aligned}
+RSS
+&=(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta})\\
+&=(MY)^T(MY)\\
+&=Y^TM^TMY\\
+&=Y^TM^2Y\\
+&=Y^TMY.
+\end{aligned}
+$$
+
+Since $Y=X\boldsymbol\beta+\mathbf e$,
+$$
+RSS=(X\boldsymbol\beta+\mathbf e)^TM(X\boldsymbol\beta+\mathbf e).
+$$
+
+Also,
+$$
+MX
+=\{I_n-X(X^TX)^{-1}X^T\}X
+=X-X(X^TX)^{-1}X^TX
+=0,
+$$
+and therefore $X^TM=0^T$. Hence all terms involving $X\boldsymbol\beta$ vanish, and
+$$
+RSS=\mathbf e^TM\mathbf e.
+$$
+
+Now write
+$$
+\mathbf e^TM\mathbf e=
+\sum_{i=1}^n\sum_{j=1}^n m_{ij}e_ie_j.
+$$
+
+Because the errors are independent with mean zero and variance $\sigma^2$,
+$$
+E(e_ie_j)=0\quad\text{for }i\neq j,
+\qquad
+E(e_i^2)=\sigma^2.
+$$
+
+Therefore
+$$
+\begin{aligned}
+E(RSS)
+&=E(\mathbf e^TM\mathbf e)\\
+&=\sum_{i=1}^n m_{ii}\sigma^2\\
+&=\sigma^2\operatorname{tr}(M).
+\end{aligned}
+$$
+
+It remains to compute $\operatorname{tr}(M)$:
+$$
+\begin{aligned}
+\operatorname{tr}(M)
+&=\operatorname{tr}\{I_n-X(X^TX)^{-1}X^T\}\\
+&=\operatorname{tr}(I_n)-\operatorname{tr}\{X(X^TX)^{-1}X^T\}\\
+&=n-\operatorname{tr}\{(X^TX)^{-1}X^TX\}\\
+&=n-\operatorname{tr}(I_k)\\
+&=n-k.
+\end{aligned}
+$$
+
+Thus
+$$
+E(RSS)=\sigma^2(n-k),
+$$
+and so
+$$
+E(\hat\sigma^2)
+=E\left(\frac{RSS}{n}\right)
+=\frac{n-k}{n}\sigma^2.
+$$
+
+Since $k>0$ in a regression model,
+$$
+E(\hat\sigma^2)\neq \sigma^2.
+$$
+
+Therefore $\hat\sigma^2=RSS/n$ is biased downward.
+
+# An unbiased estimator of $\sigma^2$
+
+## Theorem
+
+The estimator
+
+$$
+s^2=\frac{1}{n-k}(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta})
+=\frac{RSS}{n-k}
+$$
+is unbiased for $\sigma^2$.
+
+## Proof
+
+From the previous result,
+$$
+E(RSS)=\sigma^2(n-k).
+$$
+
+Therefore
+$$
+\begin{aligned}
+E(s^2)
+&=E\left(\frac{RSS}{n-k}\right)\\
+&=\frac{1}{n-k}E(RSS)\\
+&=\frac{1}{n-k}\sigma^2(n-k)\\
+&=\sigma^2.
+\end{aligned}
+$$
+
+Thus $s^2$ is unbiased for $\sigma^2$.
+
+# Distribution of the residual variance estimator
+
+## Theorem
+
+Under the model assumptions,
+$$
+\frac{(n-k)s^2}{\sigma^2}
+=
+\frac{RSS}{\sigma^2}
+\sim
+\chi^2_{n-k}.
+$$
+
+## Proof
+
+We have shown that
+$$
+RSS=\mathbf e^TM\mathbf e.
+$$
+
+Since
+$$
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n),
+$$
+it follows that
+$$
+\frac{\mathbf e}{\sigma}\sim N_n(\mathbf 0,I_n).
+$$
+
+Therefore
+$$
+\frac{RSS}{\sigma^2}
+=
+\left(\frac{\mathbf e}{\sigma}\right)^T
+M
+\left(\frac{\mathbf e}{\sigma}\right).
+$$
+
+The matrix $M$ is symmetric and idempotent. For a symmetric idempotent matrix, the quadratic form in a standard multivariate normal vector is chi-square with degrees of freedom equal to the rank of the matrix. Hence
+$$
+\frac{RSS}{\sigma^2}\sim \chi^2_{\operatorname{rank}(M)}.
+$$
+
+It remains to find $\operatorname{rank}(M)$. Since $M$ is idempotent, its eigenvalues are only $0$ and $1$. Hence its rank equals its trace:
+$$
+\operatorname{rank}(M)=\operatorname{tr}(M).
+$$
+
+From above,
+$$
+\operatorname{tr}(M)=n-k.
+$$
+
+Therefore
+$$
+\frac{RSS}{\sigma^2}
+=
+\frac{(n-k)s^2}{\sigma^2}
+\sim
+\chi^2_{n-k}.
+$$
+
+# Independence of $\hat{\boldsymbol\beta}$ and $s^2$
+
+## Theorem
+
+Under the normal general linear model,
+$$
+\hat{\boldsymbol\beta}
+\quad\text{and}\quad
+s^2
+$$
+are independent.
+
+## Proof
+
+The estimator $\hat{\boldsymbol\beta}$ depends on $Y$ through
+$$
+\hat{\boldsymbol\beta}=BY,
+\qquad
+B=(X^TX)^{-1}X^T.
+$$
+
+The residual variance estimator depends on $Y$ through
+$$
+RSS=Y^TMY,
+\qquad
+M=I_n-X(X^TX)^{-1}X^T.
+$$
+
+For a multivariate normal vector, a linear form $BY$ and a quadratic form $Y^TMY$ are independent if the linear and residual parts are uncorrelated in the relevant sense. Here the key algebraic condition is
+$$
+BM=0.
+$$
+
+Indeed,
+$$
+\begin{aligned}
+BM
+&=(X^TX)^{-1}X^T\{I_n-X(X^TX)^{-1}X^T\}\\
+&=(X^TX)^{-1}\{X^T-X^TX(X^TX)^{-1}X^T\}\\
+&=(X^TX)^{-1}(X^T-X^T)\\
+&=0.
+\end{aligned}
+$$
+
+Thus the coefficient estimator uses the part of $Y$ projected onto the column space of $X$, while the residual sum of squares uses the orthogonal residual part. Under normality, these orthogonal components are independent.
+
+Since $s^2$ is just $RSS$ divided by the constant $n-k$, it follows that
+$$
+\hat{\boldsymbol\beta}
+\quad\text{and}\quad
+s^2
+$$
+are independent.
+
+# A useful computational form for $s^2$
+
+The residual sum of squares can also be written in a form that is sometimes easier to compute:
+$$
+RSS=Y^TY-\hat{\boldsymbol\beta}^TX^TY.
+$$
+
+To see this, start with
+$$
+RSS=(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta}).
+$$
+
+Expanding gives
+$$
+\begin{aligned}
+RSS
+&=Y^TY-Y^TX\hat{\boldsymbol\beta}
+-\hat{\boldsymbol\beta}^TX^TY
++\hat{\boldsymbol\beta}^TX^TX\hat{\boldsymbol\beta}.
+\end{aligned}
+$$
+
+Because $Y^TX\hat{\boldsymbol\beta}$ is a scalar,
+$$
+Y^TX\hat{\boldsymbol\beta}
+=
+\hat{\boldsymbol\beta}^TX^TY.
+$$
+
+Also, the normal equations give
+$$
+X^TX\hat{\boldsymbol\beta}=X^TY.
+$$
+
+Hence
+$$
+\hat{\boldsymbol\beta}^TX^TX\hat{\boldsymbol\beta}
+=
+\hat{\boldsymbol\beta}^TX^TY.
+$$
+
+Substituting this into the expanded expression yields
+$$
+RSS=Y^TY-\hat{\boldsymbol\beta}^TX^TY.
+$$
+
+Therefore
+$$
+s^2
+=
+\frac{1}{n-k}\left(Y^TY-\hat{\boldsymbol\beta}^TX^TY\right).
+$$
+
+# Summary
+
+The key results are:
+
+$$
+\hat{\boldsymbol\beta}
+\sim
+N_k\left(\boldsymbol\beta,\sigma^2(X^TX)^{-1}\right),
+$$
+
+$$
+E\left(\frac{RSS}{n}\right)
+=
+\frac{n-k}{n}\sigma^2,
+$$
+
+$$
+s^2=\frac{RSS}{n-k}
+\quad\text{is unbiased for}\quad
+\sigma^2,
+$$
+
+$$
+\frac{(n-k)s^2}{\sigma^2}
+\sim
+\chi^2_{n-k},
+$$
+
+and, under normal errors,
+$$
+\hat{\boldsymbol\beta}\ \text{and}\ s^2\ \text{are independent.}
+$$
