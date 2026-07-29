@@ -19,14 +19,15 @@ section of STA2005S. It is intended to help you answer three questions:
 3. Where can I learn and practise it?
 
 The main regression lecture notes, `NotesReg.pdf`, remain a key source
-throughout and are not repeated under every week. The weekly slides, supporting
+throughout and are not repeated under every week.
+The weekly slides, supporting
 documents, question bank, tutorials and practicals should be used alongside
 those notes.
 
 ::: {.callout-important title="How to use this guide"}
 The guide is comprehensive, but it does not replace instructions given in
-lectures or for a specific assessment. Unless explicitly stated otherwise, you
-should be able to explain, calculate, interpret and apply the listed material,
+lectures or for a specific assessment.
+Unless explicitly stated otherwise, you should be able to explain, calculate, interpret and apply the listed material,
 not merely recall definitions.
 :::
 
@@ -44,8 +45,10 @@ not merely recall definitions.
 # Proofs and derivations
 
 This section identifies the principal proofs and derivations and where they can
-be found. Inclusion here means that you should understand the argument and be
-able to use the result. Whether you must reproduce every line of a particular
+be found.
+Inclusion here means that you should understand the argument and be
+able to use the result.
+ Whether you must reproduce every line of a particular
 proof will be clarified in lectures and assessment instructions.
 
 ## Week 1
@@ -54,9 +57,9 @@ proof will be clarified in lectures and assessment instructions.
   - Distribution of a linear transformation of a multivariate normal random
     vector, page 9.
   - A partition of a multivariate normal random vector is multivariate normal,
-    page 16.
+    page 19.
   - A quadratic form in a standard multivariate normal vector with a symmetric
-    idempotent matrix has a chi-squared distribution, page 19.
+    idempotent matrix has a chi-squared distribution, page 23.
 
 ## Week 2
 

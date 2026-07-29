@@ -17,7 +17,10 @@
 ^_output$
 ^_projr\.yml$
 ^README\.Rmd$
+^BUILDLOG\.md$
+^CHANGELOG\.md$
 ^LICENSE\.md$
+^manifest\.csv$
 # End of projr section
 
 ^LICENSE\.md$

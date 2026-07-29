@@ -1,0 +1,1031 @@
+---
+title: "Regression Week V: Prediction"
+subtitle: "Slide deck II: Prediction intervals, model selection and out-of-sample performance"
+author: "Miguel Rodo"
+institute: University of Cape Town
+date: today
+format:
+  beamer:
+    embed-resources: true
+    aspectratio: 169
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+    include-in-header:
+      file: preamble.tex
+    keep-tex: true
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 8,
+  fig.height = 4.5,
+  out.width = "0.88\\linewidth"
+)
+
+set.seed(502)
+
+if (requireNamespace("cowplot", quietly = TRUE)) {
+  theme_reg <- function(font_size = 14) {
+    cowplot::theme_cowplot(font_size = font_size) +
+      ggplot2::theme(
+        plot.background = ggplot2::element_rect(fill = "white", colour = NA),
+        panel.background = ggplot2::element_rect(fill = "white", colour = NA)
+      )
+  }
+} else {
+  theme_reg <- function(font_size = 14) {
+    ggplot2::theme_minimal(base_size = font_size) +
+      ggplot2::theme(
+        plot.background = ggplot2::element_rect(fill = "white", colour = NA),
+        panel.background = ggplot2::element_rect(fill = "white", colour = NA)
+      )
+  }
+}
+
+format_number <- function(x, digits = 3) {
+  format(signif(x, digits), trim = TRUE, scientific = FALSE)
+}
+
+make_interval_plot <- function(n, seed = 1) {
+  set.seed(seed)
+  x_vec <- runif(n, 0, 10)
+  y_vec <- 4 + 2 * x_vec + rnorm(n, 0, 2)
+  example_tbl <- tibble::tibble(x = x_vec, y = y_vec)
+  fit <- lm(y ~ x, data = example_tbl)
+  x_seq <- seq(min(x_vec), max(x_vec), length.out = 500)
+  new_tbl <- tibble::tibble(x = x_seq)
+  pred_int <- predict(fit, newdata = new_tbl, interval = "prediction")
+  mean_int <- predict(fit, newdata = new_tbl, interval = "confidence")
+  plot_tbl <- dplyr::bind_rows(
+    tibble::tibble(x = x_seq, lower = mean_int[, "lwr"], upper = mean_int[, "upr"], type = "Mean response"),
+    tibble::tibble(x = x_seq, lower = pred_int[, "lwr"], upper = pred_int[, "upr"], type = "New observation")
+  )
+  list(data = example_tbl, fit = fit, plot_tbl = plot_tbl)
+}
+
+small_interval <- make_interval_plot(10, 10)
+large_interval <- make_interval_plot(200, 10)
+
+set.seed(510)
+n_leverage <- 60
+x_lev <- sort(runif(n_leverage, 0, 10))
+y_lev <- 5 + 1.5 * x_lev + rnorm(n_leverage, sd = 2)
+lev_tbl <- tibble::tibble(x = x_lev, y = y_lev)
+lev_fit <- lm(y ~ x, data = lev_tbl)
+lev_grid <- tibble::tibble(x = seq(-3, 14, length.out = 400))
+lev_pred <- predict(lev_fit, newdata = lev_grid, interval = "prediction")
+lev_conf <- predict(lev_fit, newdata = lev_grid, interval = "confidence")
+lev_grid <- lev_grid |>
+  dplyr::mutate(
+    pred_lower = lev_pred[, "lwr"],
+    pred_upper = lev_pred[, "upr"],
+    mean_lower = lev_conf[, "lwr"],
+    mean_upper = lev_conf[, "upr"]
+  )
+
+set.seed(520)
+n_select <- 160
+p_select <- 20
+rho <- 0.45
+latent <- rnorm(n_select)
+X_select <- sapply(seq_len(p_select), function(j) {
+  rho * latent + sqrt(1 - rho^2) * rnorm(n_select)
+})
+colnames(X_select) <- paste0("X", seq_len(p_select))
+beta_select <- c(1.2, -1.1, 0.9, 0.7, rep(0, p_select - 4))
+y_select <- as.vector(X_select %*% beta_select + rnorm(n_select, sd = 2.2))
+selection_tbl <- tibble::as_tibble(data.frame(y = y_select, X_select))
+
+fit_null <- lm(y ~ 1, data = selection_tbl)
+fit_full <- lm(y ~ ., data = selection_tbl)
+fit_forward <- stats::step(
+  fit_null,
+  scope = list(lower = fit_null, upper = fit_full),
+  direction = "forward",
+  trace = 0
+)
+fit_backward <- stats::step(
+  fit_full,
+  direction = "backward",
+  trace = 0
+)
+fit_both <- stats::step(
+  fit_null,
+  scope = list(lower = fit_null, upper = fit_full),
+  direction = "both",
+  trace = 0
+)
+
+true_terms <- paste0("X", 1:4)
+selection_summary <- function(fit, label) {
+  terms <- setdiff(names(coef(fit)), "(Intercept)")
+  tibble::tibble(
+    Method = label,
+    Included = length(terms),
+    `Correctly included` = sum(terms %in% true_terms),
+    `Noise variables included` = sum(!(terms %in% true_terms)),
+    AIC = AIC(fit),
+    BIC = BIC(fit),
+    `Training MSE` = mean(residuals(fit)^2)
+  )
+}
+selection_results <- dplyr::bind_rows(
+  selection_summary(fit_full, "Full"),
+  selection_summary(fit_forward, "Forward"),
+  selection_summary(fit_backward, "Backward"),
+  selection_summary(fit_both, "Stepwise")
+) |>
+  dplyr::mutate(
+    dplyr::across(tidyselect::where(is.numeric), ~ signif(.x, 3))
+  )
+
+set.seed(530)
+n_null <- 150
+p_null <- 80
+X_null <- matrix(rnorm(n_null * p_null), nrow = n_null)
+colnames(X_null) <- paste0("X", seq_len(p_null))
+y_null <- rnorm(n_null)
+null_tbl <- tibble::as_tibble(data.frame(y = y_null, X_null))
+null_fit <- lm(y ~ 1, data = null_tbl)
+null_full <- lm(y ~ ., data = null_tbl)
+null_forward <- stats::step(
+  null_fit,
+  scope = list(lower = null_fit, upper = null_full),
+  direction = "forward",
+  trace = 0
+)
+null_selected <- length(setdiff(names(coef(null_forward)), "(Intercept)"))
+null_train_mse <- mean(residuals(null_forward)^2)
+
+set.seed(531)
+train_index <- sample(seq_len(n_null), size = floor(0.75 * n_null))
+train_tbl <- null_tbl[train_index, ]
+test_tbl <- null_tbl[-train_index, ]
+train_null <- lm(y ~ 1, data = train_tbl)
+train_full <- lm(y ~ ., data = train_tbl)
+train_forward <- stats::step(
+  train_null,
+  scope = list(lower = train_null, upper = train_full),
+  direction = "forward",
+  trace = 0
+)
+train_mse <- mean(residuals(train_forward)^2)
+test_pred <- predict(train_forward, newdata = test_tbl)
+test_mse <- mean((test_tbl$y - test_pred)^2)
+selected_terms_train <- length(setdiff(names(coef(train_forward)), "(Intercept)"))
+
+set.seed(532)
+n_reps <- 100
+split_results <- replicate(n_reps, {
+  idx <- sample(seq_len(n_null), size = floor(0.75 * n_null))
+  tr <- null_tbl[idx, ]
+  te <- null_tbl[-idx, ]
+  mod <- stats::step(
+    lm(y ~ 1, data = tr),
+    scope = list(lower = ~1, upper = ~.),
+    direction = "forward",
+    trace = 0
+  )
+  c(
+    selected = length(setdiff(names(coef(mod)), "(Intercept)")),
+    train_mse = mean(residuals(mod)^2),
+    test_mse = mean((te$y - predict(mod, newdata = te))^2)
+  )
+})
+split_results_tbl <- tibble::as_tibble(t(split_results)) |>
+  dplyr::mutate(split = dplyr::row_number())
+split_summary_tbl <- split_results_tbl |>
+  dplyr::summarise(
+    `Average selected variables` = mean(selected),
+    `Average training MSE` = mean(train_mse),
+    `Average test MSE` = mean(test_mse)
+  ) |>
+  dplyr::mutate(dplyr::across(tidyselect::where(is.numeric), ~ signif(.x, 3)))
+```
+
+# From inference to prediction
+
+- In Week III, we used the fitted model to quantify uncertainty about unknown regression quantities.
+
+\pause
+
+- In Week IV, we asked whether the fitted model is believable enough to use.
+
+\pause
+
+- We now ask a practical question:
+
+\pause
+
+> If a new case arrives, what range of responses should we expect?
+
+\pause
+
+- That question leads naturally from prediction intervals to model selection and out-of-sample performance.
+
+# Lecture outline
+
+By the end of this deck, you should be able to:
+
+- Distinguish uncertainty in a mean response from uncertainty in a new observation
+- Derive and interpret a prediction interval in the general linear model
+- Explain how prediction uncertainty depends on predictor location
+- Explain why training error is usually too optimistic
+- Describe forward, backward and stepwise variable selection
+- Compare models using out-of-sample prediction error
+
+# Set-up and notation {.smaller}
+
+We continue to use the normal general linear model
+$$
+Y=X\boldsymbol\beta+\mathbf e,
+\qquad
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n),
+$$
+where $X$ is an $n\times k$ design matrix with full column rank.
+
+\pause
+
+Let
+$$
+C=(X^TX)^{-1},
+\qquad
+s^2=\frac{RSS}{n-k}.
+$$
+
+\pause
+
+For a new case, write its predictor vector as $\mathbf x_0$ and its response as
+$$
+Y_0=\mathbf x_0^T\boldsymbol\beta+e_0,
+\qquad
+ e_0\sim N(0,\sigma^2).
+$$
+
+\pause
+
+We assume that $e_0$ is independent of the errors in the training data.
+
+# Two different prediction questions
+
+At the same predictor vector $\mathbf x_0$, there are two different targets.
+
+\pause
+
+1. The **mean response**:
+$$
+\mu_0=E(Y_0\mid \mathbf x_0)=\mathbf x_0^T\boldsymbol\beta.
+$$
+
+\pause
+
+2. A **new individual response**:
+$$
+Y_0=\mathbf x_0^T\boldsymbol\beta+e_0.
+$$
+
+\pause
+
+The second target is more variable because it includes the new random error $e_0$.
+
+# Week III recap: interval for the mean response
+
+The fitted mean response at $\mathbf x_0$ is
+$$
+\hat\mu_0=\mathbf x_0^T\hat{\boldsymbol\beta}.
+$$
+
+\pause
+
+Because
+$$
+\hat{\boldsymbol\beta}\sim
+N_k(\boldsymbol\beta,\sigma^2C),
+$$
+we have
+$$
+\hat\mu_0
+\sim
+N\left(\mu_0,\sigma^2\mathbf x_0^TC\mathbf x_0\right).
+$$
+
+\pause
+
+A $100(1-\alpha)\%$ confidence interval for the mean response is therefore
+$$
+\boxed{
+\hat\mu_0
+\pm
+t_{1-\alpha/2,n-k}
+s\sqrt{\mathbf x_0^TC\mathbf x_0}
+}.
+$$
+
+# Prediction error for a new observation
+
+For a new response, the prediction error is
+$$
+Y_0-\hat\mu_0.
+$$
+
+\pause
+
+Using
+$$
+Y_0=\mathbf x_0^T\boldsymbol\beta+e_0,
+\qquad
+\hat\mu_0=\mathbf x_0^T\hat{\boldsymbol\beta},
+$$
+we get
+$$
+Y_0-\hat\mu_0
+=
+e_0-\mathbf x_0^T(\hat{\boldsymbol\beta}-\boldsymbol\beta).
+$$
+
+\pause
+
+So there are two sources of prediction error:
+
+- the new random error $e_0$;
+- uncertainty in estimating $\boldsymbol\beta$.
+
+# Variance of the prediction error
+
+The new error $e_0$ is independent of the training sample.
+
+\pause
+
+Therefore it is independent of $\hat{\boldsymbol\beta}$, and
+$$
+\operatorname{Var}(Y_0-\hat\mu_0)
+=
+\operatorname{Var}(e_0)
++
+\operatorname{Var}\{\mathbf x_0^T(\hat{\boldsymbol\beta}-\boldsymbol\beta)\}.
+$$
+
+\pause
+
+That gives
+$$
+\operatorname{Var}(Y_0-\hat\mu_0)
+=
+\sigma^2+
+\sigma^2\mathbf x_0^TC\mathbf x_0
+=
+\sigma^2\left(1+\mathbf x_0^TC\mathbf x_0\right).
+$$
+
+\pause
+
+The extra $1$ is the irreducible variation in the future observation itself.
+
+# Prediction interval
+
+Since the model is normal,
+$$
+Y_0-\hat\mu_0
+\sim
+N\left(0,\sigma^2\{1+\mathbf x_0^TC\mathbf x_0\}\right).
+$$
+
+\pause
+
+Replacing $\sigma$ by $s$ gives the pivotal quantity
+$$
+\frac{Y_0-\hat\mu_0}{s\sqrt{1+\mathbf x_0^TC\mathbf x_0}}
+\sim
+t_{n-k}.
+$$
+
+\pause
+
+A $100(1-\alpha)\%$ prediction interval is
+$$
+\boxed{
+\hat\mu_0
+\pm
+t_{1-\alpha/2,n-k}
+s\sqrt{1+\mathbf x_0^TC\mathbf x_0}
+}.
+$$
+
+# Mean-response interval versus prediction interval
+
+Compare the two standard errors:
+$$
+\text{Mean response:}
+\qquad
+s\sqrt{\mathbf x_0^TC\mathbf x_0},
+$$
+
+$$
+\text{New observation:}
+\qquad
+s\sqrt{1+\mathbf x_0^TC\mathbf x_0}.
+$$
+
+\pause
+
+The prediction interval is wider because we are trying to predict an individual future value, not just the mean of many such future values.
+
+\pause
+
+Even with a very large sample, a future observation still has random error.
+
+# Example with ten observations
+
+```{r}
+plot_tbl <- small_interval$plot_tbl
+example_tbl <- small_interval$data
+
+ggplot2::ggplot(example_tbl, ggplot2::aes(x = x, y = y)) +
+  theme_reg() +
+  ggplot2::geom_point(colour = "dodgerblue", alpha = 0.85, size = 2.2) +
+  ggplot2::geom_smooth(method = "lm", se = FALSE, colour = "orange", linewidth = 1.1) +
+  ggplot2::geom_ribbon(
+    data = dplyr::filter(plot_tbl, type == "Mean response"),
+    ggplot2::aes(x = x, ymin = lower, ymax = upper),
+    inherit.aes = FALSE,
+    fill = "#66c2a5",
+    alpha = 0.45
+  ) +
+  ggplot2::geom_line(
+    data = dplyr::filter(plot_tbl, type == "New observation"),
+    ggplot2::aes(x = x, y = lower),
+    inherit.aes = FALSE,
+    colour = "#e78ac3",
+    linetype = "11",
+    linewidth = 1
+  ) +
+  ggplot2::geom_line(
+    data = dplyr::filter(plot_tbl, type == "New observation"),
+    ggplot2::aes(x = x, y = upper),
+    inherit.aes = FALSE,
+    colour = "#e78ac3",
+    linetype = "11",
+    linewidth = 1
+  ) +
+  ggplot2::labs(x = "Predictor", y = "Response")
+```
+
+# Example with 200 observations
+
+```{r}
+plot_tbl <- large_interval$plot_tbl
+example_tbl <- large_interval$data
+
+ggplot2::ggplot(example_tbl, ggplot2::aes(x = x, y = y)) +
+  theme_reg() +
+  ggplot2::geom_point(colour = "dodgerblue", alpha = 0.25, size = 1.5) +
+  ggplot2::geom_smooth(method = "lm", se = FALSE, colour = "orange", linewidth = 1.1) +
+  ggplot2::geom_ribbon(
+    data = dplyr::filter(plot_tbl, type == "Mean response"),
+    ggplot2::aes(x = x, ymin = lower, ymax = upper),
+    inherit.aes = FALSE,
+    fill = "#66c2a5",
+    alpha = 0.45
+  ) +
+  ggplot2::geom_line(
+    data = dplyr::filter(plot_tbl, type == "New observation"),
+    ggplot2::aes(x = x, y = lower),
+    inherit.aes = FALSE,
+    colour = "#e78ac3",
+    linetype = "11",
+    linewidth = 1
+  ) +
+  ggplot2::geom_line(
+    data = dplyr::filter(plot_tbl, type == "New observation"),
+    ggplot2::aes(x = x, y = upper),
+    inherit.aes = FALSE,
+    colour = "#e78ac3",
+    linetype = "11",
+    linewidth = 1
+  ) +
+  ggplot2::labs(x = "Predictor", y = "Response")
+```
+
+# What changed when $n$ increased?
+
+- The confidence interval for the mean response became much narrower.
+
+\pause
+
+- The prediction interval narrowed much less.
+
+\pause
+
+- With increasing information at a well-supported predictor value,
+$$
+\mathbf x_0^TC\mathbf x_0
+$$
+tends to get smaller.
+
+\pause
+
+- But the prediction interval still contains
+$$
+1+\mathbf x_0^TC\mathbf x_0,
+$$
+so it cannot eliminate the new response's own random error.
+
+# Prediction uncertainty depends on where we predict
+
+Write
+$$
+h_0=\mathbf x_0^TC\mathbf x_0.
+$$
+
+\pause
+
+Then
+$$
+\text{SE for mean response}=s\sqrt{h_0},
+\qquad
+\text{SE for new response}=s\sqrt{1+h_0}.
+$$
+
+\pause
+
+The value $h_0$ is larger when $\mathbf x_0$ is unusual relative to the observed design matrix.
+
+\pause
+
+This is the same idea as leverage from model checking.
+
+# Simple-regression intuition
+
+In simple linear regression, with an intercept,
+$$
+h_0
+=
+\frac{1}{n}
++
+\frac{(x_0-\bar{x})^2}{\sum_{i=1}^n(x_i-\bar{x})^2}.
+$$
+
+\pause
+
+So predictions are most precise near $\bar{x}$.
+
+\pause
+
+Predictions become less precise as $x_0$ moves away from the centre of the observed predictor values.
+
+\pause
+
+This is why extrapolation is dangerous even when the fitted line looks reasonable inside the observed range.
+
+# Interpolation and extrapolation
+
+```{r}
+ggplot2::ggplot(lev_tbl, ggplot2::aes(x = x, y = y)) +
+  theme_reg() +
+  ggplot2::geom_rect(
+    ggplot2::aes(xmin = min(lev_tbl$x), xmax = max(lev_tbl$x), ymin = -Inf, ymax = Inf),
+    inherit.aes = FALSE,
+    fill = "grey90",
+    alpha = 0.45
+  ) +
+  ggplot2::geom_point(colour = "dodgerblue", alpha = 0.8, size = 1.9) +
+  ggplot2::geom_smooth(method = "lm", se = FALSE, colour = "orange", linewidth = 1) +
+  ggplot2::geom_ribbon(
+    data = lev_grid,
+    ggplot2::aes(x = x, ymin = pred_lower, ymax = pred_upper),
+    inherit.aes = FALSE,
+    fill = "#e78ac3",
+    alpha = 0.25
+  ) +
+  ggplot2::geom_ribbon(
+    data = lev_grid,
+    ggplot2::aes(x = x, ymin = mean_lower, ymax = mean_upper),
+    inherit.aes = FALSE,
+    fill = "#66c2a5",
+    alpha = 0.45
+  ) +
+  ggplot2::labs(x = "Predictor", y = "Response")
+```
+
+# Prediction intervals in `R`
+
+Once the model is fitted, `R` can produce either kind of interval.
+
+```{r}
+#| echo: true
+fitted_model <- lm(y ~ x, data = lev_tbl)
+new_observations <- data.frame(x = c(2, 8, 12))
+
+predict(
+  fitted_model,
+  newdata = new_observations,
+  interval = "prediction"
+)
+```
+
+\pause
+
+Use `interval = "confidence"` for a mean-response interval and `interval = "prediction"` for a new-observation interval.
+
+# How to report a prediction interval
+
+A suitable sentence is:
+
+\pause
+
+> For a case with predictor value $x_0=8$, the predicted response is 19.0, with a 95% prediction interval from 14.6 to 23.4.
+
+\pause
+
+That means:
+
+- the fitted model predicts a value near 19.0;
+- a future individual response could plausibly be anywhere in the interval;
+- the interpretation relies on the regression model being appropriate.
+
+\pause
+
+It is not a statement that the unknown fixed mean response has 95% probability of lying in the interval.
+
+# Prediction intervals depend on model assumptions
+
+Prediction intervals inherit all the usual regression assumptions:
+
+- linear mean structure;
+- independent errors;
+- constant error variance;
+- normality if we want exact finite-sample intervals;
+- no major extrapolation or influential model failures.
+
+\pause
+
+Model checking is therefore not optional before prediction.
+
+\pause
+
+A precise interval from a badly specified model can be precisely wrong.
+
+# Why select variables?
+
+Prediction usually starts with a set of possible predictors.
+
+\pause
+
+We may want fewer predictors because:
+
+- a smaller model can be easier to interpret;
+- some predictors may be expensive or difficult to measure;
+- irrelevant predictors can increase prediction variance;
+- a simpler model can sometimes predict better on new data.
+
+\pause
+
+The goal is not merely to fit the current data well.
+
+The goal is to predict future data well.
+
+# The candidate-model problem
+
+With $p$ possible predictors, there are
+$$
+2^p
+$$
+possible subsets.
+
+\pause
+
+For example,
+$$
+2^{20}=1\,048\,576,
+\qquad
+2^{100}\approx 1.27\times 10^{30}.
+$$
+
+\pause
+
+Exhaustive best-subset selection can therefore become computationally difficult.
+
+\pause
+
+Greedy procedures search only part of the model space.
+
+# Best-subset search versus stepwise search
+
+**Best-subset selection** tries to find the best model among all candidate subsets under a chosen criterion.
+
+\pause
+
+**Stepwise procedures** follow a sequence of local moves:
+
+- add one variable;
+- remove one variable;
+- or alternate between adding and removing.
+
+\pause
+
+They are computationally convenient, but they are not guaranteed to find the globally best subset.
+
+# Criteria for comparing models {.smaller}
+
+Common criteria include:
+
+- $R^2$: increases whenever a predictor is added, so it is not useful for selecting model size;
+- adjusted $R^2$: penalises unnecessary predictors and should be maximised;
+- AIC: balances fit and complexity, usually with a lighter penalty;
+- BIC: balances fit and complexity, usually with a stronger penalty.
+
+\pause
+
+For comparable Gaussian linear models, up to an additive constant,
+$$
+\operatorname{AIC}
+=
+n\log(RSS/n)+2q,
+$$
+$$
+\operatorname{BIC}
+=
+n\log(RSS/n)+q\log n,
+$$
+where $q$ is the number of estimated model parameters.
+
+\pause
+
+AIC and BIC are minimised.
+
+# Forward selection
+
+Forward selection starts with the intercept-only model.
+
+\pause
+
+At each step:
+
+1. Try adding each variable not yet in the model.
+2. Choose the addition that improves the criterion most.
+3. Stop when no allowed addition improves the criterion.
+
+\pause
+
+It is useful when the full model is large, but it can miss variables that only help after other variables have entered.
+
+# Backward and stepwise selection
+
+**Backward elimination** starts with the full model.
+
+\pause
+
+At each step, it removes the variable whose removal gives the best criterion value.
+
+\pause
+
+This requires the full model to be estimable, so it can fail if there are too many predictors or exact collinearity.
+
+\pause
+
+**Bidirectional stepwise selection** allows both additions and removals.
+
+\pause
+
+It remains a greedy search, but permits earlier decisions to be partially reversed.
+
+# A moderate simulation
+
+We simulate 20 predictors.
+
+\pause
+
+Only the first four predictors truly affect the response.
+
+\pause
+
+The predictors are moderately correlated, and the noise level is large enough that selection is not completely trivial.
+
+\pause
+
+The question is:
+
+> Which methods keep the signal variables without adding too many noise variables?
+
+# Selection results
+
+```{r}
+knitr::kable(selection_results)
+```
+
+# What the table shows
+
+- The full model includes all variables, including many noise variables.
+
+\pause
+
+- A stepwise method may remove many irrelevant variables.
+
+\pause
+
+- But the result depends on the data, the starting model, and the selection criterion.
+
+\pause
+
+- The selected model should not be treated as if it had been fixed before seeing the data.
+
+# A warning about post-selection inference
+
+The inference decks gave confidence intervals and hypothesis tests for a fixed model.
+
+\pause
+
+After data-driven model selection, the model is no longer fixed in the same sense.
+
+\pause
+
+Consequently:
+
+- ordinary $p$-values after selection can be too optimistic;
+- ordinary confidence intervals can have worse coverage than advertised;
+- prediction intervals condition on the selected model and may not include all selection uncertainty.
+
+\pause
+
+This does not make model selection useless, but it changes how cautiously we should interpret the output.
+
+# Training error is optimistic
+
+Suppose the response is pure noise:
+$$
+Y_i\sim N(0,1),
+$$
+and none of the predictors truly matters.
+
+\pause
+
+If we search over many predictors, some will look useful by chance.
+
+\pause
+
+In one simulation, forward selection included `r null_selected` variables.
+
+\pause
+
+The training MSE was
+$$
+`r format_number(null_train_mse)`.
+$$
+
+\pause
+
+That is much smaller than the irreducible variance of 1, but it is an artefact of using the same data to select and evaluate the model.
+
+# Training and test data
+
+To estimate predictive performance, separate the roles of the data.
+
+\pause
+
+- **Training data:** fit the model and perform variable selection.
+
+\pause
+
+- **Test data:** evaluate the already chosen modelling procedure on data not used for fitting.
+
+\pause
+
+The test data must remain untouched until the final evaluation.
+
+\pause
+
+Otherwise the test error also becomes optimistic.
+
+# One training-test split
+
+```{r}
+tibble::tibble(
+  `Selected variables` = selected_terms_train,
+  `Training MSE` = signif(train_mse, 3),
+  `Test MSE` = signif(test_mse, 3)
+) |>
+  knitr::kable()
+```
+
+\pause
+
+The test error is much closer to the real prediction error than the training error.
+
+\pause
+
+It can also be greater than 1 because the selected model adds estimation and selection noise.
+
+# Repeated splitting
+
+One split can be noisy.
+
+\pause
+
+Repeating the split gives a more stable picture of the same optimism.
+
+```{r}
+knitr::kable(split_summary_tbl)
+```
+
+\pause
+
+The average test MSE is much larger than the average training MSE.
+
+# Visualising optimism
+
+```{r}
+plot_split_tbl <- split_results_tbl |>
+  dplyr::select(split, `Training MSE` = train_mse, `Test MSE` = test_mse) |>
+  tidyr::pivot_longer(-split, names_to = "Error type", values_to = "MSE")
+
+ggplot2::ggplot(plot_split_tbl, ggplot2::aes(x = `Error type`, y = MSE, fill = `Error type`)) +
+  theme_reg() +
+  ggplot2::geom_boxplot(alpha = 0.75, outlier.alpha = 0.45) +
+  ggplot2::geom_hline(yintercept = 1, linetype = "dotted") +
+  ggplot2::guides(fill = "none") +
+  ggplot2::labs(x = NULL, y = "Mean squared error")
+```
+
+# Cross-validation
+
+A training-test split estimates performance using only part of the data for testing.
+
+\pause
+
+Cross-validation repeats this idea more systematically.
+
+\pause
+
+For example, in $K$-fold cross-validation:
+
+1. Split the data into $K$ parts.
+2. Fit the modelling procedure on $K-1$ parts.
+3. Evaluate it on the held-out part.
+4. Repeat until every part has been held out once.
+5. Average the held-out errors.
+
+\pause
+
+The important point is that selection must be repeated inside each training fold.
+
+# A modelling procedure, not just a model
+
+When variable selection is involved, what we evaluate is the whole procedure:
+
+\pause
+
+1. Start with these candidate predictors.
+2. Use this selection rule.
+3. Fit the selected model.
+4. Predict new observations.
+
+\pause
+
+Cross-validation or test-error estimation must include all four steps.
+
+\pause
+
+If the selected variables are chosen before cross-validation, the error estimate can still be biased downward.
+
+# Summary
+
+- A confidence interval for a mean response quantifies uncertainty about $E(Y_0\mid\mathbf x_0)$.
+
+\pause
+
+- A prediction interval for a new observation adds irreducible future-observation variation.
+
+\pause
+
+- Prediction intervals are wider, especially because of the extra $1$ in
+$$
+1+\mathbf x_0^TC\mathbf x_0.
+$$
+
+\pause
+
+- Prediction uncertainty increases for unusual predictor vectors and extrapolation.
+
+\pause
+
+- Variable selection can improve simplicity and sometimes prediction, but it introduces extra uncertainty.
+
+\pause
+
+- Training error is optimistic, so predictive performance should be estimated using held-out data or cross-validation.
+
+# What to take into your reports
+
+When reporting prediction from a regression model:
+
+- say whether the interval is for a mean response or a new observation;
+- report the fitted value and interval endpoints;
+- avoid extrapolating without warning;
+- evaluate prediction performance on data not used to fit or select the model;
+- be cautious about ordinary inference after variable selection.

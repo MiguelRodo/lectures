@@ -4,22 +4,17 @@ author: "Yovna Junglee, edited by Miguel Rodo"
 institute: University of Cape Town
 date: today
 format:
-  html:
-    embed-resources: true
+  pdf:
     toc: true
     number-sections: true
+    geometry:
+      - margin=1in
+    fontsize: 11pt
 ---
 
-```{r}
-#| include: false
-knitr::opts_chunk$set(
-  echo = FALSE,
-  warning = FALSE,
-  message = FALSE
-)
-```
-
 # Set-up and notation
+
+> **Course-notes cross-reference.** The theorem and proposition numbers given below refer to *Applied Linear Regression: Notes and Theorems* (`NotesReg.pdf`).
 
 We work with the general linear model
 $$
@@ -61,6 +56,8 @@ $$
 $$
 
 # Distribution of $\hat{\boldsymbol\beta}$
+
+> **Related result in the course notes:** **Theorem 7**, using the multivariate-normal linear-transformation result in **Theorem 3**.
 
 ## Theorem
 
@@ -130,6 +127,8 @@ N_k\left(\boldsymbol\beta,\sigma^2(X^TX)^{-1}\right).
 $$
 
 # The MLE of $\sigma^2$ is biased
+
+> **Related result in the course notes:** **Theorem 8**.
 
 ## Theorem
 
@@ -263,6 +262,8 @@ Therefore $\hat\sigma^2=RSS/n$ is biased downward.
 
 # An unbiased estimator of $\sigma^2$
 
+> **Related result in the course notes:** this is the unbiased estimator introduced immediately after **Theorem 8**. It is not assigned a separate theorem number there.
+
 ## Theorem
 
 The estimator
@@ -294,6 +295,8 @@ $$
 Thus $s^2$ is unbiased for $\sigma^2$.
 
 # Distribution of the residual variance estimator
+
+> **Related result in the course notes:** **Theorem 9**, using the quadratic-form result in **Theorem 5**.
 
 ## Theorem
 
@@ -355,7 +358,153 @@ $$
 \chi^2_{n-k}.
 $$
 
+# Independence of a linear form and a quadratic form
+
+> **Related result in the course notes:** **Theorem 6**. The statement here makes the symmetry condition used by the proof explicit.
+
+## Theorem
+
+Let
+$$
+\mathbf Z\sim N_n(\mathbf 0,\sigma^2I_n).
+$$
+
+Suppose that $A$ is an $n\times n$ symmetric idempotent matrix of rank
+$r$, and that $B$ is a matrix satisfying
+$$
+BA=0.
+$$
+
+Then
+$$
+B\mathbf Z
+\quad\text{and}\quad
+\mathbf Z^TA\mathbf Z
+$$
+are independent.
+
+## Proof
+
+Because $A$ is symmetric, it can be orthogonally diagonalised. Because
+it is also idempotent, all its eigenvalues are either $0$ or $1$.
+Therefore there is an orthogonal matrix $P$ such that
+$$
+P^TAP
+=
+\begin{pmatrix}
+I_r&0\\
+0&0
+\end{pmatrix}.
+$$
+
+Define
+$$
+\mathbf U=P^T\mathbf Z.
+$$
+
+Since $P$ is orthogonal and
+$\mathbf Z\sim N_n(\mathbf 0,\sigma^2I_n)$,
+$$
+\mathbf U
+\sim
+N_n(\mathbf 0,\sigma^2I_n).
+$$
+
+Partition $\mathbf U$ as
+$$
+\mathbf U=
+\begin{pmatrix}
+\mathbf U_1\\
+\mathbf U_2
+\end{pmatrix},
+$$
+where $\mathbf U_1$ contains the first $r$ components. Then
+$$
+\begin{aligned}
+\mathbf Z^TA\mathbf Z
+&=
+\mathbf U^TP^TAP\mathbf U\\
+&=
+\begin{pmatrix}
+\mathbf U_1^T&\mathbf U_2^T
+\end{pmatrix}
+\begin{pmatrix}
+I_r&0\\
+0&0
+\end{pmatrix}
+\begin{pmatrix}
+\mathbf U_1\\
+\mathbf U_2
+\end{pmatrix}\\
+&=
+\mathbf U_1^T\mathbf U_1.
+\end{aligned}
+$$
+
+Thus the quadratic form depends only on $\mathbf U_1$.
+
+Next, write
+$$
+BP=
+\begin{pmatrix}
+C_1&C_2
+\end{pmatrix},
+$$
+where $C_1$ contains the first $r$ columns. Since $BA=0$,
+$$
+\begin{aligned}
+0
+&=BAP\\
+&=BP(P^TAP)\\
+&=
+\begin{pmatrix}
+C_1&C_2
+\end{pmatrix}
+\begin{pmatrix}
+I_r&0\\
+0&0
+\end{pmatrix}\\
+&=
+\begin{pmatrix}
+C_1&0
+\end{pmatrix}.
+\end{aligned}
+$$
+
+Hence $C_1=0$, and
+$$
+\begin{aligned}
+B\mathbf Z
+&=BPP^T\mathbf Z\\
+&=BP\mathbf U\\
+&=
+\begin{pmatrix}
+0&C_2
+\end{pmatrix}
+\begin{pmatrix}
+\mathbf U_1\\
+\mathbf U_2
+\end{pmatrix}\\
+&=C_2\mathbf U_2.
+\end{aligned}
+$$
+
+Thus the linear form depends only on $\mathbf U_2$.
+
+The covariance matrix of $\mathbf U$ is $\sigma^2I_n$, so the jointly
+normal subvectors $\mathbf U_1$ and $\mathbf U_2$ are independent.
+Therefore a quantity depending only on $\mathbf U_1$ is independent of
+a quantity depending only on $\mathbf U_2$. Hence
+$$
+B\mathbf Z
+\quad\text{and}\quad
+\mathbf Z^TA\mathbf Z
+$$
+are independent.
+
 # Independence of $\hat{\boldsymbol\beta}$ and $s^2$
+
+> **Related result in the course notes:** **Theorem 10**, proved here by applying **Theorem 6** after centring and scaling the error vector.
 
 ## Theorem
 
@@ -369,39 +518,90 @@ are independent.
 
 ## Proof
 
-The estimator $\hat{\boldsymbol\beta}$ depends on $Y$ through
+Define
 $$
-\hat{\boldsymbol\beta}=BY,
-\qquad
-B=(X^TX)^{-1}X^T.
-$$
-
-The residual variance estimator depends on $Y$ through
-$$
-RSS=Y^TMY,
-\qquad
-M=I_n-X(X^TX)^{-1}X^T.
+\mathbf Z=\frac{\mathbf e}{\sigma}
+=
+\frac{Y-X\boldsymbol\beta}{\sigma}.
 $$
 
-For a multivariate normal vector, a linear form $BY$ and a quadratic form $Y^TMY$ are independent if the linear and residual parts are uncorrelated in the relevant sense. Here the key algebraic condition is
+Then
 $$
-BM=0.
+\mathbf Z\sim N_n(\mathbf 0,I_n).
 $$
 
-Indeed,
+Let
+$$
+B=(X^TX)^{-1}X^T
+$$
+and
+$$
+A=M=I_n-X(X^TX)^{-1}X^T.
+$$
+
+First,
 $$
 \begin{aligned}
-BM
-&=(X^TX)^{-1}X^T\{I_n-X(X^TX)^{-1}X^T\}\\
-&=(X^TX)^{-1}\{X^T-X^TX(X^TX)^{-1}X^T\}\\
-&=(X^TX)^{-1}(X^T-X^T)\\
+\frac{\hat{\boldsymbol\beta}-\boldsymbol\beta}{\sigma}
+&=
+\frac{(X^TX)^{-1}X^TY-\boldsymbol\beta}{\sigma}\\
+&=
+(X^TX)^{-1}X^T
+\frac{Y-X\boldsymbol\beta}{\sigma}\\
+&=
+B\mathbf Z.
+\end{aligned}
+$$
+
+Also, from the earlier result $RSS=\mathbf e^TM\mathbf e$,
+$$
+\begin{aligned}
+\frac{(n-k)s^2}{\sigma^2}
+&=
+\frac{RSS}{\sigma^2}\\
+&=
+\left(\frac{\mathbf e}{\sigma}\right)^T
+M
+\left(\frac{\mathbf e}{\sigma}\right)\\
+&=
+\mathbf Z^TA\mathbf Z.
+\end{aligned}
+$$
+
+The matrix $A=M$ is symmetric and idempotent. Moreover,
+
+$$
+\begin{aligned}
+BA
+&=
+(X^TX)^{-1}X^T
+\left\{I_n-X(X^TX)^{-1}X^T\right\}\\
+&=
+(X^TX)^{-1}X^T
+-
+(X^TX)^{-1}X^TX(X^TX)^{-1}X^T\\
+&=
+(X^TX)^{-1}X^T-(X^TX)^{-1}X^T\\
 &=0.
 \end{aligned}
 $$
 
-Thus the coefficient estimator uses the part of $Y$ projected onto the column space of $X$, while the residual sum of squares uses the orthogonal residual part. Under normality, these orthogonal components are independent.
 
-Since $s^2$ is just $RSS$ divided by the constant $n-k$, it follows that
+The preceding theorem therefore gives
+
+$$
+\frac{\hat{\boldsymbol\beta}-\boldsymbol\beta}{\sigma}
+\quad\text{independent of}\quad
+\frac{(n-k)s^2}{\sigma^2}.
+$$
+
+
+Adding the constant vector $\boldsymbol\beta$ and multiplying by the
+non-zero constant $\sigma$ recovers $\hat{\boldsymbol\beta}$.
+Likewise, multiplying the second quantity by the positive constant
+$\sigma^2/(n-k)$ recovers $s^2$. These constant affine
+transformations do not change independence. Hence
+
 $$
 \hat{\boldsymbol\beta}
 \quad\text{and}\quad
@@ -411,17 +611,22 @@ are independent.
 
 # A useful computational form for $s^2$
 
+> **Related result in the course notes:** **Proposition 12**.
+
 The residual sum of squares can also be written in a form that is sometimes easier to compute:
+
 $$
 RSS=Y^TY-\hat{\boldsymbol\beta}^TX^TY.
 $$
 
 To see this, start with
+
 $$
 RSS=(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta}).
 $$
 
 Expanding gives
+
 $$
 \begin{aligned}
 RSS
@@ -432,6 +637,7 @@ RSS
 $$
 
 Because $Y^TX\hat{\boldsymbol\beta}$ is a scalar,
+
 $$
 Y^TX\hat{\boldsymbol\beta}
 =
@@ -439,11 +645,13 @@ Y^TX\hat{\boldsymbol\beta}
 $$
 
 Also, the normal equations give
+
 $$
 X^TX\hat{\boldsymbol\beta}=X^TY.
 $$
 
 Hence
+
 $$
 \hat{\boldsymbol\beta}^TX^TX\hat{\boldsymbol\beta}
 =
@@ -451,6 +659,7 @@ $$
 $$
 
 Substituting this into the expanded expression yields
+
 $$
 RSS=Y^TY-\hat{\boldsymbol\beta}^TX^TY.
 $$

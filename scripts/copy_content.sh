@@ -1,0 +1,1 @@
+cp -r _content /mnt/c/users/lenovo/desktop/lectures

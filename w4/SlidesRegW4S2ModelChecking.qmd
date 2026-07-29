@@ -1,0 +1,897 @@
+---
+title: "Regression Week IV: Model checking"
+subtitle: "Slide deck II: Model checking"
+author: "Yovna Junglee, edited by Miguel Rodo"
+institute: University of Cape Town
+date: today
+format:
+  beamer:
+    embed-resources: true
+    aspectratio: 169
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+    include-in-header:
+      file: ../preamble.tex
+    keep-tex: true
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+
+set.seed(402)
+
+format_number <- function(x, digits = 3) {
+  format(signif(x, digits), trim = TRUE, scientific = FALSE)
+}
+
+# Polynomial example -------------------------------------------------------
+n_poly <- 100
+poly_tbl <- data.frame(
+  x = seq(-2, 2, length.out = n_poly)
+)
+poly_tbl$mean <- 0.25 + 0.75 * poly_tbl$x - 0.45 * poly_tbl$x^2 +
+  0.40 * poly_tbl$x^3 + 0.55 * sin(3.2 * poly_tbl$x)
+poly_tbl$y <- poly_tbl$mean + rnorm(n_poly, sd = 0.45)
+
+poly_fit <- function(degree) {
+  lm(y ~ poly(x, degree, raw = TRUE), data = poly_tbl)
+}
+poly_degrees <- c(1, 2, 3, 10)
+poly_fits <- lapply(poly_degrees, poly_fit)
+poly_r2_tbl <- data.frame(
+  Degree = poly_degrees,
+  `R squared` = vapply(poly_fits, function(f) summary(f)$r.squared, numeric(1)),
+  `Adjusted R squared` = vapply(poly_fits, function(f) summary(f)$adj.r.squared, numeric(1)),
+  check.names = FALSE
+)
+
+# Diagnostic example -------------------------------------------------------
+set.seed(421)
+n_diag <- 48
+p_diag <- 8
+X_diag <- matrix(rnorm(n_diag * p_diag), nrow = n_diag, ncol = p_diag)
+colnames(X_diag) <- paste0("X", seq_len(p_diag))
+
+# Create a few high-leverage observations and outlying responses.
+X_diag[1, ] <- c(4.5, 3.8, 3.2, 2.7, 2.4, 2.0, 1.7, 1.5)
+X_diag[23, ] <- c(3.0, -3.1, 2.9, -2.5, 2.1, -1.8, 1.4, -1.2)
+X_diag[32, ] <- c(5.5, -4.9, 4.6, -4.2, 3.7, -3.0, 2.2, -1.5)
+
+lin_pred <- 80 + 18 * X_diag[, 1] - 13 * X_diag[, 2] + 7 * X_diag[, 3]
+err_sd <- 7 + 0.015 * pmax(lin_pred - mean(lin_pred), 0)^2
+Y_diag <- lin_pred + rnorm(n_diag, sd = err_sd)
+Y_diag[2] <- Y_diag[2] + 42
+Y_diag[10] <- Y_diag[10] - 35
+Y_diag[32] <- Y_diag[32] + 70
+
+bank_tbl <- data.frame(Y = Y_diag, X_diag)
+fit_bank <- lm(Y ~ ., data = bank_tbl)
+fit_bank_summary <- summary(fit_bank)
+
+ehat <- residuals(fit_bank)
+fitted_bank <- fitted(fit_bank)
+hat_diag <- hatvalues(fit_bank)
+stand_resid <- rstandard(fit_bank)
+stud_resid <- rstudent(fit_bank)
+cook_d <- cooks.distance(fit_bank)
+n <- nobs(fit_bank)
+k <- length(coef(fit_bank))
+df_resid <- df.residual(fit_bank)
+lev_cut <- 2 * k / n
+cook_cut <- 4 / (n - k - 1)
+mod_cook <- sqrt((n - k) / k * hat_diag / (1 - hat_diag)) * abs(stud_resid)
+
+shapiro_res <- shapiro.test(ehat)
+ks_res <- suppressWarnings(ks.test(ehat, "pnorm", mean(ehat), sd(ehat)))
+normality_tbl <- data.frame(
+  Test = c("Shapiro-Wilk", "Kolmogorov-Smirnov"),
+  Statistic = c(unname(shapiro_res$statistic), unname(ks_res$statistic)),
+  `p-value` = c(shapiro_res$p.value, ks_res$p.value),
+  Comment = c(
+    "Useful as a rough formal check, but sensitive to sample size.",
+    "Not standard when mean and variance are estimated from the residuals."
+  ),
+  check.names = FALSE
+)
+
+plot_theme <- function() {
+  par(
+    mar = c(4.0, 4.2, 2.1, 1.0),
+    mgp = c(2.4, 0.7, 0),
+    tcl = -0.25,
+    las = 1
+  )
+}
+```
+
+# So far...
+
+1. Formulated the normal general linear model.
+2. Estimated the regression parameters by least squares.
+3. Built confidence intervals.
+4. Tested hypotheses and compared models using ANOVA.
+
+
+Next: **Model checking.**
+
+# Lecture outline
+
+By the end of this deck, you should be able to:
+
+- Explain what $R^2$ and adjusted $R^2$ measure
+- State the main assumptions checked after fitting a linear model
+- Use residual plots to diagnose common model problems
+- Distinguish outliers, high-leverage points and influential observations
+- Calculate and interpret standardised residuals, Studentised residuals, leverages and Cook-type diagnostics
+
+# Why model checking matters
+
+- Least squares will produce estimates whenever $X^TX$ is invertible.
+
+\pause
+
+- That does not mean the fitted model is a good description of the data-generating process.
+
+\pause
+
+- Inference from the model depends on assumptions about the errors.
+
+\pause
+
+- Model checking asks whether those assumptions look plausible enough for the analysis we want to do.
+
+# A motivating example: more terms can fit better
+
+```{r}
+#| fig-width: 7.6
+#| fig-height: 3.8
+#| out-width: "88%"
+old_par <- par(no.readonly = TRUE)
+plot_theme()
+plot(
+  poly_tbl$x, poly_tbl$y,
+  pch = 16,
+  col = grDevices::adjustcolor("grey35", alpha.f = 0.65),
+  xlab = "x",
+  ylab = "y",
+  main = "One data set with a non-linear pattern"
+)
+lines(poly_tbl$x, poly_tbl$mean, lwd = 2.2, col = "#003366")
+legend(
+  "topleft",
+  legend = c("Observed data", "Underlying mean pattern"),
+  pch = c(16, NA),
+  lty = c(NA, 1),
+  lwd = c(NA, 2.2),
+  col = c("grey35", "#003366"),
+  bty = "n"
+)
+par(old_par)
+```
+
+# Polynomial fits to the same data {.smaller}
+
+```{r}
+#| fig-width: 8.5
+#| fig-height: 5.0
+#| out-width: "94%"
+old_par <- par(no.readonly = TRUE)
+par(
+  mfrow = c(2, 2),
+  mar = c(3.2, 3.5, 2.2, 1.0),
+  mgp = c(2.0, 0.6, 0),
+  tcl = -0.25,
+  las = 1
+)
+for (i in seq_along(poly_degrees)) {
+  degree <- poly_degrees[i]
+  fit <- poly_fits[[i]]
+  plot(
+    poly_tbl$x, poly_tbl$y,
+    pch = 16,
+    cex = 0.55,
+    col = grDevices::adjustcolor("grey35", alpha.f = 0.55),
+    xlab = "x",
+    ylab = "y",
+    main = bquote(y == beta[0] + cdots + beta[.(degree)] * x^.(degree))
+  )
+  lines(poly_tbl$x, fitted(fit), lwd = 2.2, col = "#003366")
+  lines(poly_tbl$x, poly_tbl$mean, lwd = 1.6, col = "#B00020", lty = 2)
+}
+par(old_par)
+```
+
+# Coefficient of determination
+
+For a model with an intercept, define
+$$
+SST=\sum_{i=1}^n (Y_i-\bar Y)^2,
+\qquad
+SSE=\sum_{i=1}^n (Y_i-\hat Y_i)^2,
+\qquad
+SSR=\sum_{i=1}^n (\hat Y_i-\bar Y)^2.
+$$
+
+\pause
+
+Then
+$$
+SST = SSR + SSE,
+$$
+and the coefficient of determination is
+$$
+R^2
+=
+\frac{SSR}{SST}
+=
+1-\frac{SSE}{SST}.
+$$
+
+# Interpreting $R^2$
+
+- $0\le R^2\le 1$ for least-squares models with an intercept.
+
+\pause
+
+- $R^2$ is the proportion of the sample variation in $Y$ explained by the fitted regression on the chosen predictors.
+
+\pause
+
+- A larger $R^2$ means a smaller residual sum of squares relative to the total variation.
+
+\pause
+
+- It does not, by itself, prove that the model is appropriate.
+
+# Why $R^2$ is not enough
+
+Adding predictors to a least-squares model cannot increase $SSE$.
+
+\pause
+
+Therefore, adding predictors cannot decrease $R^2$.
+
+\pause
+
+This can make a larger model look better even if the additional terms are not useful for prediction or interpretation.
+
+\pause
+
+The issue is especially clear when we add many polynomial terms to the same data.
+
+# $R^2$ in the polynomial example
+
+```{r}
+#| results: asis
+poly_print_tbl <- poly_r2_tbl
+poly_print_tbl$`R squared` <- format_number(poly_print_tbl$`R squared`, 4)
+poly_print_tbl$`Adjusted R squared` <- format_number(poly_print_tbl$`Adjusted R squared`, 4)
+knitr::kable(poly_print_tbl, align = "rcc")
+```
+
+\pause
+
+The degree 10 polynomial fits the data very closely, but the curve is more complicated than the lower-degree fits.
+
+# Adjusted $R^2$
+
+Adjusted $R^2$ penalises the use of additional predictors:
+$$
+R^2_{\mathrm{adj}}
+=
+1-
+\frac{SSE/(n-k)}{SST/(n-1)}
+=
+1-(1-R^2)\frac{n-1}{n-k},
+$$
+where $k$ is the number of regression coefficients, including the intercept.
+
+\pause
+
+Key points:
+
+- $R^2_{\mathrm{adj}}\le R^2$.
+- $R^2_{\mathrm{adj}}$ can decrease when a weak predictor is added.
+- It is a useful summary, but not a substitute for scientific judgement or diagnostic plots.
+
+# Example model summaries {.smaller}
+
+For the polynomial data, compare the linear model with the degree 10 model.
+
+```{r}
+#| results: asis
+summ_tbl <- data.frame(
+  Model = c("Linear", "Degree 10 polynomial"),
+  `Residual df` = c(df.residual(poly_fits[[1]]), df.residual(poly_fits[[4]])),
+  `Residual SE` = c(summary(poly_fits[[1]])$sigma, summary(poly_fits[[4]])$sigma),
+  `R squared` = c(summary(poly_fits[[1]])$r.squared, summary(poly_fits[[4]])$r.squared),
+  `Adjusted R squared` = c(summary(poly_fits[[1]])$adj.r.squared, summary(poly_fits[[4]])$adj.r.squared),
+  check.names = FALSE
+)
+summ_tbl[, 3:5] <- lapply(summ_tbl[, 3:5], format_number, digits = 4)
+knitr::kable(summ_tbl)
+```
+
+\pause
+
+A good-looking summary statistic is only the start of model checking.
+
+# Model assumptions
+
+In the normal general linear model, conditional on the design matrix $X$,
+$$
+Y=X\boldsymbol\beta+\mathbf e,
+\qquad
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n).
+$$
+
+\pause
+
+This combines four assumptions:
+
+1. $E(\mathbf e\mid X)=\mathbf 0$.
+2. $\operatorname{Var}(e_i\mid X)=\sigma^2$ for all $i$.
+3. $\operatorname{Cov}(e_i,e_j\mid X)=0$ for $i\ne j$.
+4. The errors are normally distributed.
+
+# What residual plots check
+
+We cannot observe the errors $e_i$ directly.
+
+\pause
+
+We therefore inspect the fitted residuals
+$$
+\hat e_i=Y_i-\hat Y_i.
+$$
+
+\pause
+
+Common checks:
+
+- residuals versus fitted values for non-linearity and unequal variance
+- histogram or QQ plot for normality
+- residuals versus time or order for dependence
+- leverage and influence diagnostics for unusual observations
+
+# Residuals versus fitted values {.smaller}
+
+```{r}
+#| fig-width: 5.3
+#| fig-height: 4.2
+#| out-width: "62%"
+old_par <- par(no.readonly = TRUE)
+plot_theme()
+plot(
+  fitted_bank, ehat,
+  pch = 16,
+  col = grDevices::adjustcolor("grey35", alpha.f = 0.75),
+  xlab = "Fitted values",
+  ylab = "Residuals",
+  main = "Residuals versus fitted values"
+)
+abline(h = 0, lty = 3, col = "grey45")
+lines(lowess(fitted_bank, ehat), lwd = 2.0, col = "#B00020")
+text(fitted_bank, ehat, labels = seq_along(ehat), pos = 3, cex = 0.55)
+par(old_par)
+```
+
+# Reading the residuals versus fitted plot
+
+Look for:
+
+- a roughly horizontal band around zero
+- no clear curve in the centre of the residual cloud
+- roughly constant vertical spread across fitted values
+- no extreme isolated points
+
+\pause
+
+Warning signs:
+
+- curvature suggests the mean structure may be wrong
+- increasing or decreasing spread suggests non-constant variance
+- isolated large residuals suggest possible outliers
+
+# Histogram of residuals
+
+```{r}
+#| fig-width: 5.2
+#| fig-height: 4.0
+#| out-width: "60%"
+old_par <- par(no.readonly = TRUE)
+plot_theme()
+hist(
+  ehat,
+  breaks = "FD",
+  freq = FALSE,
+  col = "grey85",
+  border = "grey35",
+  xlab = "Residuals",
+  main = "Histogram of residuals"
+)
+curve(dnorm(x, mean(ehat), sd(ehat)), add = TRUE, lwd = 2.0, col = "#003366")
+par(old_par)
+```
+
+\pause
+
+A histogram is useful for seeing skewness, heavy tails and isolated residuals, but it is sensitive to bin choice.
+
+# Normal QQ plot
+
+```{r}
+#| fig-width: 5.2
+#| fig-height: 4.0
+#| out-width: "60%"
+old_par <- par(no.readonly = TRUE)
+plot_theme()
+qqnorm(ehat, pch = 16, cex = 0.75, main = "Normal QQ plot of residuals")
+qqline(ehat, lwd = 2.0, col = "#003366")
+text(qqnorm(ehat, plot.it = FALSE)$x, sort(ehat), labels = order(ehat), pos = 3, cex = 0.55)
+par(old_par)
+```
+
+\pause
+
+If the errors are approximately normal, the residuals should lie close to a straight line.
+
+# Formal tests for normality {.smaller}
+
+A common null hypothesis is
+$$
+H_0:\quad \text{the errors are normally distributed.}
+$$
+
+```{r}
+#| results: asis
+normality_print_tbl <- normality_tbl
+normality_print_tbl$Statistic <- format_number(normality_print_tbl$Statistic, 4)
+normality_print_tbl$`p-value` <- format_number(normality_print_tbl$`p-value`, 4)
+knitr::kable(normality_print_tbl)
+```
+
+\pause
+
+Formal tests should not replace plots. In particular, a Kolmogorov-Smirnov test against a normal distribution with parameters estimated from the same residuals does not have the usual null distribution.
+
+# Outliers and influential observations
+
+\begin{block}{Definitions}
+
+- An **outlier** is an observation that is not well fitted by the model.
+- A **high-leverage observation** has an unusual predictor vector.
+- An **influential observation** has a relatively large effect on fitted values, coefficients or inferences.
+
+\end{block}
+
+\pause
+
+These are different ideas. A point can have high leverage without being influential, and an outlier can have low leverage.
+
+# Estimated residuals {.smaller}
+
+Let
+$$
+H=X(X^TX)^{-1}X^T,
+\qquad
+M=I_n-H.
+$$
+
+Then
+$$
+\hat{\mathbf e}
+=
+\mathbf Y-\hat{\mathbf Y}
+=
+\mathbf Y-X\hat{\boldsymbol\beta}
+=\{I_n-X(X^TX)^{-1}X^T\}\mathbf Y
+=M\mathbf Y.
+$$
+
+Since $MX=0$ and $\mathbf Y=X\boldsymbol\beta+\mathbf e$,
+$$
+\hat{\mathbf e}=M\mathbf e.
+$$
+
+# Covariance matrix of the residuals {.smaller}
+
+The matrices $H$ and $M$ are symmetric and idempotent:
+$$
+H^T=H,
+\qquad
+H^2=H,
+\qquad
+M^T=M,
+\qquad
+M^2=M.
+$$
+
+\pause
+
+Because $\operatorname{Var}(\mathbf e\mid X)=\sigma^2I_n$,
+$$
+\operatorname{Var}(\hat{\mathbf e}\mid X)
+=
+M(\sigma^2I_n)M^T
+=
+\sigma^2M.
+$$
+
+\pause
+
+Therefore residuals are generally correlated, and
+$$
+\operatorname{Var}(\hat e_i\mid X)=\sigma^2(1-h_i),
+$$
+where $h_i$ is the $i$th diagonal element of $H$.
+
+# Internally standardised residuals
+
+If $\sigma^2$ were known, we could use
+$$
+z_i=
+\frac{\hat e_i}{\sigma\sqrt{1-h_i}}
+$$
+to scale residuals by their own standard deviations.
+
+\pause
+
+Since $\sigma^2$ is unknown, use
+$$
+r_i=
+\frac{\hat e_i}{s\sqrt{1-h_i}},
+\qquad
+s^2=\frac{\hat{\mathbf e}^T\hat{\mathbf e}}{n-k}.
+$$
+
+\pause
+
+The $r_i$ are internally standardised residuals. Values with $|r_i|>2$ are often treated as possible outliers needing investigation.
+
+# Externally Studentised residuals
+
+Let $\hat{\boldsymbol\beta}_{(i)}$ and $s^2_{(i)}$ be the least-squares estimate and residual variance estimate after deleting observation $i$.
+
+\pause
+
+The externally Studentised residual is
+$$
+t_i
+=
+\frac{Y_i-x_i^T\hat{\boldsymbol\beta}_{(i)}}
+{s_{(i)}\sqrt{1+x_i^T(X_{(i)}^TX_{(i)})^{-1}x_i}}.
+$$
+
+\pause
+
+Under the normal linear model,
+$$
+t_i\sim t_{n-k-1}.
+$$
+
+# Useful computational form
+
+It can be shown that
+$$
+t_i
+=
+\frac{\hat e_i}{s_{(i)}\sqrt{1-h_i}}.
+$$
+
+\pause
+
+It can also be shown that
+$$
+(n-k-1)s^2_{(i)}
+=
+(n-k)s^2-
+\frac{\hat e_i^2}{1-h_i}.
+$$
+
+\pause
+
+Combining these with
+$$
+r_i^2=\frac{\hat e_i^2}{s^2(1-h_i)}
+$$
+gives
+$$
+t_i
+=
+r_i
+\sqrt{\frac{n-k-1}{n-k-r_i^2}}.
+$$
+
+# Why externally Studentised residuals are useful
+
+- They compare observation $i$ with a model fitted without observation $i$.
+
+\pause
+
+- This prevents the observation from helping to hide its own unusualness.
+
+\pause
+
+- They have an exact $t_{n-k-1}$ distribution under the normal linear model.
+
+\pause
+
+- In practice, $|t_i|>2$ is a rough screening rule, while formal testing should account for checking many observations.
+
+# Standardised and Studentised residual plots
+
+```{r}
+#| fig-width: 8.5
+#| fig-height: 4.2
+#| out-width: "92%"
+old_par <- par(no.readonly = TRUE)
+par(
+  mfrow = c(1, 2),
+  mar = c(4.0, 4.2, 2.4, 0.8),
+  mgp = c(2.4, 0.7, 0),
+  tcl = -0.25,
+  las = 1
+)
+plot(
+  seq_along(stand_resid), stand_resid,
+  pch = 16,
+  cex = 0.7,
+  xlab = "Index",
+  ylab = "Standardised residuals",
+  main = "Internally standardised"
+)
+abline(h = c(-2, 2), lty = 2, col = "#B00020")
+abline(h = 0, lty = 3, col = "grey45")
+text(seq_along(stand_resid), stand_resid, labels = seq_along(stand_resid), pos = 3, cex = 0.55)
+plot(
+  seq_along(stud_resid), stud_resid,
+  pch = 16,
+  cex = 0.7,
+  xlab = "Index",
+  ylab = "Studentised residuals",
+  main = "Externally Studentised"
+)
+abline(h = c(-2, 2), lty = 2, col = "#B00020")
+abline(h = 0, lty = 3, col = "grey45")
+text(seq_along(stud_resid), stud_resid, labels = seq_along(stud_resid), pos = 3, cex = 0.55)
+par(old_par)
+```
+
+# Leverage
+
+The fitted values can be written as
+$$
+\hat{\mathbf Y}=H\mathbf Y,
+\qquad
+H=X(X^TX)^{-1}X^T.
+$$
+
+\pause
+
+The diagonal values
+$$
+h_i=x_i^T(X^TX)^{-1}x_i
+$$
+are called leverages or hat values.
+
+\pause
+
+Since $H$ is idempotent and symmetric,
+$$
+\operatorname{tr}(H)
+=
+\operatorname{tr}\{X(X^TX)^{-1}X^T\}
+=
+\operatorname{tr}(I_k)
+=k.
+$$
+Thus
+$$
+\sum_{i=1}^n h_i=k,
+\qquad
+\overline h = \frac{k}{n}.
+$$
+
+# High-leverage observations
+
+A common screening rule is
+$$
+h_i\ge \frac{2k}{n}.
+$$
+
+\pause
+
+This identifies observations with unusual predictor values.
+
+\pause
+
+Correction to remember:
+
+- High leverage does not automatically mean high influence.
+- Influence depends on both leverage and how poorly the observation is fitted.
+
+# Leverage plot
+
+```{r}
+#| fig-width: 5.6
+#| fig-height: 4.2
+#| out-width: "64%"
+old_par <- par(no.readonly = TRUE)
+plot_theme()
+plot(
+  seq_along(hat_diag), hat_diag,
+  pch = 16,
+  cex = 0.75,
+  xlab = "Index",
+  ylab = "Leverage",
+  main = "Leverage values"
+)
+abline(h = lev_cut, lty = 2, col = "#B00020")
+text(seq_along(hat_diag), hat_diag, labels = seq_along(hat_diag), pos = 3, cex = 0.55)
+legend(
+  "topright",
+  legend = bquote(2*k/n == .(format_number(lev_cut, 3))),
+  lty = 2,
+  col = "#B00020",
+  bty = "n"
+)
+par(old_par)
+```
+
+# Cook's distance
+
+Cook's distance measures the change in the fitted model when observation $i$ is deleted.
+
+\pause
+
+The usual Cook's distance can be written as
+$$
+D_i
+=
+\frac{(\hat{\boldsymbol\beta}_{(i)}-\hat{\boldsymbol\beta})^T
+X^TX
+(\hat{\boldsymbol\beta}_{(i)}-\hat{\boldsymbol\beta})}{ks^2}
+=
+\left(\frac{r_i^2}{k}\right)\frac{h_i}{1-h_i}.
+$$
+
+\pause
+
+It combines:
+
+- residual size, through $r_i^2$
+- leverage, through $h_i/(1-h_i)$
+
+# Modified Cook statistic
+
+The course-preferred version replaces $s^2$ by the deleted variance estimate $s^2_{(i)}$:
+$$
+D_i^{\ast}
+=
+\frac{(\hat{\boldsymbol\beta}_{(i)}-\hat{\boldsymbol\beta})^T
+X^TX
+(\hat{\boldsymbol\beta}_{(i)}-\hat{\boldsymbol\beta})}{ks^2_{(i)}}
+=
+\left(\frac{t_i^2}{k}\right)\frac{h_i}{1-h_i}.
+$$
+
+\pause
+
+Atkinson's modified Cook statistic is
+$$
+A_i
+=
+\left\{\frac{n-k}{k}\frac{h_i}{1-h_i}\right\}^{1/2}|t_i|
+=
+\sqrt{(n-k)D_i^{\ast}}.
+$$
+
+Proposed cut-off values are often 2 or 3.
+
+# Cook's distance plot
+
+```{r}
+#| fig-width: 5.6
+#| fig-height: 4.2
+#| out-width: "64%"
+old_par <- par(no.readonly = TRUE)
+plot_theme()
+plot(
+  seq_along(cook_d), cook_d,
+  type = "h",
+  lwd = 2.0,
+  xlab = "Index",
+  ylab = "Cook's distance",
+  main = "Cook's distance"
+)
+points(seq_along(cook_d), cook_d, pch = 16, cex = 0.75)
+abline(h = cook_cut, lty = 2, col = "#B00020")
+text(seq_along(cook_d), cook_d, labels = seq_along(cook_d), pos = 3, cex = 0.55)
+legend(
+  "topright",
+  legend = bquote(4/(n-k-1) == .(format_number(cook_cut, 3))),
+  lty = 2,
+  col = "#B00020",
+  bty = "n"
+)
+par(old_par)
+```
+
+# Leverage and residual size together
+
+```{r}
+#| fig-width: 5.8
+#| fig-height: 4.2
+#| out-width: "66%"
+old_par <- par(no.readonly = TRUE)
+plot_theme()
+plot(
+  hat_diag, abs(stud_resid),
+  pch = 16,
+  cex = 0.8,
+  xlab = "Leverage",
+  ylab = expression(abs(t[i])),
+  main = "Leverage and Studentised residuals"
+)
+abline(v = lev_cut, lty = 2, col = "#B00020")
+abline(h = 2, lty = 2, col = "#B00020")
+text(hat_diag, abs(stud_resid), labels = seq_along(hat_diag), pos = 3, cex = 0.55)
+par(old_par)
+```
+
+\pause
+
+The most concerning observations tend to be those with both high leverage and large Studentised residuals.
+
+# Modified Cook statistic plot
+
+```{r}
+#| fig-width: 5.6
+#| fig-height: 4.2
+#| out-width: "64%"
+old_par <- par(no.readonly = TRUE)
+plot_theme()
+plot(
+  seq_along(mod_cook), mod_cook,
+  type = "h",
+  lwd = 2.0,
+  xlab = "Index",
+  ylab = "Modified Cook statistic",
+  main = "Atkinson's modified Cook statistic"
+)
+points(seq_along(mod_cook), mod_cook, pch = 16, cex = 0.75)
+abline(h = c(2, 3), lty = 2, col = "#B00020")
+text(seq_along(mod_cook), mod_cook, labels = seq_along(mod_cook), pos = 3, cex = 0.55)
+par(old_par)
+```
+
+# Summary
+
+Model checking is not a single test.
+
+\pause
+
+Use several pieces of evidence together:
+
+- $R^2$ and adjusted $R^2$ describe fit, but do not validate the model.
+- Residual plots check the mean structure, variance pattern and possible outliers.
+- QQ plots and normality tests check the normal-error assumption.
+- Leverage identifies unusual predictor vectors.
+- Studentised residuals and Cook-type statistics help identify observations worth investigating.
+
+# Corrections relative to the original PDF
+
+- Avoided treating larger $R^2$ as automatically better.
+- Corrected the distinction between high leverage and influence.
+- Used conditional model assumptions given $X$.
+- Corrected the deleted-case residual variance notation.
+- Corrected the Sherman-Morrison-Woodbury dimensions by not relying on the misstated version in the slides.
+- Treated the Kolmogorov-Smirnov normality test with caution when normal parameters are estimated from residuals.

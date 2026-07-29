@@ -1,0 +1,655 @@
+---
+title: "Regression Week V: Properties of least squares"
+subtitle: "Slide deck III: The Gauss-Markov theorem"
+author: "William Msemburi, edited by Miguel Rodo"
+institute: University of Cape Town
+date: today
+format:
+  beamer:
+    embed-resources: true
+    aspectratio: 169
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+    include-in-header:
+      file: ../preamble.tex
+    keep-tex: true
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+```
+
+# Why this theorem matters
+
+- We have already derived the least-squares estimator:
+
+$$
+\hat{\boldsymbol\beta}
+=
+(X^TX)^{-1}X^TY.
+$$
+
+\pause
+
+- We have also studied its expectation and covariance matrix.
+
+\pause
+
+- The natural next question is:
+
+\begin{center}
+\Large
+Why use this estimator rather than some other estimator?
+\end{center}
+
+\pause
+
+- The Gauss-Markov theorem gives one important answer.
+
+# Lecture outline
+
+By the end of this deck, you should be able to:
+
+- State the Gauss-Markov theorem precisely
+- Explain what **best**, **linear** and **unbiased** mean
+- Identify which assumptions are required
+- Identify which assumptions are not required
+- Prove that ordinary least squares is BLUE
+- Explain the limitations of the theorem
+
+# The general linear model
+
+We work with the matrix form of the general linear model:
+
+$$
+Y = X\boldsymbol\beta + \mathbf e.
+$$
+
+\pause
+
+Here:
+
+- $Y$ is an $n \times 1$ response vector
+- $X$ is an $n \times k$ model matrix
+- $\boldsymbol\beta$ is a $k \times 1$ vector of unknown parameters
+- $\mathbf e$ is an $n \times 1$ vector of unobserved errors
+
+\pause
+
+We assume that $X$ has full column rank, so that $X^TX$ is invertible.
+
+# Assumptions for Gauss-Markov
+
+Throughout this deck, we treat $X$ as fixed.
+
+Equivalently, we may state the assumptions conditional on the observed $X$.
+
+\pause
+
+The key error assumptions are:
+
+$$
+E(\mathbf e \mid X)=\mathbf 0,
+$$
+
+and
+
+$$
+\operatorname{Var}(\mathbf e \mid X)=\sigma^2 I_n.
+$$
+
+\pause
+
+The second assumption says that the errors are:
+
+- homoscedastic, since each has variance $\sigma^2$
+- uncorrelated, since the off-diagonal covariances are zero
+
+# What is not assumed?
+
+The theorem does **not** require the errors to be normally distributed.
+
+\pause
+
+Normality is needed for some exact finite-sample inference results, but not for the Gauss-Markov theorem.
+
+\pause
+
+It is also stronger than necessary to assume independent errors.
+
+\pause
+
+For Gauss-Markov, we need uncorrelated errors with common variance:
+
+$$
+\operatorname{Var}(\mathbf e \mid X)=\sigma^2I_n.
+$$
+
+# Recall the OLS estimator
+
+The ordinary least-squares estimator is
+
+$$
+\hat{\boldsymbol\beta}
+=
+(X^TX)^{-1}X^TY.
+$$
+
+\pause
+
+Let
+
+$$
+C=(X^TX)^{-1}X^T.
+$$
+
+Then
+
+$$
+\hat{\boldsymbol\beta}=CY.
+$$
+
+\pause
+
+This makes it clear that OLS is **linear in the response vector** $Y$.
+
+# OLS is unbiased
+
+Using
+
+$$
+Y=X\boldsymbol\beta+\mathbf e,
+\qquad
+E(\mathbf e\mid X)=\mathbf 0,
+$$
+
+we have
+
+$$
+\begin{aligned}
+E(\hat{\boldsymbol\beta}\mid X)
+&=E\left((X^TX)^{-1}X^TY\mid X\right)\\
+&=(X^TX)^{-1}X^T E(Y\mid X)\\
+&=(X^TX)^{-1}X^TX\boldsymbol\beta\\
+&=\boldsymbol\beta.
+\end{aligned}
+$$
+
+# Covariance matrix of OLS
+
+Using
+
+$$
+\operatorname{Var}(Y\mid X)=\operatorname{Var}(\mathbf e\mid X)=\sigma^2I_n,
+$$
+
+we obtain
+
+$$
+\begin{aligned}
+\operatorname{Var}(\hat{\boldsymbol\beta}\mid X)
+&=\operatorname{Var}\left((X^TX)^{-1}X^TY\mid X\right)\\
+&=(X^TX)^{-1}X^T\sigma^2I_nX(X^TX)^{-1}\\
+&=\sigma^2(X^TX)^{-1}.
+\end{aligned}
+$$
+
+# The Gauss-Markov theorem
+
+**Theorem.** Consider the model
+
+$$
+Y=X\boldsymbol\beta+\mathbf e,
+$$
+
+where $X$ has full column rank and
+
+$$
+E(\mathbf e\mid X)=\mathbf 0,
+\qquad
+\operatorname{Var}(\mathbf e\mid X)=\sigma^2I_n.
+$$
+
+Then
+
+$$
+\hat{\boldsymbol\beta}=(X^TX)^{-1}X^TY
+$$
+
+is the **best linear unbiased estimator** of $\boldsymbol\beta$.
+
+# BLUE
+
+BLUE stands for:
+
+\begin{center}
+\Large
+Best Linear Unbiased Estimator
+\end{center}
+
+\pause
+
+Each word matters.
+
+\pause
+
+The theorem does not say that OLS is the best possible estimator among all estimators.
+
+\pause
+
+It says that OLS is best among estimators that are:
+
+- linear in $Y$
+- unbiased for $\boldsymbol\beta$
+
+# What does linear mean here?
+
+A linear estimator of $\boldsymbol\beta$ has the form
+
+$$
+\tilde{\boldsymbol\beta}=AY,
+$$
+
+where $A$ is a $k\times n$ matrix that does not depend on $Y$.
+
+\pause
+
+This is linearity of the **estimator** in the response vector $Y$.
+
+\pause
+
+It is not the same statement as saying that the regression model is linear in the parameters.
+
+# What does unbiased mean here?
+
+An estimator $\tilde{\boldsymbol\beta}$ is unbiased if
+
+$$
+E(\tilde{\boldsymbol\beta}\mid X)=\boldsymbol\beta.
+$$
+
+\pause
+
+For a linear estimator $\tilde{\boldsymbol\beta}=AY$,
+
+$$
+E(\tilde{\boldsymbol\beta}\mid X)
+=
+AX\boldsymbol\beta.
+$$
+
+\pause
+
+Thus $AY$ is unbiased for every possible value of $\boldsymbol\beta$ if and only if
+
+$$
+AX=I_k.
+$$
+
+# What does best mean here?
+
+Best means smallest covariance matrix in the positive semidefinite ordering.
+
+\pause
+
+For every linear unbiased estimator $\tilde{\boldsymbol\beta}$,
+
+$$
+\operatorname{Var}(\tilde{\boldsymbol\beta}\mid X)
+-
+\operatorname{Var}(\hat{\boldsymbol\beta}\mid X)
+\succeq 0.
+$$
+
+\pause
+
+Equivalently, for every fixed vector $c$,
+
+$$
+\operatorname{Var}(c^T\hat{\boldsymbol\beta}\mid X)
+\le
+\operatorname{Var}(c^T\tilde{\boldsymbol\beta}\mid X).
+$$
+
+# Proof strategy
+
+We compare OLS with an arbitrary linear unbiased estimator.
+
+\pause
+
+The proof has three steps:
+
+1. Represent any competing linear estimator as
+
+   $$
+   \tilde{\boldsymbol\beta}=AY.
+   $$
+
+2. Use unbiasedness to find a restriction on $A$.
+
+3. Show that the competitor's covariance matrix equals the OLS covariance matrix plus a non-negative term.
+
+# Proof: represent a competitor
+
+Let
+
+$$
+C=(X^TX)^{-1}X^T.
+$$
+
+Then
+
+$$
+\hat{\boldsymbol\beta}=CY.
+$$
+
+\pause
+
+Let $\tilde{\boldsymbol\beta}=AY$ be any other linear estimator.
+
+\pause
+
+Write
+
+$$
+A=C+B,
+$$
+
+where
+
+$$
+B=A-C.
+$$
+
+This is not a special restriction. Every $A$ can be written this way.
+
+# Proof: impose unbiasedness
+
+If $\tilde{\boldsymbol\beta}=AY$ is unbiased, then
+
+$$
+AX=I_k.
+$$
+
+\pause
+
+But
+
+$$
+CX=(X^TX)^{-1}X^TX=I_k.
+$$
+
+\pause
+
+Since $A=C+B$,
+
+$$
+AX=(C+B)X=CX+BX=I_k+BX.
+$$
+
+\pause
+
+Therefore, unbiasedness requires
+
+$$
+BX=0.
+$$
+
+# Proof: covariance of a competitor {.smaller}
+
+Since $A=C+B$,
+
+$$
+\begin{aligned}
+\operatorname{Var}(\tilde{\boldsymbol\beta}\mid X)
+&=\operatorname{Var}\left((C+B)Y\mid X\right)\\
+&=(C+B)\operatorname{Var}(Y\mid X)(C+B)^T\\
+&=\sigma^2(C+B)(C+B)^T.
+\end{aligned}
+$$
+
+\pause
+
+Expanding,
+
+$$
+\operatorname{Var}(\tilde{\boldsymbol\beta}\mid X)
+=
+\sigma^2\left(CC^T+CB^T+BC^T+BB^T\right).
+$$
+
+# Proof: the cross terms vanish {.smaller}
+
+Recall that
+
+$$
+C=(X^TX)^{-1}X^T
+\qquad \text{and} \qquad
+BX=0.
+$$
+
+\pause
+
+Then
+
+$$
+\begin{aligned}
+CB^T
+&=(X^TX)^{-1}X^TB^T\\
+&=(X^TX)^{-1}(BX)^T\\
+&=0.
+\end{aligned}
+$$
+
+\pause
+
+The other cross term is also zero, since
+
+$$
+BC^T=(CB^T)^T=0.
+$$
+
+# Proof: compare covariance matrices
+
+Since the cross terms vanish,
+
+$$
+\operatorname{Var}(\tilde{\boldsymbol\beta}\mid X)
+=
+\sigma^2\left(CC^T+BB^T\right).
+$$
+
+\pause
+
+Also,
+
+$$
+CC^T
+= (X^TX)^{-1}X^TX(X^TX)^{-1}
+= (X^TX)^{-1}.
+$$
+
+\pause
+
+Therefore,
+
+$$
+\operatorname{Var}(\tilde{\boldsymbol\beta}\mid X)
+=
+\sigma^2(X^TX)^{-1}+\sigma^2BB^T.
+$$
+
+# Proof: finish the argument
+
+We already know that
+
+$$
+\operatorname{Var}(\hat{\boldsymbol\beta}\mid X)
+=
+\sigma^2(X^TX)^{-1}.
+$$
+
+\pause
+
+Thus
+
+$$
+\operatorname{Var}(\tilde{\boldsymbol\beta}\mid X)
+-
+\operatorname{Var}(\hat{\boldsymbol\beta}\mid X)
+=
+\sigma^2BB^T.
+$$
+
+\pause
+
+For any vector $c$,
+
+$$
+c^TBB^Tc=(B^Tc)^T(B^Tc)=\|B^Tc\|^2\ge0.
+$$
+
+\pause
+
+So $BB^T$ is positive semidefinite. Hence OLS is BLUE.
+
+# The key idea
+
+For any linear unbiased competitor,
+
+$$
+\boxed{
+\operatorname{Var}(\tilde{\boldsymbol\beta}\mid X)
+=
+\operatorname{Var}(\hat{\boldsymbol\beta}\mid X)
++
+\sigma^2BB^T
+}
+$$
+
+\pause
+
+The additional term $\sigma^2BB^T$ is positive semidefinite.
+
+\pause
+
+So the competing estimator can only add covariance, not remove it.
+
+# If assumptions fail {.smaller}
+
+| Situation | Is OLS unbiased? | Is OLS BLUE? |
+|---|---:|---:|
+| $E(\mathbf e\mid X)=0$ and $\operatorname{Var}(\mathbf e\mid X)=\sigma^2I_n$ | Yes | Yes |
+| Errors are non-normal, but homoscedastic and uncorrelated | Yes | Yes |
+| Errors are heteroscedastic | Possibly | Generally no |
+| Errors are correlated | Possibly | Generally no |
+| Conditional mean is misspecified | Generally no | No |
+| Relevant correlated variable is omitted | Generally no | No |
+
+# Why unbiasedness matters
+
+Consider the estimator
+
+$$
+\tilde{\boldsymbol\beta}=\mathbf 0.
+$$
+
+\pause
+
+Its variance is zero.
+
+\pause
+
+But it is generally biased, since
+
+$$
+E(\tilde{\boldsymbol\beta}\mid X)=\mathbf 0
+\neq
+\boldsymbol\beta.
+$$
+
+\pause
+
+This does not contradict Gauss-Markov.
+
+The theorem compares OLS only with **linear unbiased** estimators.
+
+# Variance is not mean-squared error
+
+A biased estimator can sometimes have smaller mean-squared error than OLS.
+
+\pause
+
+Mean-squared error combines variance and squared bias:
+
+$$
+\operatorname{MSE}(\tilde\theta)
+=
+\operatorname{Var}(\tilde\theta)
++
+\operatorname{Bias}(\tilde\theta)^2.
+$$
+
+\pause
+
+Gauss-Markov is not a theorem about minimising mean-squared error over all possible estimators.
+
+\pause
+
+It is a theorem about minimising variance among linear unbiased estimators.
+
+# What the theorem establishes
+
+Under the Gauss-Markov assumptions:
+
+- OLS is unbiased
+- OLS has covariance matrix
+
+  $$
+  \sigma^2(X^TX)^{-1}
+  $$
+
+- no other linear unbiased estimator has a smaller covariance matrix
+- normality is not required
+
+\pause
+
+This is a strong reason to use OLS when the assumptions are plausible.
+
+# What the theorem does not establish
+
+The Gauss-Markov theorem does not show that:
+
+- the conditional mean has been specified correctly
+- relevant variables have not been omitted
+- coefficients have a causal interpretation
+- the model predicts well
+- OLS beats biased estimators in mean-squared error
+- the fitted model is scientifically adequate
+
+# Summary
+
+The Gauss-Markov theorem says that OLS is BLUE.
+
+\pause
+
+That means:
+
+- **Best:** smallest covariance matrix in the positive semidefinite ordering
+- **Linear:** linear in the response vector $Y$
+- **Unbiased:** correct on average, conditional on $X$
+
+\pause
+
+The theorem requires zero conditional mean errors and spherical error covariance.
+
+\pause
+
+It does not require normality, and it does not rescue a poorly specified model.

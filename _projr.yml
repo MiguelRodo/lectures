@@ -27,5 +27,5 @@ build:
   - w1/SlidesRegW1S3MVN.qmd
   - w1/QARegSlidesW1S3IntroMVN.qmd
 dev:
-  scripts: w1/SlidesRegW1S3MVN.qmd
+  scripts: w2/NotesRegW2Proofs.qmd
 

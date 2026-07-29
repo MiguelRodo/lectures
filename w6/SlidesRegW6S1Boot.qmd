@@ -1,11 +1,13 @@
 ---
-title: "Bootstrapping"
-author: "Miguel Rodo"
-institute: "Department of Statistical Sciences - University of Cape Town"
+title: "Regression Week VI: Resampling"
+subtitle: "Slide deck I: Bootstrapping"
+author: "Yovna Junglee, edited by Miguel Rodo"
+institute: University of Cape Town
+date: today
 bibliography: zotero.bib
 nocite: |
   @hesterberg14
-format: 
+format:
   beamer:
     embed-resources: true
     aspectratio: 169
@@ -13,399 +15,764 @@ format:
     linkcolor: blue
     filecolor: magenta
     include-in-header:
-      file: preamble.tex
+      file: ../preamble.tex
+    keep-tex: true
 execute:
-  echo: true
+  echo: false
+  warning: false
+  message: false
 ---
 
-
-```{r}
+```{r setup}
 #| include: false
-library(tibble)
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+
 library(ggplot2)
-theme_set(
-  cowplot::theme_cowplot() + 
-    theme(
-      plot.background = element_rect(fill = "white"),
-      panel.background = element_rect(fill = "white"),
-    )
-  )
-```
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
 
-# Introduction
+set.seed(6061)
 
-Suppose that we have skewed data
-
-```{r}
-x_vec <- seq(0.0001, 10, length.out = 1e3)
-skew_tbl <- tibble(
-  x = x_vec,
-  y = dexp(x_vec, rate = 0.1)^1.5
-)
-```
-
-```{r}
-#| include: false
-p <- ggplot(skew_tbl) +
-  geom_line(aes(x = x, y = y), color = "dodgerblue", size = 1) +
-  labs(x = "Value", y = "Frequency") +
-  cowplot::background_grid(major = "xy", minor = "none")
-path_fig <- projr::projr_path_get(
-  "cache", "fig", "w6", "p-init_example.pdf"
-)
-ggsave(
-  path_fig, plot = p, width = 10, height = 7, dpi = 150,
-  units = "cm"
-)
-```
-
-\centering
-\begin{centering}
-\includegraphics[width=0.4\textwidth]{`r path_fig`}
-\end{centering}
-
-# The distribution of the mean will tend to be skewed as well, especially at lower sample sizes
-
-```{r}
-set.seed(4)
-mean_tbl <- purrr::map_df(
-  c(5, 10, 20, 40, 100, 1e3), function(x) {
-    set.seed(3)
-    mean_vec <- replicate(1e3, {
-      x_vec <- rexp(x, rate = 0.1)^1.5
-      mean(x_vec)
-    })
-    tibble(
-      sample_size = x,
-      mean = mean_vec
-    )
-  }
-)
-```
-
-# The distribution of the mean will tend to be skewed as well, especially at lower sample sizes
-
-```{r}
-#| include: false
-mean_tbl_norm <- purrr::map_df(
-  c(5, 10, 20, 40, 100, 1e3), function(x) {
-    set.seed(3)
-    mean_vec <- mean_tbl |>
-      dplyr::filter(sample_size == x) |>
-      dplyr::pull(mean)
-    mean_norm <- mean(mean_vec)
-    sd_norm <- sd(mean_vec)
-    x_vec <- seq(min(mean_vec), max(mean_vec), length.out = 1e3)
-    y_vec <- dnorm(x_vec, mean = mean_norm, sd = sd_norm)
-    tibble(
-      sample_size = x,
-      x = x_vec,
-      y = y_vec
-    )
-  }
-)
-p <- ggplot(
-  mean_tbl, aes(x = mean, fill = factor(sample_size))
-) +
-  geom_line(
-    data = mean_tbl_norm,
-    aes(x = x, y = y, group = sample_size),
-    color = "black", size = 1,
-    inherit.aes = FALSE
-  ) +
-  geom_density(alpha = 0.7) +
-  labs(x = "Mean", y = "Density") +
-  scale_fill_viridis_d(option = "plasma", name = "Sample Size") +
-  facet_wrap(~ sample_size, scales = "free") +
-  cowplot::background_grid(major = "xy", minor = "none") +
-  theme(legend.position = "none") +
+alpha <- 0.05
+B <- 10000
+plot_theme <- theme_minimal(base_size = 13) +
   theme(
-    axis.text = element_blank(),
-    axis.ticks = element_blank()
-  ) +
-  labs(title = "Distribution of the Mean by Sample Size")
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold"),
+    legend.position = "bottom"
+  )
 
-path_fig <- projr::projr_path_get(
-  "cache", "fig", "w6", "p-mean_example.pdf"
-)
-ggsave(
-  path_fig, plot = p, width = 16, height = 14,
-  units = "cm"
-)
+theme_set(plot_theme)
+
+boot_mean <- function(x, B = 10000) {
+  replicate(B, mean(sample(x, size = length(x), replace = TRUE)))
+}
+
+boot_t_mean <- function(x, B = 10000) {
+  xbar <- mean(x)
+  replicate(B, {
+    x_star <- sample(x, size = length(x), replace = TRUE)
+    se_star <- sd(x_star) / sqrt(length(x_star))
+    if (is.na(se_star) || se_star == 0) {
+      return(NA_real_)
+    }
+    (mean(x_star) - xbar) / se_star
+  }) |>
+    stats::na.omit()
+}
+
+ci_t_mean <- function(x, alpha = 0.05) {
+  mean(x) + c(-1, 1) * qt(1 - alpha / 2, df = length(x) - 1) *
+    sd(x) / sqrt(length(x))
+}
+
+ci_percentile_mean <- function(x, B = 10000, alpha = 0.05) {
+  quantile(boot_mean(x, B), probs = c(alpha / 2, 1 - alpha / 2), names = FALSE)
+}
+
+ci_bootse_mean <- function(x, B = 10000, alpha = 0.05) {
+  boot_stats <- boot_mean(x, B)
+  mean(x) + c(-1, 1) * qt(1 - alpha / 2, df = length(x) - 1) * sd(boot_stats)
+}
+
+ci_boott_mean <- function(x, B = 10000, alpha = 0.05) {
+  t_star <- boot_t_mean(x, B)
+  q <- quantile(t_star, probs = c(alpha / 2, 1 - alpha / 2), names = FALSE)
+  se_hat <- sd(x) / sqrt(length(x))
+  c(mean(x) - q[2] * se_hat, mean(x) - q[1] * se_hat)
+}
 ```
 
-\centering
-\begin{centering}
-\includegraphics[width=0.575\textwidth]{`r path_fig`}
-\end{centering}
+# Why bootstrapping belongs in this course
 
-# Problematic for confidence intervals - all problems fixed?
-
-Suppose that we wish to estimate a confidence interval for the mean of some distritution.
-Then, assuming that the data is normally distributed, we can use the following formula:
-
-$$
-\bar{x} \pm z_{\alpha/2} \hat{se}(\bar{x})
-$$
-
-where:
-
-- $\bar{x}$ is the sample mean,
-- $s$ is the sample standard deviation,
-- $n$ is the sample size, and
-- $z_{\alpha/2}$ is the critical value for the desired confidence level.
+- Earlier inference used exact finite-sample results under normal-error assumptions.
 
 \pause
 
-- Problem? $s$ is estimated
+- Those results gave familiar intervals and tests for regression coefficients, fitted means and predictions.
 
-# We can improve this using the $t$-distribution
+\pause
+
+- Bootstrapping gives a simulation-based way to approximate the sampling distribution of a statistic.
+
+\pause
+
+- It is especially useful when formulas are difficult, or when we want to see how much an answer depends on the sample.
+
+# Lecture outline
+
+By the end of this deck, you should be able to:
+
+- Explain the plug-in idea behind the bootstrap
+- Distinguish the sampling distribution from the bootstrap distribution
+- Construct percentile, bootstrap-standard-error and bootstrap-$t$ intervals
+- Explain why skewness and small samples can cause poor coverage
+- Bootstrap regression quantities using pairs or residual resampling
+- State what the bootstrap can and cannot fix
+
+# What exact regression inference used
+
+For the usual linear model,
 
 $$
-\bar{x} \pm t_{\alpha/2, n-1} \hat{se}(\bar{x})
+\mathbf Y=\mathbf X\boldsymbol\beta+\boldsymbol\varepsilon,
+\qquad
+\boldsymbol\varepsilon\sim N(\mathbf 0,\sigma^2\mathbf I_n),
 $$
 
-where $t_{\alpha/2, n-1}$ is the critical value for the $t$-distribution with $n-1$ degrees of freedom.
+we obtained
 
-- Further problems?
-  - Assumes a symmetric sampling distribution
-  - Assumes that $s$ and $\bar{x}$ are independent
+$$
+\frac{\hat\beta_j-\beta_j}{s\sqrt{c_{jj}}}
+\sim t_{n-p},
+$$
 
-# Bootstrapping
+where $c_{jj}$ is the $j$th diagonal element of $(\mathbf X^T\mathbf X)^{-1}$.
 
-- **Definition**
-  - A resampling technique used to perform inference sampling a dataset with replacement.
+\pause
 
-# Sampling with replacement
+This depends on strong structure:
 
-```{r}
-orig_vec <- rnorm(1:3) |> signif(2)
-boot_tbl <- tibble::tibble(
-  Original = orig_vec,
-  `Sample 1` = sample(orig_vec, replace = TRUE),
-  `Sample 2` = sample(orig_vec, replace = TRUE),
-  `Sample 3` = sample(orig_vec, replace = TRUE)
-)
-boot_tbl
-```
+- a correctly specified model
+- independent errors with common variance
+- normal errors for exact $t$ and $F$ distributions
 
-- Mean for each boostrap sample: `r sapply(boot_tbl[, -1], mean) |> signif(2)`
+# The first warning: skewness can survive averaging
 
-# "Ideal" way to estimate a sampling distribution
-
-- Repeatedly resample from the actual data generating process!
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.7\textwidth]{_raw_data/img/ideal_world.png}
-\caption{Hesterberg (2014)}
-\end{figure}
-
-# Practical way to estimate a sampling distribution
-
-- Repeatedly resample from the *sample*
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.7\textwidth]{_raw_data/img/bootstrap_world.png}
-\caption{Hesterberg (2014)}
-\end{figure}
-
-# Bootstrap alternatives to $t$ confidence intervals I: The percentile method
-
-1. Generate $B$ bootstrap samples.
-2. Calculate the sample mean for each sample.
-3. Set the (1-$\alpha$) confidence interval as the $\alpha/2$ and $1-\alpha/2$ percentiles of the bootstrap means.
-
-# Implementation in R
-
-- First, create our bootstrap sample:
-
-```{r}
-set.seed(3)
-sample_vec <- rexp(10, rate = 0.1)^1.5
-mean_vec_perc <- replicate(2e3, {
-  sample(sample_vec, replace = TRUE) |> mean()
+```{r sampling-distributions-skewed}
+#| fig-width: 8.4
+#| fig-height: 4.0
+#| out-width: "92%"
+set.seed(6062)
+sampling_tbl <- map_dfr(c(5, 20, 100), function(n) {
+  means <- replicate(5000, mean(rexp(n, rate = 1)))
+  tibble(
+    n = paste0("n = ", n),
+    z = sqrt(n) * (means - 1)
+  )
 })
-```
 
-- Then, calculate our bounds:
-
-```{r}
-quantile(mean_vec_perc, c(0.025, 0.975)) |> signif(2)
-```
-
-```{r}
-#| include: false
-ci_vec_perc <- quantile(mean_vec_perc, c(0.025, 0.975))
-```
-
-# Bootstrap alternatives to $t$ confidence intervals I: Estimate se using the bootstrap
-
-This has the following formula:
-
-$$
-\bar{x} \pm t_{\alpha/2, n-1} \hat{se^{\ast}}(\bar{x})
-$$
-  
-  where $\hat{se^{\ast}}(\bar{x})$ is the standard deviation of the bootstrap means:
-
-$$
-\hat{se^{\ast}}(\bar{x}) = \sqrt{\frac{1}{B-1} \sum_{b=1}^{B} (\bar{x}^{(b)} - \bar{x})^2}
-$$
-
-# Bootstrap alternatives to $t$ confidence intervals II: Estimate se using the bootstrap
-
-1. Generate $B$ bootstrap samples.
-2. Calculate the sample mean for each sample.
-3. Calculate the standard deviation of the bootstrap means.
-4. Set the (1-$\alpha$) confidence interval as $\bar{x} \pm z_{\alpha/2} \hat{se}^{\ast}(\bar{x})$
-
-# Implementation in R
-
-```{r}
-set.seed(3)
-sample_vec <- rexp(10, rate = 0.1)^1.5
-mean_actual <- mean(sample_vec)
-mean_vec_perc <- replicate(2e3, {
-  sample(sample_vec, replace = TRUE) |> mean()
-})
-se_boot <- sd(mean_vec_perc)
-ci_vec_se_boot <- mean_actual +
-  c(-1, 1) * se_boot * 
-  qt(0.975, df = length(mean_vec_perc) - 1)
-ci_vec_se_boot |> signif(2)
-```
-
-# Problem?
-
-- The t-stat is not $t$-distributed!
-- By $t$-test, we mean:
-
-$$
-\frac{\hat{\theta} - \theta}{\hat{se}(\hat{\theta})}
-$$
-
-- Why not?
-  - Observations not normally distributed
-  - Sample mean and sample standard deviation are not independent
-
-# Sample standard deviation and mean correlated
-
-```{r}
-set.seed(3)
-sample_vec <- rexp(10, rate = 0.1)^1.5
-summ_stat_list <- replicate(2e3, {
-  boot_sample <- sample(sample_vec, replace = TRUE)
-  c("mean" = mean(boot_sample), "sd" = sd(boot_sample))
-})
-```
-
-```{r}
-#| include: false
-plot_tbl <- tibble(
-  mean = summ_stat_list[1, ],
-  sd = summ_stat_list[2, ]
+normal_curve_tbl <- tibble(
+  z = seq(-3.5, 4.5, length.out = 600),
+  density = dnorm(z)
 )
-p <- ggplot(
-  plot_tbl, aes(x = mean, y = sd)
-) +
-  geom_point(alpha = 0.25, colour = "dodgerblue") +
-  labs(x = "Mean", y = "Standard Deviation") +
-  cowplot::background_grid(major = "xy", minor = "none")
-path_fig <- projr::projr_path_get(
-  "cache", "fig", "w6", "p-mean_sd_corr.pdf"
-)
-ggsave(
-  path_fig, plot = p, width = 10, height = 7,
-  units = "cm"
-)
+
+ggplot(sampling_tbl, aes(x = z)) +
+  geom_density(fill = "#647C9C", alpha = 0.35, colour = "#003366", linewidth = 0.7) +
+  geom_line(
+    data = normal_curve_tbl,
+    aes(x = z, y = density),
+    inherit.aes = FALSE,
+    linewidth = 0.9,
+    linetype = 2,
+    colour = "grey20"
+  ) +
+  facet_wrap(~ n, nrow = 1) +
+  labs(
+    x = expression(sqrt(n)(bar(X) - mu) / sigma),
+    y = "Density",
+    title = "Standardised sampling distributions for exponential data"
+  )
 ```
 
-\centering
-\begin{centering}
-\includegraphics[width=0.5\textwidth]{`r path_fig`}
-\end{centering}
+The normal approximation improves as $n$ grows, but the improvement can be slow for skewed data.
 
-# Bootstrap alternatives to $t$ confidence intervals III: bootstrap the t-statistic
+# Exact normal-theory intervals
 
-1. Generate $B$ bootstrap samples.
-2. For each bootstrap sample, calculate the t-statistic.
-3. Calcalate the $\alpha/2$ and $1-\alpha/2$ percentiles of the t-statistics.
-3. Set the (1-$\alpha$) confidence interval as 
+If $X_1,\ldots,X_n$ are a normal sample, then
 
 $$
-\hat{\theta} - q_{1-\alpha/2}\hat{se}(\hat{\theta}), \hat{\theta} - q_{\alpha/2}\hat{se}(\hat{\theta})
+\frac{\bar X-\mu}{S/\sqrt n}
+\sim t_{n-1}.
 $$
 
-# Implementation in R {.smaller}
+So an exact $100(1-\alpha)\%$ confidence interval for $\mu$ is
 
-```{r}
-set.seed(3)
-sample_vec <- rexp(10, rate = 0.1)^1.5
-mean_actual <- mean(sample_vec)
-sd_actual <- sd(sample_vec) / sqrt(length(sample_vec) - 1)
-t_stat_vec <- replicate(2e3, {
-  boot_sample <- sample(sample_vec, replace = TRUE)
-  mean_boot <- mean(boot_sample)
-  se_boot <- sd(boot_sample) / sqrt(length(boot_sample) - 1)
-  (mean_boot - mean_actual) / se_boot
-})
-quant_vec_t <- quantile(t_stat_vec, c(0.025, 0.975))
-lb <- mean_actual - quant_vec_t[2] * sd_actual
-ub <- mean_actual - quant_vec_t[1] * sd_actual
-c(lb, ub) |> signif(2)
-```
+$$
+\bar x \pm t_{1-\alpha/2,n-1}\frac{s}{\sqrt n}.
+$$
 
-```{r}
-#| include: false
-ci_vec_boot_t <- c(lb, ub)
-```
+\pause
 
-# Comparison of confidence intervals
+Two important facts are hidden inside this result:
 
-```{r}
-#| include: false
-set.seed(3)
-sample_vec <- rexp(10, rate = 0.1)^1.5
-mean_actual <- mean(sample_vec)
-sd_actual <- sd(sample_vec) / sqrt(length(sample_vec) - 1)
-ci_vec_t <- mean_actual +
-  c(-1, 1) * qt(0.975, df = length(sample_vec) - 1) * sd_actual
-```
+- the sampling distribution is symmetric
+- for a normal sample, $\bar X$ and $S$ are independent
 
-```{r}
+# What changes outside the normal case?
+
+For skewed data:
+
+- the sampling distribution of $\bar X$ may still be skewed
+- $\bar X$ and $S$ are generally correlated
+- the statistic
+
+$$
+T
+=
+\frac{\bar X-\mu}{S/\sqrt n}
+$$
+
+need not have a $t$ distribution
+
+\pause
+
+Bootstrapping is one way to estimate the relevant distribution from the data rather than pretending it is exactly $t$.
+
+# The ideal world
+
+::::{.columns}
+
+:::{.column width=50%}
+
+
+a population distribution $F$
+
+$$
+F
+$$
+
+\vspace{0.3cm}
+
+many repeated samples
+
+$$
+\mathbf X^{(1)},\mathbf X^{(2)},\ldots
+$$
+
+\vspace{0.3cm}
+
+many statistics
+
+$$
+\hat\theta^{(1)},\hat\theta^{(2)},\ldots
+$$
+
+:::
+
+:::{.column width=50%}
+
+
+the sampling distribution
+
+$$
+\mathcal L_F(\hat\theta)
+$$
+
+\vspace{0.4cm}
+
+This is what we want for inference.
+
+\pause
+
+But usually we only have one sample.
+
+:::
+
+::::
+
+# The bootstrap world
+
+::::{.columns}
+
+:::{.column width=50%}
+
+replace the unknown $F$ with the empirical distribution
+
+$$
+\widehat F_n
+$$
+
+\vspace{0.3cm}
+
+many bootstrap samples
+
+$$
+\mathbf X^{*(1)},\mathbf X^{*(2)},\ldots
+$$
+
+\vspace{0.3cm}
+
+many bootstrap statistics
+
+$$
+\hat\theta^{*(1)},\hat\theta^{*(2)},\ldots
+$$
+
+:::
+
+:::{.column width=50%}
+
+
+the bootstrap distribution
+
+$$
+\mathcal L_{\widehat F_n}(\hat\theta^*)
+$$
+
+\vspace{0.4cm}
+
+This estimates the spread and shape of the sampling distribution.
+
+\pause
+
+It is centred near $\hat\theta$, not near the unknown $\theta$.
+
+:::
+
+::::
+
+# The plug-in principle
+
+The bootstrap is based on a familiar statistical idea:
+
+$$
+\text{unknown quantity}
+\quad\leadsto\quad
+\text{estimate of that quantity}.
+$$
+
+\pause
+
+For the usual standard error of $\bar X$, we replace $\sigma$ with $s$:
+
+$$
+\operatorname{SE}(\bar X)=\frac{\sigma}{\sqrt n}
+\quad\leadsto\quad
+\widehat{\operatorname{SE}}(\bar X)=\frac{s}{\sqrt n}.
+$$
+
+\pause
+
+The bootstrap takes this one step further:
+
+$$
+F
+\quad\leadsto\quad
+\widehat F_n.
+$$
+
+Then we repeatedly sample from $\widehat F_n$.
+
+# A bootstrap sample by hand
+
+Suppose the observed data are
+
+$$
+4,\,7,\,9,\,12.
+$$
+
+A bootstrap sample has the same size, but is drawn **with replacement**:
+
+```{r hand-bootstrap-table}
 #| echo: false
-tibble(
-  Method = c("T", "Percentile", "Bootstrap SE", "Bootstrap t"),
-  `Lower bound` = c(ci_vec_t[1], ci_vec_perc[1], ci_vec_se_boot[1], ci_vec_boot_t[1]),
-  `Upper bound` = c(ci_vec_t[2], ci_vec_perc[2], ci_vec_se_boot[2], ci_vec_boot_t[2])
+hand_boot_tbl <- tibble(
+  sample = c("original data", "bootstrap sample 1", "bootstrap sample 2", "bootstrap sample 3"),
+  values = c("4, 7, 9, 12", "4, 4, 9, 12", "7, 9, 9, 9", "4, 7, 7, 12"),
+  mean = c(mean(c(4, 7, 9, 12)), mean(c(4, 4, 9, 12)), mean(c(7, 9, 9, 9)), mean(c(4, 7, 7, 12)))
 )
+knitr::kable(hand_boot_tbl, digits = 2)
 ```
 
-# One-side non-coverage for normally distributed data
+\pause
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.55\textwidth]{_raw_data/img/normal_sim.png}
-\caption{Hesterberg (2014)}
-\end{figure}
+Duplicates and omissions are not a bug. They are how the empirical distribution is resampled.
 
-# One-side non-coverage for exponentially-distributed data
+# The ordinary nonparametric bootstrap
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.55\textwidth]{_raw_data/img/exp_sim.png}
-\caption{Hesterberg (2014)}
-\end{figure}
+For a statistic $\hat\theta = T(X_1,\ldots,X_n)$:
+
+1. Draw $X_1^*,\ldots,X_n^*$ with replacement from the observed data.
+2. Compute $\hat\theta^*=T(X_1^*,\ldots,X_n^*)$.
+3. Repeat steps 1 and 2 many times.
+4. Use the distribution of $\hat\theta^*$ to estimate uncertainty in $\hat\theta$.
+
+\pause
+
+In this course, take $B=10{,}000$ as a sensible routine default, and increase it when tail accuracy matters [@hesterberg14].
+
+# Bootstrap distribution for the mean
+
+```{r bootstrap-mean-distribution}
+#| fig-width: 7.2
+#| fig-height: 4.1
+#| out-width: "82%"
+set.seed(6063)
+x_exp <- rexp(30, rate = 1)
+xbar_exp <- mean(x_exp)
+boot_xbar <- boot_mean(x_exp, B = B)
+
+boot_mean_tbl <- tibble(boot_mean = boot_xbar)
+ci_perc_exp <- quantile(boot_xbar, c(0.025, 0.975), names = FALSE)
+
+boot_density <- ggplot(boot_mean_tbl, aes(x = boot_mean)) +
+  geom_density(fill = "#647C9C", alpha = 0.35, colour = "#003366", linewidth = 0.8) +
+  geom_vline(xintercept = xbar_exp, colour = "#7A1F1F", linewidth = 0.9) +
+  geom_vline(xintercept = ci_perc_exp, linetype = 2, colour = "grey25") +
+  labs(
+    x = expression(bar(X)^"*"),
+    y = "Density",
+    title = "Bootstrap distribution of the sample mean"
+  )
+boot_density
+```
+
+The vertical solid line is the observed mean. The dashed lines mark the middle 95% of the bootstrap means.
+
+# Method I: percentile interval
+
+Let $q_{\alpha/2}^*$ and $q_{1-\alpha/2}^*$ be quantiles of the bootstrap statistics.
+
+The percentile interval is
+
+$$
+\left(q_{\alpha/2}^*,\ q_{1-\alpha/2}^*\right).
+$$
+
+\pause
+
+For the sample mean:
+
+1. Generate $B$ bootstrap samples.
+2. Calculate $\bar x_b^*$ for each bootstrap sample.
+3. Use the $2.5\%$ and $97.5\%$ quantiles of the $\bar x_b^*$ values.
+
+\pause
+
+This is intuitive, but it can be too narrow in small samples.
+
+# Method II: bootstrap standard error
+
+The bootstrap standard error is the standard deviation of the bootstrap statistics:
+
+$$
+\widehat{\operatorname{SE}}_{\mathrm{boot}}(\hat\theta)
+=
+\sqrt{
+\frac{1}{B-1}
+\sum_{b=1}^{B}
+\left(\hat\theta_b^*-\overline{\hat\theta^*}\right)^2
+}.
+$$
+
+\pause
+
+A simple interval is then
+
+$$
+\hat\theta
+\pm
+ t_{1-\alpha/2,\nu}\widehat{\operatorname{SE}}_{\mathrm{boot}}(\hat\theta).
+$$
+
+For a one-sample mean, $\nu=n-1$.
+
+# Method III: bootstrap-$t$ interval
+
+For the mean, define the bootstrap analogue of the $t$ statistic:
+
+$$
+T_b^*
+=
+\frac{\bar x_b^*-\bar x}{s_b^*/\sqrt n}.
+$$
+
+Let $q_{\alpha/2}^*$ and $q_{1-\alpha/2}^*$ be quantiles of the $T_b^*$ values.
+
+Then the bootstrap-$t$ interval is
+
+$$
+\left(
+\bar x - q_{1-\alpha/2}^*\frac{s}{\sqrt n},
+\quad
+\bar x - q_{\alpha/2}^*\frac{s}{\sqrt n}
+\right).
+$$
+
+\pause
+
+The upper bootstrap-$t$ quantile is used for the lower endpoint, and vice versa.
+
+# Example: three intervals from the same data
+
+```{r interval-comparison-plot}
+#| fig-width: 8.0
+#| fig-height: 3.6
+#| out-width: "88%"
+set.seed(6064)
+x_example <- rexp(25, rate = 1)
+mu_true <- 1
+ci_tbl <- tibble(
+  method = c("ordinary t", "percentile", "bootstrap SE", "bootstrap t"),
+  lower = c(
+    ci_t_mean(x_example)[1],
+    ci_percentile_mean(x_example, B = B)[1],
+    ci_bootse_mean(x_example, B = B)[1],
+    ci_boott_mean(x_example, B = B)[1]
+  ),
+  upper = c(
+    ci_t_mean(x_example)[2],
+    ci_percentile_mean(x_example, B = B)[2],
+    ci_bootse_mean(x_example, B = B)[2],
+    ci_boott_mean(x_example, B = B)[2]
+  )
+) |>
+  mutate(method = factor(method, levels = rev(method)))
+
+ggplot(ci_tbl, aes(y = method)) +
+  geom_vline(xintercept = mu_true, linetype = 3, linewidth = 0.8) +
+  geom_segment(aes(x = lower, xend = upper, yend = method), linewidth = 1.3, colour = "#003366") +
+  geom_point(aes(x = lower), size = 2.1, colour = "#003366") +
+  geom_point(aes(x = upper), size = 2.1, colour = "#003366") +
+  labs(
+    x = expression(mu),
+    y = NULL,
+    title = "Intervals for the mean of one skewed sample"
+  )
+```
+
+The dotted line is the true mean in this simulation. In real data, that line is not available.
+
+# Why the intervals differ
+
+The four methods use different approximations:
+
+```{r interval-comparison-table}
+#| echo: false
+method_tbl <- tibble(
+  Method = c("ordinary $t$", "percentile", "bootstrap SE", "bootstrap-$t$"),
+  Uses = c(
+    "$t_{n-1}$ distribution",
+    "quantiles of $\\hat\\theta^*$",
+    "standard deviation of $\\hat\\theta^*$",
+    "quantiles of $T^*$"
+  ),
+  Main_strength = c(
+    "exact for normal one-sample mean",
+    "very intuitive",
+    "simple bridge to formula intervals",
+    "adapts to skewed $t$ statistics"
+  ),
+  Main_warning = c(
+    "can be poor under skewness",
+    "often too narrow for small $n$",
+    "still symmetric around $\\hat\\theta$",
+    "needs a standard error inside each bootstrap sample"
+  )
+)
+knitr::kable(method_tbl, escape = FALSE)
+```
+
+# Small samples are still small samples
+
+The bootstrap distribution reflects the original sample.
+
+\pause
+
+If the original sample is unrepresentative, the bootstrap distribution is also based on that unrepresentative sample.
+
+\pause
+
+Using more bootstrap samples reduces Monte Carlo noise, but it does not change the basic information in the original data.
+
+\pause
+
+This is why percentile bootstrap intervals can under-cover in small samples, even though the method feels data-driven [@hesterberg14].
+
+# Regression target: bootstrap what you estimate
+
+In regression, the statistic might be
+
+$$
+\hat\beta_j,
+\qquad
+\widehat{E}(Y\mid \mathbf x_0)=\mathbf x_0^T\hat{\boldsymbol\beta},
+\qquad
+\widehat{Y}_{\mathrm{new}}.
+$$
+
+\pause
+
+The bootstrap recipe stays the same:
+
+1. Generate a bootstrap version of the data.
+2. Refit the regression model.
+3. Save the statistic of interest.
+4. Use the saved values to study uncertainty.
+
+# Two common regression bootstraps
+
+::::{.columns}
+
+:::{.column width=50%}
+
+\begin{block}{Pairs bootstrap}
+Resample complete rows:
+
+$$
+(x_i,y_i)^*.
+$$
+
+Then refit the model.
+
+\vspace{0.3cm}
+
+Use this when the rows are regarded as a random sample from a population.
+\end{block}
+
+:::
+
+:::{.column width=50%}
+
+\begin{block}{Residual bootstrap}
+Keep the same $x_i$ values and resample centred residuals:
+
+$$
+y_i^*=\hat y_i+e_i^*.
+$$
+
+Then refit the model.
+
+\vspace{0.3cm}
+
+Use this when conditioning on the observed design is appropriate.
+\end{block}
+
+:::
+
+::::
+
+# Residual bootstrap: a regression-line picture
+
+```{r residual-bootstrap-lines}
+#| fig-width: 7.2
+#| fig-height: 4.2
+#| out-width: "82%"
+set.seed(6065)
+n_reg <- 80
+x_reg <- runif(n_reg, 0, 6)
+y_reg <- 2 + 1.4 * x_reg + rnorm(n_reg, sd = 1.2)
+reg_tbl <- tibble(x = x_reg, y = y_reg)
+fit_reg <- lm(y ~ x, data = reg_tbl)
+resid_centred <- residuals(fit_reg) - mean(residuals(fit_reg))
+new_x <- seq(min(x_reg), max(x_reg), length.out = 80)
+
+line_tbl <- map_dfr(1:200, function(b) {
+  y_star <- fitted(fit_reg) + sample(resid_centred, n_reg, replace = TRUE)
+  fit_star <- lm(y_star ~ x_reg)
+  tibble(
+    b = b,
+    x = new_x,
+    y = coef(fit_star)[1] + coef(fit_star)[2] * new_x
+  )
+})
+
+orig_line_tbl <- tibble(
+  x = new_x,
+  y = predict(fit_reg, newdata = tibble(x = new_x))
+)
+
+ggplot(reg_tbl, aes(x = x, y = y)) +
+  geom_line(data = line_tbl, aes(group = b), alpha = 0.08, colour = "grey25") +
+  geom_point(alpha = 0.75, colour = "#003366") +
+  geom_line(data = orig_line_tbl, linewidth = 1.2, colour = "#7A1F1F") +
+  labs(
+    x = "x",
+    y = "y",
+    title = "Bootstrap regression lines from residual resampling"
+  )
+```
+
+The cloud of lines shows uncertainty in the fitted regression function.
+
+# Regression coefficient bootstrap distribution
+
+```{r slope-bootstrap-distribution}
+#| fig-width: 7.2
+#| fig-height: 4.0
+#| out-width: "82%"
+set.seed(6066)
+slope_star <- replicate(B, {
+  y_star <- fitted(fit_reg) + sample(resid_centred, n_reg, replace = TRUE)
+  coef(lm(y_star ~ x_reg))[2]
+})
+
+slope_ci <- quantile(slope_star, c(0.025, 0.975), names = FALSE)
+slope_hat <- coef(fit_reg)[2]
+
+ggplot(tibble(slope = slope_star), aes(x = slope)) +
+  geom_density(fill = "#647C9C", alpha = 0.35, colour = "#003366", linewidth = 0.8) +
+  geom_vline(xintercept = slope_hat, colour = "#7A1F1F", linewidth = 0.9) +
+  geom_vline(xintercept = slope_ci, linetype = 2, colour = "grey25") +
+  labs(
+    x = expression(hat(beta)[1]^"*"),
+    y = "Density",
+    title = "Bootstrap distribution of the slope"
+  )
+```
+
+The same idea applies to an intercept, a fitted mean, or a prediction target.
+
+# When should pairs and residual bootstraps differ?
+
+They may differ when:
+
+- the $x$ values are highly uneven
+- there are rare factor levels or sparse interaction combinations
+- residual variance changes with $x$
+- the regression model fits poorly
+
+\pause
+
+A residual bootstrap conditions on the observed design matrix.
+
+\pause
+
+A pairs bootstrap also resamples the design, so some bootstrap datasets may contain awkward or unstable combinations of predictors.
+
+# What the bootstrap cannot fix
+
+Bootstrapping is not a remedy for every problem.
+
+It does not fix:
+
+- biased sampling or missing parts of the population
+- dependence that is ignored during resampling
+- a badly misspecified regression model
+- severe outliers without modelling or robust methods
+- very small samples that poorly represent the population
+
+\pause
+
+The resampling scheme must match the way the data were generated.
+
+# Practical recommendations
+
+For this course:
+
+- Use at least $B=10{,}000$ bootstrap samples for final answers.
+- Start with the percentile interval for intuition.
+- Use a bootstrap standard error when comparing with formula-based intervals.
+- Use bootstrap-$t$ when skewness matters and a standard error can be computed for each bootstrap sample.
+- For regression, be explicit about whether you resample rows or residuals.
 
 # Take-home messages
 
-- Bootstrapping is a resampling technique for improved inference.
-- The choice of confidence interval method dramatically affects coverage probabilities:
-  - Small sample sizes: the percentile and bootstrap-se methods are too narrow. The percentile method performs atrociously at small sample sizes.
-  - Skew data: the $t$- and bootstrap-se methods are symmetric, and the percentile method is insufficiently skew.
-  - The bootstrap-$t$ method has good small sample performance and is more robust to skewness.
-- Estimating confidence intervals for skew data is hard, and takes more samples than typically thought.
+- The bootstrap replaces the unknown population distribution $F$ with the empirical distribution $\widehat F_n$.
+
+- The bootstrap distribution is used for uncertainty, not to improve the original point estimate.
+
+- Percentile intervals are intuitive, but can be too narrow in small samples.
+
+- Bootstrap-$t$ intervals often behave better under skewness, but require more work.
+
+- In regression, the resampling scheme is part of the statistical model.
 
 # References

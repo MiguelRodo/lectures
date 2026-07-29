@@ -1,0 +1,798 @@
+---
+title: "Regression Week II: The general linear model"
+subtitle: "Slide deck I: Matrix formulation, estimation and sampling distributions"
+author: "Yovna Junglee, edited by Miguel Rodo"
+institute: University of Cape Town
+date: today
+format:
+  beamer:
+    embed-resources: true
+    aspectratio: 169
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+    include-in-header:
+      file: ../preamble.tex
+    keep-tex: true
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+
+load_advertising <- function() {
+  if (requireNamespace("ISLR2", quietly = TRUE) && exists("Advertising", asNamespace("ISLR2"))) {
+    return(get("Advertising", asNamespace("ISLR2")))
+  }
+  if (requireNamespace("ISLR", quietly = TRUE) && exists("Advertising", asNamespace("ISLR"))) {
+    return(get("Advertising", asNamespace("ISLR")))
+  }
+  data.frame(
+    TV = c(230.1, 44.5, 17.2, 151.5, 180.8, 8.7, 57.5, 120.2, 8.6, 199.8),
+    radio = c(37.8, 39.3, 45.9, 41.3, 10.8, 48.9, 32.8, 19.6, 2.1, 2.6),
+    newspaper = c(69.2, 45.1, 69.3, 58.5, 58.4, 75.0, 23.5, 11.6, 1.0, 21.2),
+    sales = c(22.1, 10.4, 9.3, 18.5, 12.9, 7.2, 11.8, 13.2, 4.8, 10.6)
+  )
+}
+
+advertising <- load_advertising()
+```
+
+# Why we now need the general linear model
+
+- In Week I, we developed the normal and multivariate normal results needed for regression inference.
+
+\pause
+
+- We now return to regression itself.
+
+\pause
+
+- The main move is from a model with one predictor to a model with several predictors.
+
+\pause
+
+- Matrix notation lets us write, estimate and analyse all of these models at once.
+
+# Lecture outline
+
+By the end of this deck, you should be able to:
+
+- Write simple and multiple linear regression models in scalar and matrix form
+- Explain the roles of $Y$, $X$, $\boldsymbol\beta$ and $\mathbf e$ in the general linear model
+- Derive the least-squares estimator
+$$
+\hat{\boldsymbol\beta}=(X^TX)^{-1}X^TY
+$$
+- State the sampling distribution of $\hat{\boldsymbol\beta}$ under normal errors
+- Define fitted values, residuals and the residual variance estimator
+- Interpret regression coefficients in a multiple regression model
+
+# The Advertising data set
+
+The `Advertising` data set records sales across 200 markets, together with advertising budgets for three media:
+
+- TV
+- radio
+- newspaper
+
+\pause
+
+The response variable is `sales`, measured in units sold. The predictors are advertising budgets, measured in thousands of dollars.
+
+\pause
+
+Typical modelling questions include:
+
+- How are advertising budgets related to sales?
+- How much do mean sales change when one advertising budget increases?
+- Can we predict sales from the advertising budgets?
+
+# A modelling workflow
+
+A standard statistical modelling workflow is:
+
+1. Explore and understand the data
+2. Formulate a model
+3. Estimate the model parameters
+4. Check residuals and assumptions
+5. Interpret the model and draw inference
+
+\pause
+
+In this deck, we focus on steps 2 and 3, and set up the distributional results needed for step 5.
+
+# Exploratory data analysis {.smaller}
+
+::::{.columns}
+
+:::{.column width=44%}
+
+```{r}
+#| fig-width: 4.2
+#| fig-height: 3.6
+#| out-width: "100%"
+old_par <- par(
+  mar = c(4.0, 4.2, 2.2, 0.6),
+  mgp = c(2.3, 0.7, 0),
+  tcl = -0.25
+)
+hist(
+  advertising$sales,
+  breaks = 8,
+  probability = TRUE,
+  col = "grey85",
+  border = "grey35",
+  xlab = "sales",
+  main = "Sales distribution",
+  las = 1
+)
+lines(density(advertising$sales), lwd = 2.2, col = "#003366")
+box()
+par(old_par)
+```
+
+:::
+
+:::{.column width=56%}
+
+```{r}
+#| fig-width: 5.2
+#| fig-height: 3.6
+#| out-width: "100%"
+old_par <- par(
+  mar = c(3.5, 3.6, 2.2, 0.8),
+  mgp = c(2.2, 0.7, 0),
+  tcl = -0.25
+)
+plot(
+  advertising$TV,
+  advertising$sales,
+  pch = 19,
+  cex = 0.7,
+  xlab = "TV budget",
+  ylab = "sales",
+  main = "Sales against TV budget",
+  las = 1
+)
+abline(lm(sales ~ TV, data = advertising), lwd = 2.2, col = "#003366")
+box()
+par(old_par)
+```
+
+:::
+
+::::
+
+# Simple linear regression model
+
+\begin{block}{Model formulation}
+For one predictor, the simple linear regression model is
+$$
+y_i=\beta_0+\beta_1x_i+e_i,
+\qquad i=1,\ldots,n.
+$$
+A common distributional assumption is
+$$
+e_i \overset{\text{iid}}{\sim} N(0,\sigma^2).
+$$
+\end{block}
+
+\pause
+
+- $y_i$ is the response for observation $i$.
+- $x_i$ is the predictor value for observation $i$.
+- $\beta_0$ is the intercept and $\beta_1$ is the slope.
+- $e_i$ is the random error term.
+
+# Simple linear regression in matrix form
+
+The simple linear regression model can be written as
+$$
+Y=\beta_0\mathbf 1_n+\beta_1X_1+\mathbf e,
+$$
+where
+$$
+Y=\begin{pmatrix}y_1\\ \vdots\\ y_n\end{pmatrix},
+\qquad
+X_1=\begin{pmatrix}x_1\\ \vdots\\ x_n\end{pmatrix},
+\qquad
+\mathbf e=\begin{pmatrix}e_1\\ \vdots\\ e_n\end{pmatrix}.
+$$
+
+\pause
+
+Equivalently,
+$$
+Y=
+\begin{pmatrix}
+1 & x_1\\
+\vdots & \vdots\\
+1 & x_n
+\end{pmatrix}
+\begin{pmatrix}\beta_0\\\beta_1\end{pmatrix}
++
+\mathbf e.
+$$
+
+# Ordinary least squares
+
+The least-squares idea is to choose $\beta_0$ and $\beta_1$ so that the fitted line is close to the observed data.
+
+\pause
+
+For simple linear regression, minimise
+$$
+g(\beta_0,\beta_1)
+=
+\sum_{i=1}^n (y_i-\beta_0-\beta_1x_i)^2.
+$$
+
+\pause
+
+This is the sum of squared vertical distances between the observed points and the fitted line.
+
+# OLS: sales and TV {.smaller}
+
+```{r}
+#| fig-width: 6.8
+#| fig-height: 4.1
+#| out-width: "72%"
+fit_tv <- lm(sales ~ TV, data = advertising)
+old_par <- par(
+  mar = c(4.0, 4.2, 2.2, 0.6),
+  mgp = c(2.3, 0.7, 0),
+  tcl = -0.25
+)
+plot(
+  advertising$TV,
+  advertising$sales,
+  pch = 19,
+  cex = 0.65,
+  xlab = "TV",
+  ylab = "sales",
+  main = "Observed sales, fitted line and residuals",
+  las = 1
+)
+abline(fit_tv, lwd = 2.3, col = "#003366")
+for (i in seq_len(nrow(advertising))) {
+  segments(
+    advertising$TV[i], fitted(fit_tv)[i],
+    advertising$TV[i], advertising$sales[i],
+    lty = 3,
+    col = "grey55"
+  )
+}
+legend(
+  "topleft",
+  legend = c("Fitted line", "Residuals"),
+  lty = c(1, 3),
+  lwd = c(2.3, 1.2),
+  col = c("#003366", "grey55"),
+  bty = "n",
+  cex = 0.85
+)
+box()
+par(old_par)
+```
+
+# From simple to multiple regression
+
+The Advertising example has more than one possible predictor:
+
+- TV budget
+- radio budget
+- newspaper budget
+
+\pause
+
+A multiple regression model lets us study the relationship between sales and all three advertising budgets at the same time.
+
+\pause
+
+This is a special case of the **general linear model**.
+
+# The general linear model
+
+\begin{block}{Model formulation}
+With $p$ predictors, the model is
+$$
+Y
+=
+\beta_0\mathbf 1_n+
+\beta_1X_1+\beta_2X_2+\cdots+\beta_pX_p+
+\mathbf e.
+$$
+Equivalently,
+$$
+Y=X\boldsymbol\beta+\mathbf e.
+$$
+\end{block}
+
+\pause
+
+Here $X$ contains an intercept column and $p$ predictor columns. Therefore $X$ has $k=p+1$ columns.
+
+# Matrix notation {.smaller}
+
+The model is
+$$
+Y_{n\times 1}=X_{n\times k}\boldsymbol\beta_{k\times 1}+\mathbf e_{n\times 1},
+\qquad k=p+1.
+$$
+
+\pause
+
+where
+$$
+Y=
+\begin{pmatrix}Y_1\\\vdots\\Y_n\end{pmatrix},
+\quad
+X=
+\begin{pmatrix}
+1 & X_{11} & X_{12} & \cdots & X_{1p}\\
+\vdots & \vdots & \vdots & \ddots & \vdots\\
+1 & X_{n1} & X_{n2} & \cdots & X_{np}
+\end{pmatrix},
+\quad
+\boldsymbol\beta=
+\begin{pmatrix}\beta_0\\\beta_1\\\vdots\\\beta_p\end{pmatrix}.
+$$
+
+# Error assumptions
+
+A standard version of the general linear model assumes
+$$
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n).
+$$
+
+\pause
+
+This means:
+
+- the errors have mean $0$
+- the errors have common variance $\sigma^2$
+- the errors are uncorrelated
+- under the normal assumption, the errors are independent
+
+\pause
+
+It follows that
+$$
+Y\sim N_n(X\boldsymbol\beta,\sigma^2I_n).
+$$
+
+# Estimating the coefficients
+
+The least-squares estimator chooses $\boldsymbol\beta$ to minimise the residual sum of squares:
+$$
+RSS(\boldsymbol\beta)
+=
+(Y-X\boldsymbol\beta)^T(Y-X\boldsymbol\beta).
+$$
+
+\pause
+
+Under normal errors, this is also the maximum likelihood estimator of $\boldsymbol\beta$.
+
+\pause
+
+For estimation, the normality assumption is not what gives the formula. The formula comes from minimising the squared residuals.
+
+# The normal equations {.smaller}
+
+Expand the residual sum of squares:
+$$
+\begin{aligned}
+RSS(\boldsymbol\beta)
+&=(Y-X\boldsymbol\beta)^T(Y-X\boldsymbol\beta)\\
+&=Y^TY-2\boldsymbol\beta^TX^TY+\boldsymbol\beta^TX^TX\boldsymbol\beta.
+\end{aligned}
+$$
+
+\pause
+
+Differentiating with respect to $\boldsymbol\beta$ and setting the derivative equal to zero gives
+$$
+-2X^TY+2X^TX\hat{\boldsymbol\beta}=0.
+$$
+
+\pause
+
+Therefore
+$$
+X^TX\hat{\boldsymbol\beta}=X^TY.
+$$
+
+These are called the **normal equations**.
+
+# The least-squares estimator
+
+If $X$ has full column rank, then $X^TX$ is invertible and the normal equations have the solution
+
+\begin{block}{Least-squares estimator}
+$$
+\boxed{
+\hat{\boldsymbol\beta}
+=
+(X^TX)^{-1}X^TY
+}.
+$$
+\end{block}
+
+\pause
+
+- Full column rank means the columns of $X$ are linearly independent.
+- This rules out exact collinearity among the intercept and predictors.
+- If $X^TX$ is not invertible, the fitted model is not uniquely identified by this formula.
+
+# Fitted values and residuals
+
+The fitted values are
+$$
+\hat Y=X\hat{\boldsymbol\beta}.
+$$
+
+\pause
+
+The residuals are
+$$
+\hat{\mathbf e}=Y-X\hat{\boldsymbol\beta}=Y-\hat Y.
+$$
+
+\pause
+
+So each residual is
+$$
+\hat e_i = y_i-\hat y_i.
+$$
+
+Residuals are observed deviations from the fitted model, while errors are unobserved random quantities in the model.
+
+# The sampling distribution of $\hat{\boldsymbol\beta}$ {.smaller}
+
+\begin{block}{Result}
+Under the model
+$$
+Y=X\boldsymbol\beta+\mathbf e,
+\qquad
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n),
+$$
+with $X$ full column rank,
+$$
+\boxed{
+\hat{\boldsymbol\beta}
+\sim
+N_k\left(
+\boldsymbol\beta,
+\sigma^2(X^TX)^{-1}
+\right)
+}.
+$$
+\end{block}
+
+\pause
+
+This follows because $Y$ is multivariate normal and $\hat{\boldsymbol\beta}$ is a linear transformation of $Y$.
+
+# Why $\hat{\boldsymbol\beta}$ is random
+
+The formula
+$$
+\hat{\boldsymbol\beta}=(X^TX)^{-1}X^TY
+$$
+contains $Y$.
+
+\pause
+
+If we repeated the same study under the same conditions, the random errors would change, so the observed response vector $Y$ would change.
+
+\pause
+
+Therefore the estimated coefficients would also change.
+
+\pause
+
+The sampling distribution of $\hat{\boldsymbol\beta}$ describes this variation over repeated samples.
+
+# Visualising sampling variation {.smaller}
+
+```{r}
+#| fig-width: 8.0
+#| fig-height: 3.6
+#| out-width: "88%"
+set.seed(2005)
+n_sim <- 2000
+n <- 60
+x <- seq(0, 1, length.out = n)
+beta0 <- 2
+beta1 <- 3
+sigma <- 0.7
+sim_coef <- replicate(n_sim, {
+  y <- beta0 + beta1 * x + rnorm(n, sd = sigma)
+  coef(lm(y ~ x))
+})
+old_par <- par(
+  mfrow = c(1, 2),
+  mar = c(3.6, 3.8, 2.2, 0.6),
+  mgp = c(2.2, 0.7, 0),
+  tcl = -0.25
+)
+hist(
+  sim_coef[1, ],
+  breaks = 28,
+  probability = TRUE,
+  col = "grey85",
+  border = "grey45",
+  xlab = expression(hat(beta)[0]),
+  main = expression("Sampling distribution of " * hat(beta)[0]),
+  las = 1
+)
+lines(density(sim_coef[1, ]), lwd = 2.2, col = "#003366")
+hist(
+  sim_coef[2, ],
+  breaks = 28,
+  probability = TRUE,
+  col = "grey85",
+  border = "grey45",
+  xlab = expression(hat(beta)[1]),
+  main = expression("Sampling distribution of " * hat(beta)[1]),
+  las = 1
+)
+lines(density(sim_coef[2, ]), lwd = 2.2, col = "#003366")
+par(old_par)
+```
+
+# Linear functions of coefficients {.smaller}
+
+If
+$$
+\hat{\boldsymbol\beta}
+\sim
+N_k\left(\boldsymbol\beta,\sigma^2(X^TX)^{-1}\right),
+$$
+and $A$ is a fixed $q\times k$ matrix, then
+
+\begin{block}{Linear transformation result}
+$$
+A\hat{\boldsymbol\beta}
+\sim
+N_q\left(
+A\boldsymbol\beta,
+\sigma^2A(X^TX)^{-1}A^T
+\right).
+$$
+\end{block}
+
+\pause
+
+This lets us obtain distributions for individual coefficients, differences of coefficients and fitted means.
+
+# Example: linear functions of coefficients {.smaller}
+
+Suppose
+$$
+(X^TX)^{-1}=\begin{pmatrix}5&-1\\-1&2\end{pmatrix},
+\qquad
+A=
+\begin{pmatrix}
+1&1\\
+4&-1\\
+1&0\\
+0&1
+\end{pmatrix}.
+$$
+
+\pause
+
+Then
+$$
+A\hat{\boldsymbol\beta}
+=
+\begin{pmatrix}
+\hat\beta_0+\hat\beta_1\\
+4\hat\beta_0-\hat\beta_1\\
+\hat\beta_0\\
+\hat\beta_1
+\end{pmatrix}
+$$
+and
+$$
+A\hat{\boldsymbol\beta}
+\sim
+N_4\left(
+A\boldsymbol\beta,
+\sigma^2A(X^TX)^{-1}A^T
+\right).
+$$
+
+# Residual variance: MLE and unbiased estimator
+
+The maximum likelihood estimator of $\sigma^2$ is
+$$
+\hat\sigma^2
+=
+\frac{1}{n}(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta})
+=
+\frac{RSS}{n}.
+$$
+
+\pause
+
+This estimator is biased because fitting $k$ coefficients uses $k$ degrees of freedom.
+
+\pause
+
+We therefore use
+$$
+\boxed{
+s^2
+=
+\frac{1}{n-k}(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta})
+=
+\frac{RSS}{n-k}
+}.
+$$
+
+# Distribution of the residual variance
+
+\begin{block}{Result}
+Under the normal general linear model,
+$$
+\frac{(n-k)s^2}{\sigma^2}
+=
+\frac{RSS}{\sigma^2}
+\sim
+\chi^2_{n-k}.
+$$
+\end{block}
+
+\pause
+
+The $n-k$ degrees of freedom arise because:
+
+- there are $n$ observed responses
+- $k$ regression coefficients are estimated
+- the residual vector is constrained to lie in an $(n-k)$-dimensional residual space
+
+# The residual-maker matrix {.smaller}
+
+Define
+$$
+H=X(X^TX)^{-1}X^T,
+\qquad
+M=I_n-H.
+$$
+
+\pause
+
+Then
+$$
+\hat Y=HY,
+\qquad
+\hat{\mathbf e}=MY,
+\qquad
+RSS=Y^TMY.
+$$
+
+\pause
+
+The matrix $H$ projects $Y$ onto the column space of $X$.
+
+\pause
+
+The matrix $M$ removes that projection, leaving the residual component.
+
+# Why projection matrices matter
+
+The residual-maker matrix
+$$
+M=I_n-X(X^TX)^{-1}X^T
+$$
+has three key properties:
+
+- $M$ is symmetric
+- $M$ is idempotent, so $M^2=M$
+- $MX=0$ and $X^TM=0$
+
+\pause
+
+These properties imply
+$$
+RSS=Y^TMY=\mathbf e^TM\mathbf e
+$$
+and, under normal errors,
+$$
+RSS/\sigma^2\sim\chi^2_{n-k}.
+$$
+
+# Advertising model
+
+For the Advertising data set, the multiple regression model is
+$$
+\text{sales}
+=
+\beta_0+
+\beta_1\,\text{TV}
++
+\beta_2\,\text{radio}
++
+\beta_3\,\text{newspaper}
++e.
+$$
+
+\pause
+
+Here:
+
+- $Y$ is `sales`
+- $p=3$ predictors
+- $k=4$ coefficients, including the intercept
+
+# Advertising coefficients {.smaller}
+
+```{r}
+#| results: asis
+fit_adv <- lm(sales ~ TV + radio + newspaper, data = advertising)
+coefs <- coef(summary(fit_adv))[, c("Estimate", "Std. Error"), drop = FALSE]
+knitr::kable(
+  round(coefs, 4),
+  col.names = c("Estimate", "Std. Error"),
+  caption = "Regression coefficients for the Advertising data set"
+)
+```
+
+\pause
+
+A coefficient in a multiple regression model is interpreted **holding the other predictors constant**.
+
+\pause
+
+For example, the TV coefficient estimates the change in mean sales associated with a one-unit increase in TV advertising budget, holding radio and newspaper budgets fixed.
+
+# Interpreting the Advertising model
+
+The advertising budgets are measured in thousands of dollars.
+
+\pause
+
+So, if the TV coefficient is approximately $0.0458$, then increasing the TV budget by $1{,}000$ dollars is associated with an increase of about $0.0458$ units of sales, holding radio and newspaper spending fixed.
+
+\pause
+
+Equivalently, increasing the TV budget by $10{,}000$ dollars is associated with an increase of about $0.458$ units of sales, holding the other budgets fixed.
+
+\pause
+
+The phrase **holding fixed** is essential: this is not the same as changing all advertising budgets together.
+
+# Summary
+
+In this deck, we introduced the general linear model
+$$
+Y=X\boldsymbol\beta+\mathbf e,
+\qquad
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n).
+$$
+
+\pause
+
+The key estimates and distributions are
+$$
+\hat{\boldsymbol\beta}=(X^TX)^{-1}X^TY,
+$$
+$$
+\hat{\boldsymbol\beta}
+\sim
+N_k\left(\boldsymbol\beta,\sigma^2(X^TX)^{-1}\right),
+$$
+$$
+s^2=\frac{RSS}{n-k},
+\qquad
+\frac{(n-k)s^2}{\sigma^2}\sim\chi^2_{n-k}.
+$$

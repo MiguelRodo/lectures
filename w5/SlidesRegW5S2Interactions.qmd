@@ -1,0 +1,673 @@
+---
+title: "Regression Week V: Matching the model to the data"
+subtitle: "Slide deck II: Interactions"
+author: "Miguel Rodo"
+institute: University of Cape Town
+date: today
+bibliography: zotero.bib
+format:
+  beamer:
+    embed-resources: true
+    aspectratio: 169
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+    include-in-header:
+      file: ../preamble.tex
+    keep-tex: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| include: false
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+
+format_number <- function(x, digits = 3) {
+  format(signif(x, digits), trim = TRUE, scientific = FALSE)
+}
+
+make_plot_window <- function() {
+  par(
+    mar = c(4.0, 4.2, 2.2, 0.8),
+    mgp = c(2.3, 0.7, 0),
+    tcl = -0.25,
+    las = 1
+  )
+}
+
+linear_combination_test <- function(fit, ell, value = 0) {
+  ell <- matrix(ell, ncol = 1)
+  beta_hat <- matrix(coef(fit), ncol = 1)
+  estimate <- as.numeric(t(ell) %*% beta_hat)
+  se <- sqrt(as.numeric(t(ell) %*% vcov(fit) %*% ell))
+  t_stat <- (estimate - value) / se
+  p_value <- 2 * pt(abs(t_stat), df = df.residual(fit), lower.tail = FALSE)
+  data.frame(
+    Estimate = estimate,
+    `Std. error` = se,
+    `t statistic` = t_stat,
+    `p-value` = p_value,
+    check.names = FALSE
+  )
+}
+
+set.seed(551)
+n <- 140
+interaction_tbl <- data.frame(
+  x = runif(n, 0, 10),
+  group = factor(sample(c("A", "B"), n, replace = TRUE))
+)
+interaction_tbl$y <- ifelse(
+  interaction_tbl$group == "A",
+  3.0 + 0.45 * interaction_tbl$x,
+  2.0 + 1.35 * interaction_tbl$x
+) + rnorm(n, sd = 1.0)
+
+fit_additive <- lm(y ~ x + group, data = interaction_tbl)
+fit_interaction <- lm(y ~ x * group, data = interaction_tbl)
+interaction_grid <- expand.grid(
+  x = seq(min(interaction_tbl$x), max(interaction_tbl$x), length.out = 100),
+  group = levels(interaction_tbl$group)
+)
+interaction_grid$additive <- predict(fit_additive, newdata = interaction_grid)
+interaction_grid$interaction <- predict(fit_interaction, newdata = interaction_grid)
+
+coef_interaction <- coef(fit_interaction)
+x_bar <- mean(interaction_tbl$x)
+x0 <- 6
+
+set.seed(552)
+three_tbl <- data.frame(
+  x = runif(180, 0, 10),
+  group = factor(sample(c("A", "B", "C"), 180, replace = TRUE))
+)
+three_tbl$y <- with(
+  three_tbl,
+  ifelse(group == "A", 4 + 0.35 * x,
+    ifelse(group == "B", 3 + 1.00 * x, 5 + 1.45 * x)
+  ) + rnorm(180, sd = 1.2)
+)
+fit_three <- lm(y ~ x * group, data = three_tbl)
+```
+
+# Why interactions matter
+
+A regression coefficient is often described as the effect of an explanatory variable while holding the others fixed.
+
+\pause
+
+An interaction asks whether that effect itself depends on another explanatory variable.
+
+\pause
+
+For example:
+
+- Does the association between study time and test score differ by tutorial group?
+- Does the association between dose and response differ by treatment arm?
+- Does the difference between two groups change as age changes?
+
+# Lecture outline
+
+By the end of this deck, you should be able to:
+
+- Explain what an interaction means in a regression model
+- Construct the design matrix for a continuous-by-categorical interaction
+- Derive group-specific fitted lines
+- Interpret main effects in the presence of an interaction
+- Test whether slopes differ between groups
+- Test group differences at a specified value of $X$
+- Extend the ideas to several factor levels and other interaction types
+
+# Example: different fitted slopes by group
+
+```{r}
+#| fig-width: 7.4
+#| fig-height: 4.2
+#| out-width: "82%"
+old_par <- par(no.readonly = TRUE)
+make_plot_window()
+plot(
+  interaction_tbl$x,
+  interaction_tbl$y,
+  pch = ifelse(interaction_tbl$group == "A", 19, 17),
+  col = ifelse(interaction_tbl$group == "A", "#003366", "#990000"),
+  cex = 0.75,
+  xlab = "x",
+  ylab = "y",
+  main = "The slope appears to depend on group"
+)
+lines(
+  interaction_grid$x[interaction_grid$group == "A"],
+  interaction_grid$interaction[interaction_grid$group == "A"],
+  lwd = 2.2,
+  col = "#003366"
+)
+lines(
+  interaction_grid$x[interaction_grid$group == "B"],
+  interaction_grid$interaction[interaction_grid$group == "B"],
+  lwd = 2.2,
+  col = "#990000"
+)
+legend(
+  "topleft",
+  legend = c("Group A", "Group B"),
+  pch = c(19, 17),
+  col = c("#003366", "#990000"),
+  bty = "n"
+)
+box()
+par(old_par)
+```
+
+# Additive model versus interaction model
+
+An additive model says the group difference is constant:
+
+$$
+E(Y\mid x,G)=\beta_0+\beta_Xx+\beta_GI(G=B).
+$$
+
+\pause
+
+An interaction model says the slope can also differ by group:
+
+$$
+E(Y\mid x,G)=\beta_0+\beta_Xx+\beta_GI(G=B)+\beta_{X:G}xI(G=B).
+$$
+
+# Visual comparison
+
+```{r}
+#| fig-width: 9.2
+#| fig-height: 4.2
+#| out-width: "92%"
+old_par <- par(no.readonly = TRUE)
+par(mfrow = c(1, 2))
+make_plot_window()
+plot(
+  interaction_tbl$x,
+  interaction_tbl$y,
+  pch = ifelse(interaction_tbl$group == "A", 19, 17),
+  col = ifelse(interaction_tbl$group == "A", "#003366", "#990000"),
+  cex = 0.65,
+  xlab = "x",
+  ylab = "y",
+  main = "Additive model"
+)
+for (g in levels(interaction_tbl$group)) {
+  idx <- interaction_grid$group == g
+  lines(
+    interaction_grid$x[idx],
+    interaction_grid$additive[idx],
+    lwd = 2.2,
+    col = ifelse(g == "A", "#003366", "#990000")
+  )
+}
+box()
+make_plot_window()
+plot(
+  interaction_tbl$x,
+  interaction_tbl$y,
+  pch = ifelse(interaction_tbl$group == "A", 19, 17),
+  col = ifelse(interaction_tbl$group == "A", "#003366", "#990000"),
+  cex = 0.65,
+  xlab = "x",
+  ylab = "y",
+  main = "Interaction model"
+)
+for (g in levels(interaction_tbl$group)) {
+  idx <- interaction_grid$group == g
+  lines(
+    interaction_grid$x[idx],
+    interaction_grid$interaction[idx],
+    lwd = 2.2,
+    col = ifelse(g == "A", "#003366", "#990000")
+  )
+}
+box()
+par(old_par)
+```
+
+# Model formula and R syntax
+
+For a two-level factor with reference group A:
+
+$$
+Y_i
+=
+\beta_0+eta_Xx_i+eta_GI(G_i=B)+
+\beta_{X:G}x_iI(G_i=B)+e_i.
+$$
+
+\pause
+
+In R:
+
+```{r}
+#| echo: true
+fit_interaction <- lm(y ~ x * group, data = interaction_tbl)
+```
+
+\pause
+
+The formula `x * group` expands to `x + group + x:group`.
+
+# Design-matrix rows {.smaller}
+
+```{r}
+#| results: asis
+row_A <- which(interaction_tbl$group == "A")[1]
+row_B <- which(interaction_tbl$group == "B")[1]
+X_int <- model.matrix(fit_interaction)[c(row_A, row_B), ]
+rownames(X_int) <- c("one group A row", "one group B row")
+knitr::kable(X_int, format = "latex", digits = 3)
+```
+
+\pause
+
+The interaction column is the product of $x$ and the group-B dummy variable.
+
+# Group-specific fitted lines
+
+For group A,
+
+$$
+E(Y\mid x,A)=\beta_0+\beta_Xx.
+$$
+
+\pause
+
+For group B,
+
+$$
+\begin{aligned}
+E(Y\mid x,B)
+&=\beta_0+\beta_Xx+\beta_G+\beta_{X:G}x\\
+&=(\beta_0+\beta_G)+(\beta_X+\beta_{X:G})x.
+\end{aligned}
+$$
+
+# Intercepts and slopes {.smaller}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Quantity & Group A & Group B \\
+\hline
+Intercept & $\beta_0$ & $\beta_0+\beta_G$ \\
+Slope in $x$ & $\beta_X$ & $\beta_X+\beta_{X:G}$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\pause
+
+So $\beta_{X:G}$ is the difference between the group-B slope and the group-A slope.
+
+# Estimated coefficients {.smaller}
+
+```{r}
+#| results: asis
+coef_tbl <- data.frame(
+  Term = names(coef_interaction),
+  Estimate = unname(coef_interaction),
+  `Std. error` = summary(fit_interaction)$coefficients[, "Std. Error"],
+  `p-value` = summary(fit_interaction)$coefficients[, "Pr(>|t|)"],
+  check.names = FALSE
+)
+knitr::kable(coef_tbl, format = "latex", digits = 3)
+```
+
+\pause
+
+These individual coefficient tests answer only some of the useful interaction questions.
+
+# Interpreting the fitted slopes
+
+For the fitted model:
+
+$$
+\widehat{\text{slope for group A}}
+=
+\hat\beta_X
+=
+`r format_number(coef_interaction["x"])`.
+$$
+
+\pause
+
+$$
+\widehat{\text{slope for group B}}
+=
+\hat\beta_X+\hat\beta_{X:G}
+=
+`r format_number(coef_interaction["x"] + coef_interaction["x:groupB"])`.
+$$
+
+\pause
+
+The difference in slopes is
+
+$$
+\hat\beta_{X:G}
+=
+`r format_number(coef_interaction["x:groupB"])`.
+$$
+
+# Main effects in the presence of an interaction
+
+In this model, $\beta_G$ is not the overall difference between groups.
+
+\pause
+
+It is the difference between groups when $x=0$:
+
+$$
+E(Y\mid x=0,B)-E(Y\mid x=0,A)=\beta_G.
+$$
+
+\pause
+
+If $x=0$ is not meaningful, then the group coefficient may not answer a useful scientific question.
+
+# Centre the continuous variable when needed
+
+Let
+
+$$
+z_i=x_i-x_0.
+$$
+
+Then fit
+
+$$
+Y_i=\gamma_0+\gamma_Xz_i+\gamma_GI(G_i=B)+\gamma_{X:G}z_iI(G_i=B)+e_i.
+$$
+
+\pause
+
+Now $\gamma_G$ is the group difference at $x=x_0$.
+
+\pause
+
+Common choices for $x_0$ include the sample mean or a scientifically meaningful value.
+
+# Difference between groups at a specified value
+
+At $X=x_0$, the fitted group-B minus group-A difference is
+
+$$
+\{\beta_0+\beta_G+(\beta_X+\beta_{X:G})x_0\}
+-
+\{\beta_0+\beta_Xx_0\}.
+$$
+
+\pause
+
+Therefore,
+
+$$
+E(Y\mid x_0,B)-E(Y\mid x_0,A)
+=
+\beta_G+x_0\beta_{X:G}.
+$$
+
+# Test: do the slopes differ?
+
+The slopes differ if
+
+$$
+\beta_{X:G}\ne0.
+$$
+
+\pause
+
+So the test is
+
+$$
+H_0:\beta_{X:G}=0
+\qquad\text{against}\qquad
+H_1:\beta_{X:G}\ne0.
+$$
+
+\pause
+
+For a two-level factor, this is the ordinary $t$ test for the interaction coefficient.
+
+# Test: is the slope non-zero in group B?
+
+The group-B slope is
+
+$$
+\beta_X+\beta_{X:G}.
+$$
+
+\pause
+
+So we test
+
+$$
+H_0:\beta_X+\beta_{X:G}=0
+\qquad\text{against}\qquad
+H_1:\beta_X+\beta_{X:G}\ne0.
+$$
+
+\pause
+
+This is a linear-combination test with
+
+$$
+\ell'\boldsymbol\beta
+=
+\begin{bmatrix}0&1&0&1\end{bmatrix}
+\boldsymbol\beta.
+$$
+
+# Linear-combination test result {.smaller}
+
+```{r}
+#| results: asis
+test_slope_B <- linear_combination_test(fit_interaction, c(0, 1, 0, 1))
+knitr::kable(test_slope_B, format = "latex", digits = 4)
+```
+
+\pause
+
+This uses the same linear-combination inference developed in Week III.
+
+# Test: do groups differ at $x_0$?
+
+At $x_0=`r format_number(x0, 2)`$, the group difference is
+
+$$
+\beta_G+x_0\beta_{X:G}.
+$$
+
+\pause
+
+The null hypothesis is
+
+$$
+H_0:\beta_G+x_0\beta_{X:G}=0.
+$$
+
+\pause
+
+This is tested using
+
+$$
+\ell'
+=
+\begin{bmatrix}0&0&1&x_0\end{bmatrix}.
+$$
+
+# Group-difference test result {.smaller}
+
+```{r}
+#| results: asis
+test_diff_x0 <- linear_combination_test(fit_interaction, c(0, 0, 1, x0))
+knitr::kable(test_diff_x0, format = "latex", digits = 4)
+```
+
+\pause
+
+The test depends on the value of $x_0$ because the group difference changes with $x$.
+
+# Several-level categorical variables {.smaller}
+
+For an $a$-level factor with reference level 1:
+
+$$
+\begin{aligned}
+E(Y\mid X,G)
+&=
+\beta_0+eta_XX\\
+&\quad+
+\sum_{j=2}^a\beta_{G_j}I(G=j)
++
+\sum_{j=2}^a\beta_{X:G_j}XI(G=j).
+\end{aligned}
+$$
+
+\pause
+
+For group $j$:
+
+$$
+\text{intercept}=\beta_0+\beta_{G_j},
+\qquad
+\text{slope}=\beta_X+\beta_{X:G_j}.
+$$
+
+# Fitted lines for three groups
+
+```{r}
+#| fig-width: 7.4
+#| fig-height: 4.2
+#| out-width: "82%"
+old_par <- par(no.readonly = TRUE)
+make_plot_window()
+cols <- c("#003366", "#990000", "#006633")
+plot(
+  three_tbl$x,
+  three_tbl$y,
+  pch = as.numeric(three_tbl$group) + 14,
+  col = cols[as.numeric(three_tbl$group)],
+  cex = 0.7,
+  xlab = "x",
+  ylab = "y",
+  main = "Three group-specific fitted lines"
+)
+for (g in levels(three_tbl$group)) {
+  x_seq <- seq(min(three_tbl$x), max(three_tbl$x), length.out = 100)
+  new_dat <- data.frame(x = x_seq, group = factor(g, levels = levels(three_tbl$group)))
+  lines(x_seq, predict(fit_three, newdata = new_dat), lwd = 2.2, col = cols[which(levels(three_tbl$group) == g)])
+}
+legend(
+  "topleft",
+  legend = paste("Group", levels(three_tbl$group)),
+  pch = 15:17,
+  col = cols,
+  bty = "n"
+)
+box()
+par(old_par)
+```
+
+# Tests with several groups {.smaller}
+
+Common questions become linear restrictions:
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+Question & Null hypothesis \\
+\hline
+Does group $j$ have a different slope from reference? & $\beta_{X:G_j}=0$ \\
+Do any slopes differ across groups? & $\beta_{X:G_2}=\cdots=\beta_{X:G_a}=0$ \\
+Is the slope non-zero in group $j$? & $\beta_X+\beta_{X:G_j}=0$ \\
+Does group $j$ differ from reference at $x_0$? & $\beta_{G_j}+x_0\beta_{X:G_j}=0$ \\
+Does factor $G$ affect the fitted line? & all group and interaction terms are zero \\
+\hline
+\end{tabular}
+\end{center}
+
+# Joint tests use the $F$ test
+
+When the null hypothesis contains several restrictions, use an $F$ test.
+
+\pause
+
+For example, in the three-level case, testing whether any slope differs by group uses
+
+$$
+H_0:\beta_{X:G_B}=\beta_{X:G_C}=0.
+$$
+
+\pause
+
+Equivalently, compare the additive model to the interaction model.
+
+# Reduced-model comparison in R {.smaller}
+
+```{r}
+#| echo: true
+fit_three_additive <- lm(y ~ x + group, data = three_tbl)
+fit_three_interaction <- lm(y ~ x * group, data = three_tbl)
+anova(fit_three_additive, fit_three_interaction)
+```
+
+\pause
+
+This is the same full-versus-reduced-model logic used in earlier hypothesis-testing and ANOVA slides.
+
+# Other interaction types
+
+The same idea extends beyond continuous-by-categorical interactions.
+
+\pause
+
+- Categorical by categorical:
+
+$$
+Y\sim A*B.
+$$
+
+The difference between levels of one factor may depend on the level of the other factor.
+
+\pause
+
+- Continuous by continuous:
+
+$$
+Y_i=\beta_0+\beta_1x_i+\beta_2z_i+\beta_3x_iz_i+e_i.
+$$
+
+The slope in $x$ is $\beta_1+\beta_3z_i$.
+
+# Interaction workflow
+
+When fitting an interaction model:
+
+1. Plot the fitted relationship separately by group or value of the modifier.
+2. Write the model explicitly.
+3. Derive the fitted mean in each group or condition.
+4. Interpret main effects only at their reference values.
+5. Translate each substantive question into a linear restriction.
+6. Use a $t$ test for one restriction and an $F$ test for several restrictions.
+
+# Summary
+
+- An interaction means that the effect of one explanatory variable depends on another.
+- In a continuous-by-categorical interaction, each group can have its own fitted line.
+- Main effects are conditional effects at reference values.
+- Group differences depend on $x$ when slopes differ.
+- Most useful interaction questions are linear-combination or joint-restriction tests.
