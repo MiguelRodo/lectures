@@ -1,0 +1,811 @@
+---
+title: "ISOMAP: Changing the Distances Before MDS"
+author: Miguel Rodo
+date: "2026-07-31"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(cowplot)
+library(ggrepel)
+library(igraph)
+
+knitr::opts_chunk$set(
+  fig.align = "center",
+  out.width = "80%"
+)
+
+simulate_swiss_roll <- function(
+  n = 500,
+  seed = 5077,
+  noise_sd = 0
+) {
+  set.seed(seed)
+
+  t <- 1.5 * pi * (1 + 2 * runif(n))
+  height <- runif(n, min = 0, max = 20)
+
+  x1 <- t * cos(t) + rnorm(n, sd = noise_sd)
+  x2 <- height + rnorm(n, sd = noise_sd)
+  x3 <- t * sin(t) + rnorm(n, sd = noise_sd)
+
+  # Arc length along the spiral:
+  # integral sqrt(1 + t^2) dt
+  arc_length <- 0.5 * (
+    t * sqrt(1 + t^2) +
+      asinh(t)
+  )
+
+  tibble(
+    observation = seq_len(n),
+    t = t,
+    height = height,
+    arc_length = arc_length,
+    x1 = x1,
+    x2 = x2,
+    x3 = x3
+  )
+}
+
+project_3d_to_2d <- function(
+  x1,
+  x2,
+  x3,
+  azimuth = -45,
+  elevation = 25
+) {
+  theta <- azimuth * pi / 180
+  phi <- elevation * pi / 180
+
+  horizontal <- cos(theta) * x1 -
+    sin(theta) * x3
+
+  depth <- sin(theta) * x1 +
+    cos(theta) * x3
+
+  vertical <- -sin(phi) * depth +
+    cos(phi) * x2
+
+  tibble(
+    display_x = horizontal,
+    display_y = vertical
+  )
+}
+
+build_knn_graph <- function(x, k) {
+  x <- as.matrix(x)
+  n <- nrow(x)
+
+  if (k < 1 || k >= n) {
+    stop("k must lie between 1 and n - 1.")
+  }
+
+  ambient_distance_mat <- as.matrix(
+    dist(x, method = "euclidean")
+  )
+
+  search_distance_mat <- ambient_distance_mat
+  diag(search_distance_mat) <- Inf
+
+  neighbour_indicator <- matrix(
+    FALSE,
+    nrow = n,
+    ncol = n
+  )
+
+  for (i in seq_len(n)) {
+    nearest <- order(
+      search_distance_mat[i, ],
+      decreasing = FALSE
+    )[seq_len(k)]
+
+    neighbour_indicator[i, nearest] <- TRUE
+  }
+
+  # Symmetrise the k-nearest-neighbour relation:
+  # connect i and j when either regards the other as a neighbour.
+  adjacent <- neighbour_indicator |
+    t(neighbour_indicator)
+
+  edge_index <- which(
+    adjacent & upper.tri(adjacent),
+    arr.ind = TRUE
+  )
+
+  edge_tbl <- tibble(
+    from = as.character(edge_index[, 1]),
+    to = as.character(edge_index[, 2]),
+    weight = ambient_distance_mat[edge_index]
+  )
+
+  graph <- igraph::graph_from_data_frame(
+    edge_tbl,
+    directed = FALSE,
+    vertices = tibble(
+      name = as.character(seq_len(n))
+    )
+  )
+
+  list(
+    graph = graph,
+    edges = edge_tbl,
+    ambient_distances = ambient_distance_mat,
+    components = igraph::components(graph)
+  )
+}
+
+fit_isomap <- function(x, k, ndim = 2) {
+  graph_info <- build_knn_graph(x, k)
+
+  if (graph_info$components$no != 1) {
+    stop(
+      paste0(
+        "The neighbourhood graph has ",
+        graph_info$components$no,
+        " connected components."
+      )
+    )
+  }
+
+  graph_distance_mat <- igraph::distances(
+    graph_info$graph,
+    weights = igraph::E(
+      graph_info$graph
+    )$weight
+  )
+
+  mds_fit <- cmdscale(
+    as.dist(graph_distance_mat),
+    k = ndim,
+    eig = TRUE
+  )
+
+  list(
+    graph_info = graph_info,
+    graph_distances = graph_distance_mat,
+    mds = mds_fit,
+    points = mds_fit$points
+  )
+}
+
+align_configuration <- function(
+  reference,
+  target,
+  allow_scaling = TRUE
+) {
+  reference <- as.matrix(reference)
+  target <- as.matrix(target)
+
+  reference_centre <- colMeans(reference)
+  target_centre <- colMeans(target)
+
+  reference_centred <- sweep(
+    reference,
+    MARGIN = 2,
+    STATS = reference_centre,
+    FUN = "-"
+  )
+
+  target_centred <- sweep(
+    target,
+    MARGIN = 2,
+    STATS = target_centre,
+    FUN = "-"
+  )
+
+  rotation_svd <- svd(
+    crossprod(
+      target_centred,
+      reference_centred
+    )
+  )
+
+  rotation <- rotation_svd$u %*%
+    t(rotation_svd$v)
+
+  target_aligned <- target_centred %*%
+    rotation
+
+  if (allow_scaling) {
+    scale_factor <- sum(
+      target_aligned *
+        reference_centred
+    ) /
+      sum(target_aligned^2)
+
+    target_aligned <- scale_factor *
+      target_aligned
+  }
+
+  sweep(
+    target_aligned,
+    MARGIN = 2,
+    STATS = reference_centre,
+    FUN = "+"
+  )
+}
+
+distance_preservation <- function(
+  target_distances,
+  coordinates
+) {
+  target <- as.vector(
+    as.dist(target_distances)
+  )
+
+  fitted <- as.vector(
+    dist(coordinates)
+  )
+
+  correlation <- cor(target, fitted)
+
+  tibble(
+    correlation = correlation,
+    residual_variance = 1 -
+      correlation^2
+  )
+}
+```
+
+<!--
+Suggested pacing for a two-hour session:
+
+00:00-00:12  Bridge from PCA and MDS
+00:12-00:30  Curved manifolds and geodesic distance
+00:30-00:48  Neighbourhood graphs and shortest paths
+00:48-01:03  The ISOMAP algorithm
+01:03-01:20  Swiss-roll example: PCA, classical MDS and ISOMAP
+01:20-01:40  Choosing the neighbourhood size
+01:40-01:52  Diagnostics and target dimension
+01:52-02:00  Failure modes, workflow and recap
+
+The more technical derivations and supplementary remarks are collapsed by default.
+-->
+
+## From PCA and MDS to ISOMAP
+
+Principal component analysis (PCA) constructs new variables by taking linear combinations of the original variables, in order to represent a high-dimensional dataset in fewer dimensions.
+
+Classical multidimensional scaling (MDS) differs from PCA in that it begins with pairwise dissimilarities rather than the original varibles.
+But it is ultimately a linear method, and in fact is exactly equivalent to PCA when the dissimilarities are ordinary Euclidean distances.
+
+$$
+\text{PCA scores}
+\quad\equiv\quad
+\text{classical MDS coordinates}.
+$$
+
+So, if we have that the distance between observations is not accurately represented by the straight-line distance between them, the PCA and classical MDS will not recover the underlying structure of the data.
+
+The key question is therefore:
+
+> What should we do when straight-line Euclidean distances do not represent movement along the structure of the data?
+
+Metric and non-metric MDS are non-linear extensions of MDS, and so can recover some non-linear structure.
+
+ISOMAP is another alternative.
+It relates closely to classical MDS, but addresses the issue by changing the dissimilarities before applying classical MDS.
+
+$$
+\boxed{
+\text{data}
+\longrightarrow
+\text{neighbourhood graph}
+\longrightarrow
+\text{shortest-path distances}
+\longrightarrow
+\text{classical MDS}
+}
+$$
+
+The final classical-scaling step is familiar.
+The nonlinear behaviour enters through the graph-based distances supplied to it.
+
+## Lower-dimensional objects embedded in higher-dimensional space
+
+Ultimately, ISOMAP is going to to base the distance between two observations in the high-dimensional space on the effectively lower-dimensional objects that these observations are assumed to lie on.
+We'll give a few examples to illustrate.
+
+The first example is a plane in three-dimensional space.
+
+```{r}
+#| label: fig-plane-in-three-dimensions
+#| fig-cap: "A two-dimensional plane embedded in three-dimensional space. The observations have three coordinates but vary in only two independent directions."
+#| fig-width: 8
+#| fig-height: 6
+
+set.seed(5077)
+
+x1_grid <- seq(-2, 2, length.out = 30)
+x2_grid <- seq(-2, 2, length.out = 30)
+
+# The plane is x3 = 0.6 x1 - 0.4 x2.
+x3_grid <- outer(
+  x1_grid,
+  x2_grid,
+  function(x1, x2) {
+    0.6 * x1 - 0.4 * x2
+  }
+)
+
+plane_points <- tibble::tibble(
+  x1 = runif(35, -1.8, 1.8),
+  x2 = runif(35, -1.8, 1.8)
+) |>
+  dplyr::mutate(
+    x3 = 0.6 * x1 - 0.4 * x2
+  )
+
+plane_projection <- persp(
+  x = x1_grid,
+  y = x2_grid,
+  z = x3_grid,
+  theta = 35,
+  phi = 25,
+  expand = 0.8,
+  col = adjustcolor(
+    "skyblue3",
+    alpha.f = 0.45
+  ),
+  border = adjustcolor(
+    "grey30",
+    alpha.f = 0.35
+  ),
+  ticktype = "detailed",
+  xlab = expression(x[1]),
+  ylab = expression(x[2]),
+  zlab = expression(x[3])
+)
+
+projected_points <- trans3d(
+  x = plane_points$x1,
+  y = plane_points$x2,
+  z = plane_points$x3,
+  pmat = plane_projection
+)
+
+points(
+  projected_points,
+  pch = 19,
+  cex = 0.8,
+  col = "dodgerblue4"
+)
+```
+
+The plane is defined by
+
+$$
+x_3=0.6x_1-0.4x_2.
+$$
+
+Equivalently, its points can be written parametrically as
+
+$$
+\begin{bmatrix}
+x_1 \\
+x_2 \\
+x_3
+\end{bmatrix}
+=
+
+u
+\begin{bmatrix}
+1 \\
+0 \\
+0.6
+\end{bmatrix}
++
+v
+\begin{bmatrix}
+0 \\
+1 \\
+-0.4
+\end{bmatrix},
+\qquad u,v\in\mathbb R.
+$$
+
+There are three measured coordinates, but only two free quantities, (u) and (v).
+The plane therefore is really only 2D, despite lying in 3D.
+
+A simpler object is a line in 2D.
+Suppose that the "real" distance between two points is the distance along the line.
+This is the same as the straight-line distance between them, and so we can use ordinary Euclidean distance with no problem.
+
+```{r}
+#| label: prepare-straight-manifold
+#| include: false
+
+straight_tbl <- tibble::tibble(
+  x = seq(-2, 2, length.out = 101)
+)
+straight_tbl <- straight_tbl |>
+  dplyr::mutate(
+    y = 2 * x + 1
+  )
+
+straight_endpoints <- tibble::tibble(
+  label = c("A", "B"),
+  x = c(-1.5, 1.5),
+  y = 2 * c(-1.5, 1.5) + 1
+)
+
+straight_euclidean_distance <- sqrt(
+  sum(
+    (
+      straight_endpoints[1, c("x", "y")] -
+        straight_endpoints[2, c("x", "y")]
+    )^2
+  )
+)
+
+straight_euclidean_distance |> signif(2)
+```
+
+```{r}
+#| label: fig-straight-manifold-distance
+#| echo: false
+#| fig-cap: "On a straight one-dimensional object, the Euclidean distance and geodesic distance are identical."
+
+ggplot() +
+  geom_path(
+    data = straight_tbl,
+    aes(x = x, y = y),
+    linewidth = 1.4,
+    colour = "grey25"
+  ) +
+  geom_segment(
+    aes(
+      x = straight_endpoints$x[1],
+      y = straight_endpoints$y[1],
+      xend = straight_endpoints$x[2],
+      yend = straight_endpoints$y[2]
+    ),
+    colour = "red3",
+    linewidth = 1.5,
+    linetype = "dashed"
+  ) +
+  geom_point(
+    data = straight_endpoints,
+    aes(x = x, y = y),
+    size = 4
+  ) +
+  ggrepel::geom_text_repel(
+    data = straight_endpoints,
+    aes(x = x, y = y, label = label),
+    nudge_y = 0.16,
+    fontface = "bold"
+  ) +
+  # annotate(
+  #   "text",
+  #   x = 0,
+  #   y = -0.18,
+  #   label = paste0(
+  #     "Euclidean distance = geodesic distance = ",
+  #     round(straight_euclidean_distance, 2)
+  #   ),
+  #   colour = "red3"
+  # ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") + 
+  theme(
+    # axis.text = element_blank(),
+    # axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+Suppose instead that the line was not straight, e.g.
+
+$$
+y=x^2.
+$$
+
+```{r}
+#| label: prepare-curved-manifold-distances
+#| include: false
+
+curve_tbl <- tibble::tibble(
+  x = seq(-1.5, 1.5, length.out = 501),
+  y = x^2
+)
+
+curve_endpoints <- tibble::tibble(
+  label = c("A", "B"),
+  x = c(-1, 1),
+  y = c(1, 1)
+)
+
+# Sampled observations on the part of the curve between A and B.
+curve_sample_tbl <- tibble::tibble(
+  x = seq(-1, 1, length.out = 13),
+  y = x^2
+)
+
+curve_euclidean_distance <- sqrt(
+  diff(curve_endpoints$x)^2 +
+    diff(curve_endpoints$y)^2
+)
+
+# Exact arc length of y = x^2 between x = -1 and x = 1.
+curve_geodesic_distance <- integrate(
+  function(x) {
+    sqrt(1 + (2 * x)^2)
+  },
+  lower = -1,
+  upper = 1
+)$value
+
+# Approximation obtained by joining neighbouring sampled points.
+curve_graph_distance <- sum(
+  sqrt(
+    diff(curve_sample_tbl$x)^2 +
+      diff(curve_sample_tbl$y)^2
+  )
+)
+
+tibble::tibble(
+  distance = c(
+    "Ambient Euclidean distance",
+    "Exact geodesic distance",
+    "Sample-based graph approximation"
+  ),
+  value = c(
+    curve_euclidean_distance,
+    curve_geodesic_distance,
+    curve_graph_distance
+  )
+)
+```
+
+```{r}
+#| label: fig-curved-manifold-distance
+#| echo: false
+#| fig-cap: "The straight-line Euclidean distance cuts through the ambient space. The geodesic distance follows the curved object. The dashed polyline approximates the geodesic using sampled observations."
+
+ggplot() +
+  geom_path(
+    data = curve_tbl,
+    aes(x = x, y = y),
+    linewidth = 1,
+    colour = "grey40"
+  ) +
+  geom_path(
+    data = dplyr::filter(
+      curve_tbl,
+      x >= -1,
+      x <= 1
+    ),
+    aes(x = x, y = y),
+    linewidth = 1.8,
+    colour = "navy"
+  ) +
+  geom_path(
+    data = curve_sample_tbl,
+    aes(x = x, y = y),
+    linewidth = 0.9,
+    colour = "deepskyblue4",
+    linetype = "dashed"
+  ) +
+  geom_point(
+    data = curve_sample_tbl,
+    aes(x = x, y = y),
+    size = 2,
+    colour = "deepskyblue4"
+  ) +
+  geom_segment(
+    aes(
+      x = curve_endpoints$x[1],
+      y = curve_endpoints$y[1],
+      xend = curve_endpoints$x[2],
+      yend = curve_endpoints$y[2]
+    ),
+    colour = "red3",
+    linewidth = 1.5
+  ) +
+  geom_point(
+    data = curve_endpoints,
+    aes(x = x, y = y),
+    size = 4
+  ) +
+  geom_text(
+    data = curve_endpoints,
+    aes(x = x, y = y, label = label),
+    nudge_y = 0.18,
+    fontface = "bold"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 1.17,
+    label = paste0(
+      "Direct path (length: ",
+      round(curve_euclidean_distance, 2),
+      ")"
+    ),
+    colour = "red3"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 0.28,
+    label = paste0(
+      "Path along line (length: ",
+      round(curve_geodesic_distance, 2),
+      ")"
+    ),
+    colour = "navy"
+  ) +
+  coord_equal(
+    xlim = c(-1.55, 1.55),
+    ylim = c(-0.1, 2.35),
+    expand = FALSE
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    # axis.text = element_blank(),
+    # axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+## Calculating distances using the lower-dimensional spacial structure
+
+The shortest distance along the curve between two points is termed the geodesic distance.
+
+If we actually knew the formula for the curve, we could calculate the lower-dimensional distance exactly.
+
+$$
+d_M(A,B)
+= 
+
+\int_{-1}^{1}
+\sqrt{1+\left(\frac{dy}{dx}\right)^2},dx
+= 
+
+\int_{-1}^{1}\sqrt{1+4x^2},dx
+\approx 2.96.
+$$
+
+If we did not actually know the full formula for the curve, but only knew its value at specific, short intervals, then we could approximate the geodesic distance by joining the points with short straight-line segments.
+
+For example, suppose that we had sampled the curve at 10 evenly-spaced points joining A and B.
+Then, the curve would look like this:
+
+```{r}
+x_vec_approx <- seq(-1, 1, length.out = 5)
+y_vec_approx <- approx(
+  x = curve_tbl$x,
+  y = curve_tbl$y,
+  xout = x_vec_approx
+)
+curve_tbl_approx <- tibble::tibble(
+  x = y_vec_approx$x,
+  y = y_vec_approx$y
+)
+int_length_vec <- sqrt(
+  diff(curve_tbl_approx$x)^2 +
+    diff(curve_tbl_approx$y)^2
+)
+path_length <- sum(int_length_vec)
+
+ggplot() +
+  geom_path(
+    data = curve_tbl,
+    aes(x = x, y = y),
+    linewidth = 1,
+    colour = "grey40"
+  ) +
+  geom_path(
+    data = curve_tbl_approx,
+    aes(x = x, y = y),
+    linewidth = 1.8,
+    colour = "navy"
+  ) +
+  geom_path(
+    data = curve_tbl_approx,
+    aes(x = x, y = y),
+    linewidth = 0.9,
+    colour = "deepskyblue4",
+    linetype = "dashed",
+    alpha = 0.5
+  ) +
+  geom_point(
+    data = curve_tbl_approx,
+    aes(x = x, y = y),
+    size = 2,
+    colour = "deepskyblue4"
+  ) +
+  geom_segment(
+    aes(
+      x = curve_endpoints$x[1],
+      y = curve_endpoints$y[1],
+      xend = curve_endpoints$x[2],
+      yend = curve_endpoints$y[2]
+    ),
+    colour = "red3",
+    linewidth = 1.5
+  ) +
+  geom_point(
+    data = curve_endpoints,
+    aes(x = x, y = y),
+    size = 4
+  ) +
+  geom_text(
+    data = curve_endpoints,
+    aes(x = x, y = y, label = label),
+    nudge_y = 0.18,
+    fontface = "bold"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 1.17,
+    label = paste0(
+      "Direct path (length: ",
+      round(curve_euclidean_distance, 2),
+      ")"
+    ),
+    colour = "red3"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 0.28,
+    label = paste0(
+      "Approximate path along curve (length: ",
+      round(path_length, 2),
+      ")"
+    ),
+    colour = "navy"
+  ) +
+  coord_equal(
+    xlim = c(-1.55, 1.55),
+    ylim = c(-0.1, 2.35),
+    expand = FALSE
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    # axis.text = element_blank(),
+    # axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+So, we can do a reasonable job of working out the distance along a shape even if we don't know the exact formula for it, as long as we have a sufficient number of points along the shape.
+
+## Working out the geodesic distance when the shape is entirely unknown
+
+In the previous example, we know that we needed to move from left to right along the x-axis to get from A to B, and so we could work out the geodesic distance by integrating along the curve.
+
+However, in higher-dimensions, we may not know the shape of the object at all, and so we cannot pre-define the paths between points.
+
+So, to approximate the geodesic distances between points, we're going to have to use the points themselves to define the paths.
+
+### A
+
+### Complete graph
+  
+This is where the neighbourhood graph comes in.
