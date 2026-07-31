@@ -577,7 +577,7 @@ tibble::tibble(
 ```{r}
 #| label: fig-curved-manifold-distance
 #| echo: false
-#| fig-cap: "The straight-line Euclidean distance cuts through the ambient space. The geodesic distance follows the curved object. The dashed polyline approximates the geodesic using sampled observations."
+#| fig-cap: "The straight-line Euclidean distance cuts through the space. The geodesic distance follows the curved object. The dashed polyline approximates the geodesic using sampled observations."
 
 ggplot() +
   geom_path(
@@ -692,6 +692,10 @@ For example, suppose that we had sampled the curve at 10 evenly-spaced points jo
 Then, the curve would look like this:
 
 ```{r}
+#| label: fig-curved-manifold-distance-approx
+#| echo: false
+#| fig-cap: "The subset of sampled points along the curve. The dashed line approximates the geodesic using these sampled observations."
+
 x_vec_approx <- seq(-1, 1, length.out = 5)
 y_vec_approx <- approx(
   x = curve_tbl$x,
@@ -804,8 +808,1239 @@ However, in higher-dimensions, we may not know the shape of the object at all, a
 
 So, to approximate the geodesic distances between points, we're going to have to use the points themselves to define the paths.
 
-### A
+### Graphs as discretised spaces
 
-### Complete graph
-  
+A **graph** is a collection of points and connections between points.
+The points are called **vertices** or **nodes**.
+The connections are called **edges**.
+
+For our purposes, each vertex is an observation.
+An edge means that two observations are treated as directly joined.
+If an edge has a weight, the weight is the cost or distance of travelling along that edge.
+
+Mathematically, a graph is usually written as
+
+$$
+G=(V,E),
+$$
+
+where $V$ is the set of vertices and $E$ is the set of edges.
+For example,
+
+$$
+V=\{A,B,C,D,E\}
+$$
+
+and
+
+$$
+E=\{(A,B),(B,C),(C,D),(D,E)\}.
+$$
+
+The same information can be written as an adjacency list:
+
+$$
+\begin{aligned}
+A&: B,\\
+B&: A,C,\\
+C&: B,D,\\
+D&: C,E,\\
+E&: D.
+\end{aligned}
+$$
+
+This means that $A$ is connected to $B$, $B$ is connected to $C$, and so on.
+It does **not** mean that $A$ is directly connected to $E$.
+To travel from $A$ to $E$, we must move along the chain
+
+$$
+A \to B \to C \to D \to E.
+$$
+
+```{r}
+#| label: prepare-simple-graph
+#| include: false
+
+simple_vertex_tbl <- tibble::tibble(
+  label = c("A", "B", "C", "D", "E"),
+  x = c(0.0, 1.0, 2.0, 3.0, 4.0),
+  y = c(0.0, 0.4, 0.1, 0.7, 0.3)
+)
+
+simple_edge_tbl <- tibble::tribble(
+  ~from, ~to,
+  "A", "B",
+  "B", "C",
+  "C", "D",
+  "D", "E"
+)
+
+make_edge_segment_tbl <- function(vertex_tbl, edge_tbl) {
+  edge_tbl |>
+    dplyr::left_join(
+      vertex_tbl |>
+        dplyr::rename(
+          from = label,
+          x_from = x,
+          y_from = y
+        ),
+      by = "from"
+    ) |>
+    dplyr::left_join(
+      vertex_tbl |>
+        dplyr::rename(
+          to = label,
+          x_to = x,
+          y_to = y
+        ),
+      by = "to"
+    )
+}
+
+simple_edge_segment_tbl <- make_edge_segment_tbl(
+  vertex_tbl = simple_vertex_tbl,
+  edge_tbl = simple_edge_tbl
+)
+```
+
+```{r}
+#| label: fig-simple-graph
+#| echo: false
+#| fig-cap: "A simple graph. The only permitted moves are along the displayed edges."
+#| fig-width: 8
+#| fig-height: 4
+
+ggplot() +
+  geom_segment(
+    data = simple_edge_segment_tbl,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 1.2,
+    colour = "grey35"
+  ) +
+  geom_point(
+    data = simple_vertex_tbl,
+    aes(x = x, y = y),
+    size = 4,
+    colour = "deepskyblue4"
+  ) +
+  geom_text(
+    data = simple_vertex_tbl,
+    aes(x = x, y = y, label = label),
+    nudge_y = 0.22,
+    fontface = "bold"
+  ) +
+  coord_equal(
+    xlim = c(-0.25, 4.25),
+    ylim = c(-0.3, 1.15),
+    expand = FALSE
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+In this graph, the distance from $A$ to $E$ is not the length of the straight line from $A$ to $E$.
+There is no direct edge from $A$ to $E$.
+The relevant distance is the shortest distance obtained by travelling through connected points.
+
+If the edges have weights $w_{ij}$, the graph distance between vertices $i$ and $j$ is
+
+$$
+d_G(i,j)
+=
+\min_{\mathcal P:i\leadsto j}
+\sum_{(r,s)\in\mathcal P} w_{rs},
+$$
+
+where $\mathcal P$ ranges over all paths from $i$ to $j$.
+
+So, a graph turns the continuous space into a discretised space.
+Instead of being able to move in any direction, we can move only by stepping from one sampled point to another sampled point.
+
+### Complete graphs
+
+A **complete graph** connects every point to every other point.
+If there are $n$ observations, then every pair is joined by an edge.
+
+For an undirected complete graph,
+
+$$
+E
+=
+\{(i,j):1\leq i<j\leq n\}.
+$$
+
+The number of edges is therefore
+
+$$
+\frac{n(n-1)}{2}.
+$$
+
+For example, with five observations there are
+
+$$
+\frac{5(5-1)}{2}=10
+$$
+
+edges.
+
+```{r}
+#| label: prepare-complete-graph-example
+#| include: false
+
+make_complete_edge_tbl <- function(vertex_tbl) {
+  edge_mat <- t(
+    utils::combn(
+      vertex_tbl$label,
+      2
+    )
+  )
+
+  tibble::tibble(
+    from = edge_mat[, 1],
+    to = edge_mat[, 2]
+  )
+}
+
+complete_edge_tbl <- make_complete_edge_tbl(
+  simple_vertex_tbl
+)
+
+complete_edge_segment_tbl <- make_edge_segment_tbl(
+  vertex_tbl = simple_vertex_tbl,
+  edge_tbl = complete_edge_tbl
+)
+```
+
+```{r}
+#| label: fig-complete-graph
+#| echo: false
+#| fig-cap: "A complete graph on five observations. Every point is directly connected to every other point."
+#| fig-width: 8
+#| fig-height: 4
+
+ggplot() +
+  geom_segment(
+    data = complete_edge_segment_tbl,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 0.8,
+    alpha = 0.45,
+    colour = "grey35"
+  ) +
+  geom_point(
+    data = simple_vertex_tbl,
+    aes(x = x, y = y),
+    size = 4,
+    colour = "deepskyblue4"
+  ) +
+  geom_text(
+    data = simple_vertex_tbl,
+    aes(x = x, y = y, label = label),
+    nudge_y = 0.22,
+    fontface = "bold"
+  ) +
+  coord_equal(
+    xlim = c(-0.25, 4.25),
+    ylim = c(-0.3, 1.15),
+    expand = FALSE
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+A complete graph is the most permissive possible graph.
+There are no restrictions on which pairs can be joined directly.
+
+This is fine when the lower-dimensional object is a straight line.
+Every direct connection between two sampled points still lies on the line, so the direct Euclidean distance agrees with the distance along the object.
+
+```{r}
+#| label: prepare-complete-graph-straight-and-curved
+#| include: false
+
+straight_complete_points <- tibble::tibble(
+  label = paste0("P", seq_len(9)),
+  x = seq(-1, 1, length.out = 9)
+) |>
+  dplyr::mutate(
+    y = 0,
+    display_label = dplyr::case_when(
+      dplyr::row_number() == 1 ~ "A",
+      dplyr::row_number() == dplyr::n() ~ "B",
+      TRUE ~ ""
+    )
+  )
+
+curved_complete_points <- tibble::tibble(
+  label = paste0("P", seq_len(9)),
+  x = seq(-1, 1, length.out = 9)
+) |>
+  dplyr::mutate(
+    y = x^2,
+    display_label = dplyr::case_when(
+      dplyr::row_number() == 1 ~ "A",
+      dplyr::row_number() == dplyr::n() ~ "B",
+      TRUE ~ ""
+    )
+  )
+
+straight_complete_edges <- make_complete_edge_tbl(
+  straight_complete_points
+)
+
+curved_complete_edges <- make_complete_edge_tbl(
+  curved_complete_points
+)
+
+straight_complete_segments <- make_edge_segment_tbl(
+  vertex_tbl = straight_complete_points,
+  edge_tbl = straight_complete_edges
+)
+
+curved_complete_segments <- make_edge_segment_tbl(
+  vertex_tbl = curved_complete_points,
+  edge_tbl = curved_complete_edges
+)
+
+straight_adjacent_edges <- tibble::tibble(
+  from = straight_complete_points$label[-length(straight_complete_points$label)],
+  to = straight_complete_points$label[-1]
+)
+
+curved_adjacent_edges <- tibble::tibble(
+  from = curved_complete_points$label[-length(curved_complete_points$label)],
+  to = curved_complete_points$label[-1]
+)
+
+straight_adjacent_segments <- make_edge_segment_tbl(
+  vertex_tbl = straight_complete_points,
+  edge_tbl = straight_adjacent_edges
+)
+
+curved_adjacent_segments <- make_edge_segment_tbl(
+  vertex_tbl = curved_complete_points,
+  edge_tbl = curved_adjacent_edges
+)
+
+straight_complete_endpoint_distance <- sqrt(
+  diff(straight_complete_points$x[c(1, 9)])^2 +
+    diff(straight_complete_points$y[c(1, 9)])^2
+)
+
+straight_adjacent_path_distance <- sum(
+  sqrt(
+    diff(straight_complete_points$x)^2 +
+      diff(straight_complete_points$y)^2
+  )
+)
+
+curved_complete_endpoint_distance <- sqrt(
+  diff(curved_complete_points$x[c(1, 9)])^2 +
+    diff(curved_complete_points$y[c(1, 9)])^2
+)
+
+curved_adjacent_path_distance <- sum(
+  sqrt(
+    diff(curved_complete_points$x)^2 +
+      diff(curved_complete_points$y)^2
+  )
+)
+
+complete_graph_distance_tbl <- tibble::tibble(
+  object = c(
+    "Straight line",
+    "Straight line",
+    "Curved line",
+    "Curved line"
+  ),
+  graph_used = c(
+    "Complete graph",
+    "Adjacent-neighbour graph",
+    "Complete graph",
+    "Adjacent-neighbour graph"
+  ),
+  distance_from_A_to_B = c(
+    straight_complete_endpoint_distance,
+    straight_adjacent_path_distance,
+    curved_complete_endpoint_distance,
+    curved_adjacent_path_distance
+  )
+)
+```
+
+```{r}
+#| label: fig-complete-graph-straight-line
+#| echo: false
+#| fig-cap: "A complete graph on sampled points from a straight line. Direct connections do not leave the lower-dimensional object."
+#| fig-width: 8
+#| fig-height: 3.5
+
+ggplot() +
+  geom_segment(
+    data = straight_complete_segments,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 0.8,
+    alpha = 0.35,
+    colour = "grey35"
+  ) +
+  geom_segment(
+    data = straight_adjacent_segments,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 1.8,
+    colour = "navy"
+  ) +
+  geom_point(
+    data = straight_complete_points,
+    aes(x = x, y = y),
+    size = 3,
+    colour = "deepskyblue4"
+  ) +
+  geom_text(
+    data = straight_complete_points |>
+      dplyr::filter(display_label != ""),
+    aes(x = x, y = y, label = display_label),
+    nudge_y = 0.18,
+    fontface = "bold"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = -0.22,
+    label = paste0(
+      "Complete-graph distance = adjacent-path distance = ",
+      round(straight_complete_endpoint_distance, 2)
+    ),
+    colour = "navy"
+  ) +
+  coord_equal(
+    xlim = c(-1.15, 1.15),
+    ylim = c(-0.35, 0.35),
+    expand = FALSE
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+For the straight line, the complete graph does not introduce an artificial shortcut.
+The direct edge from $A$ to $B$ lies on the same one-dimensional object as the sampled points.
+
+The situation changes when the line is curved.
+The complete graph connects points that are close in the ambient space, even if the direct edge between them cuts across the lower-dimensional object.
+
+```{r}
+#| label: fig-complete-graph-curved-line
+#| echo: false
+#| fig-cap: "A complete graph on sampled points from a curved line. Some direct connections cut across the curve, creating artificial shortcuts."
+#| fig-width: 8
+#| fig-height: 5
+
+ggplot() +
+  geom_path(
+    data = curve_tbl,
+    aes(x = x, y = y),
+    linewidth = 1.0,
+    colour = "grey45"
+  ) +
+  geom_segment(
+    data = curved_complete_segments,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 0.7,
+    alpha = 0.25,
+    colour = "grey35"
+  ) +
+  geom_segment(
+    aes(
+      x = curved_complete_points$x[1],
+      y = curved_complete_points$y[1],
+      xend = curved_complete_points$x[9],
+      yend = curved_complete_points$y[9]
+    ),
+    linewidth = 1.6,
+    colour = "red3"
+  ) +
+  geom_segment(
+    data = curved_adjacent_segments,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 1.8,
+    colour = "navy"
+  ) +
+  geom_point(
+    data = curved_complete_points,
+    aes(x = x, y = y),
+    size = 3,
+    colour = "deepskyblue4"
+  ) +
+  geom_text(
+    data = curved_complete_points |>
+      dplyr::filter(display_label != ""),
+    aes(x = x, y = y, label = display_label),
+    nudge_y = 0.15,
+    fontface = "bold"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 1.15,
+    label = paste0(
+      "Complete-graph shortcut = ",
+      round(curved_complete_endpoint_distance, 2)
+    ),
+    colour = "red3"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 0.22,
+    label = paste0(
+      "Adjacent-neighbour path = ",
+      round(curved_adjacent_path_distance, 2)
+    ),
+    colour = "navy"
+  ) +
+  coord_equal(
+    xlim = c(-1.15, 1.15),
+    ylim = c(-0.1, 1.35),
+    expand = FALSE
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+```{r}
+#| label: tbl-complete-graph-distances
+#| echo: false
+
+complete_graph_distance_tbl |>
+  dplyr::mutate(
+    distance_from_A_to_B = round(
+      distance_from_A_to_B,
+      3
+    )
+  )
+```
+
+The complete graph is therefore not what we want for ISOMAP.
+If every pair of points is connected, then the shortest path between two observations is usually just the direct edge between them.
+That brings us back to ordinary Euclidean distances.
+
+For a flat or straight object, this is harmless.
+For a curved, folded, or obstructed object, it is damaging.
+The graph creates shortcuts through the surrounding space, rather than forcing paths to remain on the lower-dimensional structure.
+
+So ISOMAP does **not** use a complete graph.
+Instead, it tries to connect only points that are close enough for local Euclidean distance to be trustworthy.
+That gives a sparse neighbourhood graph.
+Long-range distances are then built up by travelling through chains of local connections.
+
+### Neighbourhood graphs
+
 This is where the neighbourhood graph comes in.
+
+In a neighbourhood graph, each point is connected only to a subset of the other points.
+
+Typically, there are two major approaches:
+
+- k-nearest neighbours (kNN): each point is connected to its k closest points.
+- Epsilon-radius ($\epsilon$-radius): each point is connected to all points within a distance $\epsilon$.
+
+The $\epsilon$-radius approach is attractive in that points are consistently connected only if they are close enough to be trusted.
+
+The difficulty is in defining what an appropriate $\epsilon$ is, which becomes increasingly challenging in high dimensions.
+Moreover, if the density of points varies across the space, then a single $\epsilon$ may be too small in some regions and too large in others.
+
+Therefore, a kNN approach is often preferred.
+In a kNN graph, each point is connected to its k closest points.
+
+### k-nearest-neighbour graphs
+
+A **k-nearest-neighbour graph** connects each observation to its $k$ closest observations, measured using ordinary Euclidean distance in the input space.
+
+The important point is that Euclidean distance is used only **locally**.
+We trust the straight-line distance between very nearby observations, but we do not trust the straight-line distance between arbitrary distant observations.
+
+For a collection of points $\mathbf x_1,\ldots,\mathbf x_n$, the basic construction is:
+
+1. calculate all pairwise Euclidean distances;
+2. for each point, find the $k$ nearest other points;
+3. join those pairs by edges;
+4. weight each edge by the corresponding Euclidean distance;
+5. estimate long-range distances by shortest paths through the graph.
+
+Here is the construction directly in R.
+
+```{r}
+#| label: code-construct-knn-graph
+#| eval: false
+
+construct_knn_graph <- function(point_tbl, k) {
+  coords <- as.matrix(
+    point_tbl[, c("x", "y")]
+  )
+
+  n <- nrow(coords)
+  distance_mat <- as.matrix(
+    dist(coords)
+  )
+
+  search_mat <- distance_mat
+  diag(search_mat) <- Inf
+
+  adjacent <- matrix(
+    FALSE,
+    nrow = n,
+    ncol = n
+  )
+
+  for (i in seq_len(n)) {
+    neighbours <- order(search_mat[i, ])[seq_len(k)]
+    adjacent[i, neighbours] <- TRUE
+  }
+
+  # Treat the graph as undirected.
+  # This connects i and j if either one regards the other as a neighbour.
+  adjacent <- adjacent | t(adjacent)
+
+  edge_index <- which(
+    adjacent & upper.tri(adjacent),
+    arr.ind = TRUE
+  )
+
+  edge_tbl <- tibble::tibble(
+    from = as.character(edge_index[, 1]),
+    to = as.character(edge_index[, 2]),
+    weight = distance_mat[edge_index]
+  )
+
+  igraph::graph_from_data_frame(
+    edge_tbl,
+    directed = FALSE,
+    vertices = tibble::tibble(
+      name = as.character(seq_len(n))
+    )
+  )
+}
+```
+
+Now apply this to the curved one-dimensional example.
+The true lower-dimensional distance from $A$ to $B$ is the arc length of the curve.
+The graph distance estimates this by travelling through neighbouring sampled points.
+
+```{r}
+#| label: prepare-knn-curve-graph
+#| include: false
+
+construct_knn_graph_for_curve <- function(point_tbl, k) {
+  coords <- as.matrix(
+    point_tbl[, c("x", "y")]
+  )
+
+  n <- nrow(coords)
+  distance_mat <- as.matrix(
+    dist(coords)
+  )
+
+  search_mat <- distance_mat
+  diag(search_mat) <- Inf
+
+  adjacent <- matrix(
+    FALSE,
+    nrow = n,
+    ncol = n
+  )
+
+  for (i in seq_len(n)) {
+    neighbours <- order(search_mat[i, ])[seq_len(k)]
+    adjacent[i, neighbours] <- TRUE
+  }
+
+  adjacent <- adjacent | t(adjacent)
+
+  edge_index <- which(
+    adjacent & upper.tri(adjacent),
+    arr.ind = TRUE
+  )
+
+  edge_tbl <- tibble::tibble(
+    from = as.character(edge_index[, 1]),
+    to = as.character(edge_index[, 2]),
+    weight = distance_mat[edge_index]
+  )
+
+  graph <- igraph::graph_from_data_frame(
+    edge_tbl,
+    directed = FALSE,
+    vertices = tibble::tibble(
+      name = as.character(seq_len(n))
+    )
+  )
+
+  list(
+    graph = graph,
+    edges = edge_tbl,
+    distance_mat = distance_mat
+  )
+}
+
+make_weighted_edge_segment_tbl <- function(point_tbl, edge_tbl) {
+  point_tbl <- point_tbl |>
+    dplyr::mutate(
+      name = as.character(dplyr::row_number())
+    )
+
+  edge_tbl |>
+    dplyr::left_join(
+      point_tbl |>
+        dplyr::rename(
+          from = name,
+          x_from = x,
+          y_from = y
+        ),
+      by = "from"
+    ) |>
+    dplyr::left_join(
+      point_tbl |>
+        dplyr::rename(
+          to = name,
+          x_to = x,
+          y_to = y
+        ),
+      by = "to"
+    )
+}
+
+curve_graph_points <- tibble::tibble(
+  x = seq(-1, 1, length.out = 17)
+) |>
+  dplyr::mutate(
+    y = x^2,
+    label = dplyr::case_when(
+      dplyr::row_number() == 1 ~ "A",
+      dplyr::row_number() == dplyr::n() ~ "B",
+      TRUE ~ ""
+    )
+  )
+
+knn_k <- 2
+knn_curve_graph <- construct_knn_graph_for_curve(
+  point_tbl = curve_graph_points,
+  k = knn_k
+)
+
+knn_curve_segments <- make_weighted_edge_segment_tbl(
+  point_tbl = curve_graph_points,
+  edge_tbl = knn_curve_graph$edges
+)
+
+knn_shortest_vertices <- igraph::shortest_paths(
+  knn_curve_graph$graph,
+  from = "1",
+  to = as.character(nrow(curve_graph_points)),
+  weights = igraph::E(knn_curve_graph$graph)$weight,
+  output = "vpath"
+)$vpath[[1]] |>
+  as.character()
+
+knn_shortest_edge_tbl <- tibble::tibble(
+  from = knn_shortest_vertices[-length(knn_shortest_vertices)],
+  to = knn_shortest_vertices[-1]
+)
+
+knn_shortest_segments <- make_weighted_edge_segment_tbl(
+  point_tbl = curve_graph_points,
+  edge_tbl = knn_shortest_edge_tbl
+)
+
+knn_graph_distance <- igraph::distances(
+  knn_curve_graph$graph,
+  v = "1",
+  to = as.character(nrow(curve_graph_points)),
+  weights = igraph::E(knn_curve_graph$graph)$weight
+)[1, 1]
+```
+
+```{r}
+#| label: fig-knn-curve-graph
+#| echo: false
+#| fig-cap: "A k-nearest-neighbour graph on sampled points from the curve. The shortest path through local edges estimates the geodesic distance."
+#| fig-width: 8
+#| fig-height: 5
+
+ggplot() +
+  geom_path(
+    data = curve_tbl,
+    aes(x = x, y = y),
+    linewidth = 1,
+    colour = "grey45"
+  ) +
+  geom_segment(
+    data = knn_curve_segments,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 0.8,
+    alpha = 0.35,
+    colour = "grey35"
+  ) +
+  geom_segment(
+    data = knn_shortest_segments,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 1.7,
+    colour = "navy"
+  ) +
+  geom_segment(
+    aes(
+      x = curve_graph_points$x[1],
+      y = curve_graph_points$y[1],
+      xend = curve_graph_points$x[nrow(curve_graph_points)],
+      yend = curve_graph_points$y[nrow(curve_graph_points)]
+    ),
+    linewidth = 1.3,
+    colour = "red3",
+    linetype = "dashed"
+  ) +
+  geom_point(
+    data = curve_graph_points,
+    aes(x = x, y = y),
+    size = 2.6,
+    colour = "deepskyblue4"
+  ) +
+  geom_text(
+    data = curve_graph_points |>
+      dplyr::filter(label != ""),
+    aes(x = x, y = y, label = label),
+    nudge_y = 0.13,
+    fontface = "bold"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 1.17,
+    label = paste0(
+      "Straight-line distance = ",
+      round(curve_euclidean_distance, 2)
+    ),
+    colour = "red3"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 0.23,
+    label = paste0(
+      "kNN graph distance = ",
+      round(knn_graph_distance, 2),
+      "\ntrue geodesic = ",
+      round(curve_geodesic_distance, 2)
+    ),
+    colour = "navy"
+  ) +
+  coord_equal(
+    xlim = c(-1.15, 1.15),
+    ylim = c(-0.1, 1.35),
+    expand = FALSE
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+The estimate improves when the graph is connected and local.
+If $k$ is too small, the graph may break into components.
+If $k$ is too large, the graph begins to add shortcuts across the curve.
+
+```{r}
+#| label: tbl-knn-geodesic-accuracy
+#| echo: false
+
+estimate_knn_distance <- function(k) {
+  graph_info <- construct_knn_graph_for_curve(
+    point_tbl = curve_graph_points,
+    k = k
+  )
+
+  estimate <- igraph::distances(
+    graph_info$graph,
+    v = "1",
+    to = as.character(nrow(curve_graph_points)),
+    weights = igraph::E(graph_info$graph)$weight
+  )[1, 1]
+
+  tibble::tibble(
+    graph_distance = estimate,
+    absolute_error = abs(estimate - curve_geodesic_distance),
+    connected = is.finite(estimate)
+  )
+}
+
+tibble::tibble(
+  k = c(1, 2, 3, 5, 8, 16)
+) |>
+  dplyr::mutate(
+    result = purrr::map(k, estimate_knn_distance)
+  ) |>
+  tidyr::unnest(result) |>
+  dplyr::mutate(
+    graph_distance = round(graph_distance, 3),
+    absolute_error = round(absolute_error, 3)
+  )
+```
+
+The goal is not to make $k$ as large as possible.
+The goal is to choose $k$ large enough to keep the graph connected, but small enough that edges remain local.
+
+### Epsilon-neighbourhood graphs
+
+An **epsilon-neighbourhood graph** uses a distance threshold instead of a fixed number of neighbours.
+Two observations are joined if their Euclidean distance is at most $\epsilon$.
+
+$$
+(i,j)\in E
+\quad\text{when}\quad
+\|\mathbf x_i-\mathbf x_j\|\leq \epsilon.
+$$
+
+Here is the corresponding R construction.
+
+```{r}
+#| label: code-construct-epsilon-graph
+#| eval: false
+
+construct_epsilon_graph <- function(point_tbl, epsilon) {
+  coords <- as.matrix(
+    point_tbl[, c("x", "y")]
+  )
+
+  n <- nrow(coords)
+  distance_mat <- as.matrix(
+    dist(coords)
+  )
+
+  adjacent <- distance_mat <= epsilon
+  diag(adjacent) <- FALSE
+
+  edge_index <- which(
+    adjacent & upper.tri(adjacent),
+    arr.ind = TRUE
+  )
+
+  edge_tbl <- tibble::tibble(
+    from = as.character(edge_index[, 1]),
+    to = as.character(edge_index[, 2]),
+    weight = distance_mat[edge_index]
+  )
+
+  igraph::graph_from_data_frame(
+    edge_tbl,
+    directed = FALSE,
+    vertices = tibble::tibble(
+      name = as.character(seq_len(n))
+    )
+  )
+}
+```
+
+This is conceptually simple: every edge is local because every edge must have length at most $\epsilon$.
+The difficulty is that a single value of $\epsilon$ may be too small in sparse regions and too large in dense regions.
+
+```{r}
+#| label: prepare-epsilon-curve-graph
+#| include: false
+
+construct_epsilon_graph_for_curve <- function(point_tbl, epsilon) {
+  coords <- as.matrix(
+    point_tbl[, c("x", "y")]
+  )
+
+  n <- nrow(coords)
+  distance_mat <- as.matrix(
+    dist(coords)
+  )
+
+  adjacent <- distance_mat <= epsilon
+  diag(adjacent) <- FALSE
+
+  edge_index <- which(
+    adjacent & upper.tri(adjacent),
+    arr.ind = TRUE
+  )
+
+  edge_tbl <- tibble::tibble(
+    from = as.character(edge_index[, 1]),
+    to = as.character(edge_index[, 2]),
+    weight = distance_mat[edge_index]
+  )
+
+  graph <- igraph::graph_from_data_frame(
+    edge_tbl,
+    directed = FALSE,
+    vertices = tibble::tibble(
+      name = as.character(seq_len(n))
+    )
+  )
+
+  list(
+    graph = graph,
+    edges = edge_tbl,
+    distance_mat = distance_mat
+  )
+}
+
+epsilon_value <- 0.27
+epsilon_curve_graph <- construct_epsilon_graph_for_curve(
+  point_tbl = curve_graph_points,
+  epsilon = epsilon_value
+)
+
+epsilon_curve_segments <- make_weighted_edge_segment_tbl(
+  point_tbl = curve_graph_points,
+  edge_tbl = epsilon_curve_graph$edges
+)
+
+epsilon_shortest_vertices <- igraph::shortest_paths(
+  epsilon_curve_graph$graph,
+  from = "1",
+  to = as.character(nrow(curve_graph_points)),
+  weights = igraph::E(epsilon_curve_graph$graph)$weight,
+  output = "vpath"
+)$vpath[[1]] |>
+  as.character()
+
+epsilon_shortest_edge_tbl <- tibble::tibble(
+  from = epsilon_shortest_vertices[-length(epsilon_shortest_vertices)],
+  to = epsilon_shortest_vertices[-1]
+)
+
+epsilon_shortest_segments <- make_weighted_edge_segment_tbl(
+  point_tbl = curve_graph_points,
+  edge_tbl = epsilon_shortest_edge_tbl
+)
+
+epsilon_graph_distance <- igraph::distances(
+  epsilon_curve_graph$graph,
+  v = "1",
+  to = as.character(nrow(curve_graph_points)),
+  weights = igraph::E(epsilon_curve_graph$graph)$weight
+)[1, 1]
+```
+
+```{r}
+#| label: fig-epsilon-curve-graph
+#| echo: false
+#| fig-cap: "An epsilon-neighbourhood graph on sampled points from the curve. Edges are included only when the ambient Euclidean distance is below the threshold."
+#| fig-width: 8
+#| fig-height: 5
+
+ggplot() +
+  geom_path(
+    data = curve_tbl,
+    aes(x = x, y = y),
+    linewidth = 1,
+    colour = "grey45"
+  ) +
+  geom_segment(
+    data = epsilon_curve_segments,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 0.8,
+    alpha = 0.35,
+    colour = "grey35"
+  ) +
+  geom_segment(
+    data = epsilon_shortest_segments,
+    aes(
+      x = x_from,
+      y = y_from,
+      xend = x_to,
+      yend = y_to
+    ),
+    linewidth = 1.7,
+    colour = "navy"
+  ) +
+  geom_segment(
+    aes(
+      x = curve_graph_points$x[1],
+      y = curve_graph_points$y[1],
+      xend = curve_graph_points$x[nrow(curve_graph_points)],
+      yend = curve_graph_points$y[nrow(curve_graph_points)]
+    ),
+    linewidth = 1.3,
+    colour = "red3",
+    linetype = "dashed"
+  ) +
+  geom_point(
+    data = curve_graph_points,
+    aes(x = x, y = y),
+    size = 2.6,
+    colour = "deepskyblue4"
+  ) +
+  geom_text(
+    data = curve_graph_points |>
+      dplyr::filter(label != ""),
+    aes(x = x, y = y, label = label),
+    nudge_y = 0.13,
+    fontface = "bold"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 1.17,
+    label = paste0(
+      "Straight-line distance = ",
+      round(curve_euclidean_distance, 2)
+    ),
+    colour = "red3"
+  ) +
+  annotate(
+    "text",
+    x = 0,
+    y = 0.23,
+    label = paste0(
+      "epsilon graph distance = ",
+      round(epsilon_graph_distance, 2),
+      "\ntrue geodesic = ",
+      round(curve_geodesic_distance, 2)
+    ),
+    colour = "navy"
+  ) +
+  coord_equal(
+    xlim = c(-1.15, 1.15),
+    ylim = c(-0.1, 1.35),
+    expand = FALSE
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    axis.title = element_blank(),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+As with $k$, the value of $\epsilon$ has to balance two errors.
+If $\epsilon$ is too small, the graph may be disconnected.
+If $\epsilon$ is too large, the graph may add shortcuts and move back toward ordinary Euclidean distances.
+
+```{r}
+#| label: tbl-epsilon-geodesic-accuracy
+#| echo: false
+
+estimate_epsilon_distance <- function(epsilon) {
+  graph_info <- construct_epsilon_graph_for_curve(
+    point_tbl = curve_graph_points,
+    epsilon = epsilon
+  )
+
+  estimate <- igraph::distances(
+    graph_info$graph,
+    v = "1",
+    to = as.character(nrow(curve_graph_points)),
+    weights = igraph::E(graph_info$graph)$weight
+  )[1, 1]
+
+  tibble::tibble(
+    graph_distance = estimate,
+    absolute_error = abs(estimate - curve_geodesic_distance),
+    connected = is.finite(estimate)
+  )
+}
+
+tibble::tibble(
+  epsilon = c(0.15, 0.27, 0.50, 2.10)
+) |>
+  dplyr::mutate(
+    result = purrr::map(epsilon, estimate_epsilon_distance)
+  ) |>
+  tidyr::unnest(result) |>
+  dplyr::mutate(
+    graph_distance = round(graph_distance, 3),
+    absolute_error = round(absolute_error, 3)
+  )
+```
+
+### What both neighbourhood graphs are trying to do
+
+Both constructions are based on the same idea.
+
+Short straight-line distances are usually acceptable local approximations to movement along the underlying object.
+Long straight-line distances are not.
+
+So ISOMAP replaces one global distance by many small local distances:
+
+$$
+\|\mathbf x_i-\mathbf x_j\|
+\quad\leadsto\quad
+\min_{\mathcal P:i\leadsto j}
+\sum_{(r,s)\in\mathcal P}
+\|\mathbf x_r-\mathbf x_s\|.
+$$
+
+The left-hand side is the direct Euclidean distance through the input space.
+The right-hand side is the graph shortest-path distance, obtained by travelling through local edges.
+
+That shortest-path distance is not the true geodesic distance.
+It is an estimate of the geodesic distance based on the sampled observations.
+With enough data, and with a neighbourhood graph that is local but connected, this estimate can be much closer to the true lower-dimensional distance than the direct Euclidean distance.
