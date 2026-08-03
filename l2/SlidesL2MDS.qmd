@@ -1,0 +1,1298 @@
+---
+title: Multidimensional Scaling
+author: Miguel Rodo
+date: "2026-07-29"
+bibliography: ../zotero.bib
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+nocite: |
+  @izenman08
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(MASS)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(cowplot)
+library(ggrepel)
+
+knitr::opts_chunk$set(
+  fig.align = "center",
+  out.width = "80%"
+)
+
+as_distance_table <- function(delta, coordinates) {
+  delta_mat <- as.matrix(delta)
+  fitted_mat <- as.matrix(dist(coordinates))
+  keep <- lower.tri(delta_mat)
+
+  tibble::tibble(
+    dissimilarity = delta_mat[keep],
+    configuration_distance = fitted_mat[keep]
+  )
+}
+
+relative_distance_error <- function(delta, coordinates) {
+  comparison_tbl <- as_distance_table(delta, coordinates)
+
+  sqrt(
+    sum(
+      (comparison_tbl$configuration_distance -
+         comparison_tbl$dissimilarity)^2
+    ) /
+      sum(comparison_tbl$dissimilarity^2)
+  )
+}
+
+align_configuration <- function(reference, target, allow_scaling = TRUE) {
+  reference <- as.matrix(reference)
+  target <- as.matrix(target)
+
+  reference_centre <- colMeans(reference)
+  target_centre <- colMeans(target)
+
+  reference_centred <- sweep(
+    reference,
+    MARGIN = 2,
+    STATS = reference_centre,
+    FUN = "-"
+  )
+
+  target_centred <- sweep(
+    target,
+    MARGIN = 2,
+    STATS = target_centre,
+    FUN = "-"
+  )
+
+  rotation_svd <- svd(
+    crossprod(target_centred, reference_centred)
+  )
+
+  rotation <- rotation_svd$u %*% t(rotation_svd$v)
+  target_aligned <- target_centred %*% rotation
+
+  if (allow_scaling) {
+    scale_factor <- sum(target_aligned * reference_centred) /
+      sum(target_aligned^2)
+    target_aligned <- scale_factor * target_aligned
+  }
+
+  sweep(
+    target_aligned,
+    MARGIN = 2,
+    STATS = reference_centre,
+    FUN = "+"
+  )
+}
+```
+
+<!--
+Suggested pacing for a two-hour session:
+
+00:00-00:12  Bridge from PCA and the city-map problem
+00:12-00:30  Dissimilarities, proximity matrices and scaling
+00:30-00:52  Classical MDS: idea, double centring and coordinates
+00:52-01:08  European-city example in R
+01:08-01:20  Assessing the quality of a low-dimensional map
+01:20-01:37  Equivalence of Euclidean classical MDS and PCA
+01:37-01:55  Metric versus non-metric MDS, stress and Shepard diagrams
+01:55-02:00  Link to ISOMAP and recap
+
+The detailed derivations and supplementary methods are collapsed by default.
+-->
+
+## From PCA to MDS
+
+Principal component analysis starts with a data matrix
+
+$$
+\mathbf X
+=
+\begin{bmatrix}
+---\mathbf x_1'---\\
+---\mathbf x_2'---\\
+\vdots\\
+---\mathbf x_n'---
+\end{bmatrix},
+$$
+
+and constructs a low-dimensional representation that retains as much variation as possible.
+
+Multidimensional scaling, or **MDS**, begins from a different form of information: the dissimilarity between every pair of observations.
+Its goal is to place the observations in a low-dimensional space so that distances in the resulting map represent those dissimilarities as faithfully as possible.
+
+| Method | Starting information | Main quantity preserved |
+|:--|:--|:--|
+| PCA | Variables measured on each observation | Variation in the data |
+| MDS | Pairwise dissimilarities between observations | Dissimilarities between observations |
+
+This distinction matters because sometimes the original variables are unavailable or are not the most natural description of similarity. We may instead have:
+
+- road or airline distances between cities;
+- perceived similarities between products;
+- genetic distances between organisms;
+- confusion frequencies between signals; or
+- a dissimilarity designed for mixed continuous and categorical variables.
+
+### The city-map problem
+
+Suppose that the geographical coordinates of several cities have been lost, but the distances between every pair of cities remain available.
+
+Can we reconstruct a two-dimensional map using only those distances?
+
+```{r}
+#| label: tbl-eurodist-submatrix
+#| echo: false
+#| tbl-cap: "A portion of the road-distance matrix between European cities, measured in kilometres."
+
+eurodist_mat <- as.matrix(eurodist)
+
+eurodist_mat[1:7, 1:7] |>
+  round() |>
+  knitr::kable()
+```
+
+An MDS map should place cities with small road distances close together and cities with large road distances far apart.
+
+## Dissimilarities and proximity matrices
+
+Let $\delta_{ij}$ denote the dissimilarity between observations $i$ and $j$. The complete collection of dissimilarities is represented by the **proximity matrix**
+
+$$
+\boldsymbol\Delta=(\delta_{ij}).
+$$
+
+For the standard symmetric setting used here, $\boldsymbol\Delta$ is:
+
+- square, with one row and column per observation;
+- symmetric, so $\delta_{ij}=\delta_{ji}$;
+- hollow, so $\delta_{ii}=0$; and
+- usually non-negative.
+
+Although the matrix has $n^2$ entries, it contains only
+
+$$
+\binom n2=\frac{n(n-1)}2
+$$
+
+unique off-diagonal dissimilarities.
+
+::: {.callout-note collapse="true" title="Dissimilarity is broader than distance"}
+A **distance metric** satisfies additional mathematical properties, including the triangle inequality. MDS can also be applied to dissimilarities that do not satisfy all distance axioms.
+
+The broader term *dissimilarity* is therefore useful: large values mean that two observations should be represented as far apart, without necessarily claiming that the input behaves exactly like geometric distance.
+:::
+
+### Common choices
+
+For observations $\mathbf x_i,\mathbf x_j\in\mathbb R^p$, common choices include:
+
+#### Euclidean distance
+
+$$
+\delta_{ij}
+=
+\left[
+\sum_{k=1}^p
+(x_{ik}-x_{jk})^2
+\right]^{1/2}.
+$$
+
+This is ordinary straight-line distance.
+
+#### Manhattan distance
+
+$$
+\delta_{ij}
+=
+\sum_{k=1}^p
+|x_{ik}-x_{jk}|.
+$$
+
+This adds the absolute coordinate-wise differences.
+
+#### Binary or categorical dissimilarity
+
+For binary features, one may count or proportionally summarise the features on which two observations disagree. Jaccard dissimilarity is useful when joint absences should not count as evidence of similarity.
+
+### The choice defines similarity
+
+The dissimilarity measure is not merely a computational setting. It defines what it means for two observations to be alike.
+
+For example:
+
+- Euclidean distance strongly reflects large coordinate-wise differences;
+- Manhattan distance can be less dominated by a few large differences;
+- correlation-based dissimilarity emphasises similarity of shape rather than magnitude.
+
+A good MDS map can only faithfully represent the dissimilarities supplied to it. It cannot repair a dissimilarity measure that is substantively inappropriate.
+
+## Scaling before calculating distances
+
+When dissimilarities are calculated from measured variables, variable scale can dominate the result.
+
+Suppose one variable is measured in thousands and another lies between zero and one. Ordinary Euclidean distance will usually be governed by the first variable, even if the two variables are equally important scientifically.
+
+A common workflow is therefore
+
+```r
+x_scaled <- scale(x)
+delta <- dist(x_scaled)
+```
+
+but standardisation should not be automatic. It gives every variable equal variance, which is a modelling decision. When all variables share meaningful units, preserving their original scales may be preferable.
+
+::: {.callout-important}
+The scaling decision is made **before** the dissimilarity matrix is calculated. Once MDS receives only $\boldsymbol\Delta$, the original variable scales are no longer available.
+:::
+
+## Classical multidimensional scaling
+
+**Classical MDS**, also called **classical scaling** or **principal coordinates analysis**, constructs a configuration from a dissimilarity matrix using an eigendecomposition.
+
+The method proceeds in three conceptual steps:
+
+1. transform squared dissimilarities into estimated centred inner products;
+2. eigendecompose the resulting inner-product matrix; and
+3. retain the leading eigenvectors and eigenvalues as low-dimensional coordinates.
+
+The important point is that classical MDS does not apply an eigendecomposition directly to the dissimilarity matrix.
+
+### From distances to centred inner products
+
+Define
+
+$$
+\mathbf H
+=
+\mathbf I_n-\frac1n\mathbf 1_n\mathbf 1_n',
+$$
+
+and let $\boldsymbol\Delta^{(2)}$ denote the matrix obtained by squaring every dissimilarity. Classical MDS constructs
+
+$$
+\mathbf B
+=
+-\frac12
+\mathbf H
+\boldsymbol\Delta^{(2)}
+\mathbf H.
+$$
+
+When the dissimilarities are Euclidean distances between centred observations, $\mathbf B$ is their Gram matrix:
+
+$$
+b_{ij}=\mathbf x_i'\mathbf x_j,
+\qquad
+\mathbf B=\mathbf X_c\mathbf X_c'.
+$$
+
+The operation is called **double centring** because multiplication by $\mathbf H$ centres the rows and columns.
+
+::: {.callout-note collapse="true" title="Derivation of the double-centring formula"}
+
+For centred observations, the squared Euclidean distance between observations $i$ and $j$ is
+
+$$
+\delta_{ij}^2
+=
+\|\mathbf x_i-\mathbf x_j\|^2
+=
+\mathbf x_i'\mathbf x_i
++
+\mathbf x_j'\mathbf x_j
+-
+2\mathbf x_i'\mathbf x_j.
+$$
+
+Let $b_{ij}=\mathbf x_i'\mathbf x_j$. Then
+
+$$
+\delta_{ij}^2=b_{ii}+b_{jj}-2b_{ij}.
+$$
+
+In matrix form,
+
+$$
+\boldsymbol\Delta^{(2)}
+=
+\mathbf b\mathbf 1'
++
+\mathbf 1\mathbf b'
+-
+2\mathbf B,
+$$
+
+where $\mathbf b$ contains the diagonal elements of $\mathbf B$.
+
+Because the observations are centred,
+
+$$
+\mathbf H\mathbf B=\mathbf B,
+\qquad
+\mathbf B\mathbf H=\mathbf B,
+$$
+
+and because $\mathbf H\mathbf 1=\mathbf 0$, double centring removes the two terms involving $\mathbf 1$:
+
+$$
+\mathbf H\boldsymbol\Delta^{(2)}\mathbf H
+=-2\mathbf B.
+$$
+
+Therefore,
+
+$$
+\boxed{
+\mathbf B
+=-\frac12
+\mathbf H\boldsymbol\Delta^{(2)}\mathbf H
+}.
+$$
+
+:::
+
+### From inner products to coordinates
+
+Let the eigendecomposition of $\mathbf B$ be
+
+$$
+\mathbf B
+=
+\mathbf V\boldsymbol\Lambda\mathbf V',
+$$
+
+where the eigenvalues are ordered from largest to smallest.
+
+Using the first $k$ positive eigenvalues and their eigenvectors, the $k$-dimensional principal-coordinate matrix is
+
+$$
+\mathbf Y_k
+=
+\mathbf V_k\boldsymbol\Lambda_k^{1/2}.
+$$
+
+Each row of $\mathbf Y_k$ gives the coordinates of one observation in the MDS map.
+
+::: {.callout-note collapse="true" title="Why these coordinates reproduce the inner products"}
+
+By construction,
+
+$$
+\mathbf Y_k\mathbf Y_k'
+=
+\mathbf V_k
+\boldsymbol\Lambda_k^{1/2}
+\boldsymbol\Lambda_k^{1/2}
+\mathbf V_k'
+=
+\mathbf V_k\boldsymbol\Lambda_k\mathbf V_k'.
+$$
+
+If every positive eigenvalue is retained, this reproduces the positive-eigenvalue part of $\mathbf B$. If only the first $k$ eigenvalues are retained, it gives the best rank-$k$ approximation to $\mathbf B$ in squared matrix error.
+
+:::
+
+### Why only positive eigenvalues?
+
+A Euclidean distance matrix produces a positive semi-definite $\mathbf B$, apart from small numerical errors. Substantial negative eigenvalues indicate that the supplied dissimilarities cannot be represented exactly as Euclidean distances.
+
+Possible responses include:
+
+- retaining only the positive eigenvalues;
+- treating the resulting map as an approximation;
+- applying a correction such as the additive correction available through `cmdscale(add = TRUE)`; or
+- using an iterative MDS method designed to approximate the dissimilarities directly.
+
+Negative eigenvalues are therefore a useful diagnostic rather than merely a computational nuisance.
+
+## Classical MDS from first principles
+
+The following four-city example shows the complete calculation. In ordinary analysis, `cmdscale()` performs these steps for us.
+
+::: {.callout-note collapse="true" title="Worked four-city calculation"}
+
+Begin with the dissimilarity matrix
+
+```{r}
+#| label: tbl-four-city-dissimilarities
+#| tbl-cap: "Pairwise dissimilarities for the four-city worked example."
+
+four_city_delta <- structure(
+  c(
+    0, 93, 82, 133,
+    93, 0, 52, 60,
+    82, 52, 0, 111,
+    133, 60, 111, 0
+  ),
+  dim = c(4, 4),
+  dimnames = list(
+    c("Copenhagen", "Aarhus", "Odense", "Aalborg"),
+    c("Copenhagen", "Aarhus", "Odense", "Aalborg")
+  )
+)
+
+four_city_delta |>
+  knitr::kable(digits = 0)
+```
+
+Construct
+
+$$
+\mathbf A=-\frac12\boldsymbol\Delta^{(2)}
+$$
+
+and double-centre it.
+
+```{r}
+#| label: calculate-four-city-gram-matrix
+
+n_four_city <- nrow(four_city_delta)
+four_city_A <- -0.5 * four_city_delta^2
+four_city_H <- diag(n_four_city) -
+  matrix(1 / n_four_city, n_four_city, n_four_city)
+four_city_B <- four_city_H %*% four_city_A %*% four_city_H
+
+signif(four_city_B, 3)
+```
+
+Eigendecompose $\mathbf B$ and retain its positive eigenvalues.
+
+```{r}
+#| label: calculate-four-city-coordinates
+
+four_city_eigen <- eigen(
+  four_city_B,
+  symmetric = TRUE
+)
+
+positive_index <- which(
+  four_city_eigen$values >
+    max(four_city_eigen$values) * 1e-10
+)
+
+four_city_coordinates <- sweep(
+  four_city_eigen$vectors[, positive_index, drop = FALSE],
+  MARGIN = 2,
+  STATS = sqrt(four_city_eigen$values[positive_index]),
+  FUN = "*"
+)
+
+four_city_coordinates <- four_city_coordinates[, 1:2, drop = FALSE]
+rownames(four_city_coordinates) <- rownames(four_city_delta)
+
+signif(four_city_coordinates, 3)
+```
+
+```{r}
+#| label: fig-four-city-classical-mds
+#| echo: false
+#| fig-cap: "Two-dimensional classical MDS configuration for the four-city worked example."
+
+four_city_plot_tbl <- four_city_coordinates |>
+  as.data.frame() |>
+  rownames_to_column("city") |>
+  as_tibble()
+
+ggplot(
+  four_city_plot_tbl,
+  aes(x = V1, y = V2, label = city)
+) +
+  geom_point(size = 2.5) +
+  ggrepel::geom_text_repel() +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    x = "First principal coordinate",
+    y = "Second principal coordinate"
+  )
+```
+
+The same result is obtained directly using
+
+```{r}
+#| label: confirm-four-city-cmdscale
+
+cmdscale(
+  as.dist(four_city_delta),
+  k = 2,
+  eig = TRUE
+)$points |>
+  signif(3)
+```
+
+The coordinates may differ by reflection or sign without representing a different configuration.
+
+:::
+
+## Classical MDS in R
+
+The built-in `eurodist` object contains road distances between 21 European cities. Because the input is already a `dist` object, it can be passed directly to `cmdscale()`.
+
+```{r}
+#| label: fit-european-city-mds
+
+euro_mds <- cmdscale(
+  eurodist,
+  k = 2,
+  eig = TRUE
+)
+
+euro_mds_tbl <- euro_mds$points |>
+  as.data.frame() |>
+  rownames_to_column("city") |>
+  as_tibble() |>
+  rename(
+    coordinate_1 = V1,
+    coordinate_2 = V2
+  )
+```
+
+```{r}
+#| label: fig-european-city-mds
+#| echo: false
+#| fig-cap: "Two-dimensional classical MDS representation of road distances between European cities."
+
+ggplot(
+  euro_mds_tbl,
+  aes(
+    x = coordinate_1,
+    y = coordinate_2,
+    label = city
+  )
+) +
+  geom_point(size = 2.3) +
+  ggrepel::geom_text_repel(
+    min.segment.length = 0,
+    max.overlaps = Inf
+  ) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    x = "First principal coordinate",
+    y = "Second principal coordinate"
+  )
+```
+
+The result resembles a map of Europe, but it should not be read as literal longitude and latitude. The input consists of road distances rather than straight-line geographical distances, and the two-dimensional representation is approximate.
+
+### Orientation is arbitrary
+
+Distances are unchanged if every point is:
+
+- translated by the same amount;
+- rotated through the same angle; or
+- reflected across an axis.
+
+Consequently, the signs and orientation of MDS coordinates have no intrinsic meaning. Interpretation should be based on relative positions and interpoint distances.
+
+This is the same sign ambiguity encountered in PCA, extended to arbitrary rotations and reflections of the whole configuration.
+
+## Assessing the map
+
+An MDS map should not be judged only by whether it looks plausible. We should compare the input dissimilarities $\delta_{ij}$ with the distances $d_{ij}$ between points in the fitted configuration.
+
+```{r}
+#| label: prepare-european-city-distance-comparison
+
+euro_distance_comparison_tbl <- as_distance_table(
+  eurodist,
+  euro_mds$points
+)
+```
+
+```{r}
+#| label: fig-european-city-distance-fit
+#| echo: false
+#| fig-cap: "Input road distances compared with distances in the two-dimensional classical MDS configuration."
+
+ggplot(
+  euro_distance_comparison_tbl,
+  aes(
+    x = dissimilarity,
+    y = configuration_distance
+  )
+) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    linetype = "dashed"
+  ) +
+  geom_point(alpha = 0.65) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    x = "Input dissimilarity",
+    y = "Distance in the configuration"
+  )
+```
+
+Points close to the diagonal represent pairs whose dissimilarities are reproduced accurately. Systematic curvature or substantial scatter indicates distortion.
+
+### Choosing the number of dimensions
+
+Two dimensions are attractive because they are easy to plot, but they may not preserve the dissimilarities adequately.
+
+The following diagnostic fits configurations with different dimensions and calculates
+
+$$
+\text{relative distance error}
+=
+\left[
+\frac{
+\sum_{i<j}(d_{ij}-\delta_{ij})^2
+}{
+\sum_{i<j}\delta_{ij}^2
+}
+\right]^{1/2}.
+$$
+
+This is an intuitive diagnostic of distance preservation. It is not the objective function optimised by classical MDS, which approximates the centred inner-product matrix.
+
+```{r}
+#| label: calculate-european-city-dimension-fit
+
+euro_dimension_fit_tbl <- tibble(
+  dimensions = 1:8
+) |>
+  mutate(
+    coordinates = map(
+      dimensions,
+      ~ cmdscale(eurodist, k = .x)
+    ),
+    relative_error = map_dbl(
+      coordinates,
+      ~ relative_distance_error(eurodist, .x)
+    )
+  )
+```
+
+```{r}
+#| label: fig-european-city-dimension-fit
+#| echo: false
+#| fig-cap: "Relative distance error for classical MDS representations of the European road distances using different numbers of dimensions."
+
+ggplot(
+  euro_dimension_fit_tbl,
+  aes(x = dimensions, y = relative_error)
+) +
+  geom_line() +
+  geom_point(size = 2.5) +
+  scale_x_continuous(breaks = euro_dimension_fit_tbl$dimensions) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    x = "Number of dimensions",
+    y = "Relative distance error"
+  )
+```
+
+Dimension selection therefore involves a trade-off:
+
+- fewer dimensions are easier to visualise and interpret;
+- more dimensions generally reproduce the dissimilarities more accurately; and
+- a low-dimensional map should be described as an approximation unless the fit is effectively exact.
+
+## Classical MDS and PCA
+
+If classical MDS is applied to Euclidean distances between centred observations, its principal coordinates are the PCA scores, apart from arbitrary signs or rotations within tied eigenspaces.
+
+The two methods approach the same representation from opposite directions:
+
+- PCA begins with $\mathbf X$ and directly calculates the score coordinates;
+- classical MDS begins with the Euclidean distances and reconstructs the centred inner products before calculating the same coordinates.
+
+::: {.callout-note collapse="true" title="Derivation using the SVD"}
+
+Let the centred data matrix have singular value decomposition
+
+$$
+\mathbf X_c
+=
+\mathbf U\mathbf D\mathbf V'.
+$$
+
+The classical MDS Gram matrix is
+
+$$
+\mathbf B
+=
+\mathbf X_c\mathbf X_c'
+=
+\mathbf U\mathbf D^2\mathbf U'.
+$$
+
+Its eigenvectors are therefore the left singular vectors $\mathbf U$, and its eigenvalues are the squared singular values in $\mathbf D^2$.
+
+The first $k$ classical MDS coordinates are
+
+$$
+\mathbf Y_k
+=
+\mathbf U_k\mathbf D_k.
+$$
+
+The PCA scores are
+
+$$
+\mathbf X_c\mathbf V_k
+=
+\mathbf U\mathbf D\mathbf V'\mathbf V_k
+=
+\mathbf U_k\mathbf D_k.
+$$
+
+Thus the two coordinate matrices are equal up to their arbitrary orientation.
+
+::: 
+
+::: {.callout-note collapse="true" title="Covariance eigenvectors versus MDS eigenvectors"}
+
+It is important not to confuse the two sets of eigenvectors.
+
+PCA eigendecomposes the variable covariance matrix
+
+$$
+\mathbf X_c'\mathbf X_c
+=
+\mathbf V\mathbf D^2\mathbf V'.
+$$
+
+The eigenvectors $\mathbf V$ are the **loading directions** in variable space.
+
+Classical MDS eigendecomposes the observation Gram matrix
+
+$$
+\mathbf X_c\mathbf X_c'
+=
+\mathbf U\mathbf D^2\mathbf U'.
+$$
+
+The eigenvectors $\mathbf U$ are directions in observation space. Multiplying them by the singular values gives the principal coordinates $\mathbf U\mathbf D$, which are also the PCA scores.
+
+The covariance matrix and Gram matrix do not generally have the same eigenvectors because they have different dimensions.
+
+:::
+
+### Demonstration in R
+
+Use the four numeric iris measurements, standardise them, and compare PCA with classical MDS based on their Euclidean distances.
+
+```{r}
+#| label: fit-iris-pca-and-mds
+
+iris_scaled <- scale(
+  iris |>
+    select(where(is.numeric))
+)
+
+iris_pca <- prcomp(
+  iris_scaled,
+  center = FALSE,
+  scale. = FALSE
+)
+
+iris_mds <- cmdscale(
+  dist(iris_scaled),
+  k = 2,
+  eig = TRUE
+)
+
+iris_mds_aligned <- iris_mds$points
+
+for (component in 1:2) {
+  sign_adjustment <- sign(
+    cor(
+      iris_mds_aligned[, component],
+      iris_pca$x[, component]
+    )
+  )
+
+  if (sign_adjustment == 0) {
+    sign_adjustment <- 1
+  }
+
+  iris_mds_aligned[, component] <-
+    sign_adjustment * iris_mds_aligned[, component]
+}
+
+iris_comparison_tbl <- bind_rows(
+  tibble(
+    dimension_1 = iris_pca$x[, 1],
+    dimension_2 = iris_pca$x[, 2],
+    species = iris$Species,
+    method = "PCA scores"
+  ),
+  tibble(
+    dimension_1 = iris_mds_aligned[, 1],
+    dimension_2 = iris_mds_aligned[, 2],
+    species = iris$Species,
+    method = "Classical MDS coordinates"
+  )
+)
+```
+
+```{r}
+#| label: fig-iris-pca-mds-equivalence
+#| echo: false
+#| fig-cap: "PCA scores and classical MDS coordinates for the standardised iris measurements."
+
+ggplot(
+  iris_comparison_tbl,
+  aes(
+    x = dimension_1,
+    y = dimension_2,
+    colour = species
+  )
+) +
+  geom_point(alpha = 0.7) +
+  facet_wrap(~ method) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white"),
+    legend.position = "bottom"
+  ) +
+  labs(
+    x = "First dimension",
+    y = "Second dimension",
+    colour = "Species"
+  )
+```
+
+```{r}
+#| label: compare-iris-pca-mds-coordinates
+
+max(
+  abs(
+    iris_pca$x[, 1:2] -
+      iris_mds_aligned[, 1:2]
+  )
+)
+```
+
+The small numerical difference is due only to floating-point computation.
+
+### What this equivalence does not imply
+
+MDS is still more general in its input:
+
+- it can begin from dissimilarities without access to the original variables;
+- the dissimilarities need not be ordinary Euclidean distances; and
+- iterative MDS methods can preserve transformed dissimilarities or only their ranks.
+
+However, **classical MDS with Euclidean distances is not a nonlinear alternative to PCA**. It reproduces the same linear representation.
+
+## Metric and non-metric MDS
+
+Classical MDS reconstructs and approximates centred inner products. A second broad class of methods chooses coordinates by directly comparing the input dissimilarities with distances in the configuration.
+
+Let
+
+$$
+d_{ij}=\|\mathbf y_i-\mathbf y_j\|
+$$
+
+be the Euclidean distance between fitted points $i$ and $j$.
+
+### Metric MDS
+
+Metric MDS aims to preserve numerical dissimilarities. A basic least-squares objective is
+
+$$
+\sum_{i<j}
+\left[d_{ij}-f(\delta_{ij})\right]^2,
+$$
+
+where $f$ may be fixed or estimated subject to a metric transformation, such as a linear transformation.
+
+When $f(\delta)=\delta$, the fitted distances should approximate the input dissimilarities themselves.
+
+### Non-metric MDS
+
+Non-metric MDS aims to preserve the **ordering** of dissimilarities rather than their exact magnitudes.
+
+If
+
+$$
+\delta_{ij}<\delta_{rs},
+$$
+
+then the fitted configuration should preferably satisfy
+
+$$
+d_{ij}<d_{rs}.
+$$
+
+The method fits monotone values called **disparities**,
+
+$$
+\widehat d_{ij}=f(\delta_{ij}),
+$$
+
+where $f$ is constrained to be monotonically increasing. The configuration is adjusted so that its distances are close to these disparities.
+
+Non-metric MDS is useful when:
+
+- only ranks are substantively meaningful;
+- the numerical spacing of dissimilarities is doubtful;
+- dissimilarities have undergone an unknown monotone transformation; or
+- robustness to extreme dissimilarity magnitudes is desirable.
+
+## Stress
+
+Iterative MDS methods measure disagreement between configuration distances and their target values using **stress**.
+
+One common normalised form is Kruskal's Stress-1:
+
+$$
+\operatorname{Stress}_1
+=
+\left[
+\frac{
+\sum_{i<j}(d_{ij}-\widehat d_{ij})^2
+}{
+\sum_{i<j}d_{ij}^2
+}
+\right]^{1/2}.
+$$
+
+- For metric MDS, $\widehat d_{ij}$ is based on the numerical dissimilarity.
+- For non-metric MDS, $\widehat d_{ij}$ is the monotone disparity.
+- Smaller stress means that the low-dimensional configuration better represents its target relationships.
+
+Stress is useful for comparing dimensions or competing fits to the same dissimilarities. It should not be treated as a universal pass-or-fail threshold independent of sample size, data structure and the chosen stress definition.
+
+### Numerical optimisation
+
+Unlike classical MDS, least-squares and non-metric MDS generally require iterative numerical optimisation. Consequently:
+
+- the result may depend on the starting configuration;
+- local minima are possible;
+- convergence should be checked; and
+- multiple starts are advisable when the software supports them.
+
+The SMACOF algorithm is a widely used approach that repeatedly majorises and reduces the stress function.
+
+## Why non-metric MDS can help
+
+The next example begins with a genuine two-dimensional configuration. Its Euclidean distances are then cubed:
+
+$$
+\delta_{ij}=d_{ij}^3.
+$$
+
+Cubing preserves the ordering of all distances but greatly changes their numerical spacing. Metric methods try to reproduce the cubed values, whereas non-metric MDS needs only to recover their ordering.
+
+```{r}
+#| label: generate-monotone-distance-example
+
+monotone_reference <- tibble::tribble(
+  ~label, ~x, ~y,
+  "A", -2.2, -0.4,
+  "B", -1.5, 1.2,
+  "C", -0.8, -1.3,
+  "D", -0.1, 0.5,
+  "E", 0.7, 1.6,
+  "F", 1.1, -0.9,
+  "G", 2.0, 0.2,
+  "H", 2.5, 1.4
+)
+
+true_coordinates <- monotone_reference |>
+  select(x, y) |>
+  as.matrix()
+
+true_distance_mat <- as.matrix(dist(true_coordinates))
+transformed_distance_mat <- true_distance_mat^3
+diag(transformed_distance_mat) <- 0
+transformed_delta <- as.dist(transformed_distance_mat)
+
+monotone_classical_fit <- cmdscale(
+  transformed_delta,
+  k = 2
+)
+
+monotone_nonmetric_fit <- MASS::isoMDS(
+  transformed_delta,
+  k = 2,
+  trace = FALSE
+)
+
+monotone_classical_aligned <- align_configuration(
+  true_coordinates,
+  monotone_classical_fit
+)
+
+monotone_nonmetric_aligned <- align_configuration(
+  true_coordinates,
+  monotone_nonmetric_fit$points
+)
+
+monotone_configuration_tbl <- bind_rows(
+  monotone_reference |>
+    transmute(
+      label,
+      dimension_1 = x,
+      dimension_2 = y,
+      method = "Original configuration"
+    ),
+  tibble(
+    label = monotone_reference$label,
+    dimension_1 = monotone_classical_aligned[, 1],
+    dimension_2 = monotone_classical_aligned[, 2],
+    method = "Classical MDS"
+  ),
+  tibble(
+    label = monotone_reference$label,
+    dimension_1 = monotone_nonmetric_aligned[, 1],
+    dimension_2 = monotone_nonmetric_aligned[, 2],
+    method = "Non-metric MDS"
+  )
+) |>
+  mutate(
+    method = factor(
+      method,
+      levels = c(
+        "Original configuration",
+        "Classical MDS",
+        "Non-metric MDS"
+      )
+    )
+  )
+```
+
+```{r}
+#| label: fig-monotone-distance-configurations
+#| echo: false
+#| fig-cap: "Original configuration compared with classical and non-metric MDS representations after the distances were cubed. Fitted configurations were aligned for visual comparison."
+#| out-width: "100%"
+
+ggplot(
+  monotone_configuration_tbl,
+  aes(
+    x = dimension_1,
+    y = dimension_2,
+    label = label
+  )
+) +
+  geom_path(
+    aes(group = 1),
+    linewidth = 0.5,
+    colour = "gray65"
+  ) +
+  geom_point(size = 2.5) +
+  ggrepel::geom_text_repel() +
+  facet_wrap(~ method, ncol = 1) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    x = "First dimension",
+    y = "Second dimension"
+  )
+```
+
+Because cubing is monotone, the rank ordering still contains the information needed by non-metric MDS. Classical MDS instead treats the transformed values as metric distances and is more strongly distorted.
+
+## Shepard diagrams
+
+A **Shepard diagram** compares input dissimilarities with distances in a fitted configuration.
+
+For non-metric MDS it usually shows:
+
+- the input dissimilarities $\delta_{ij}$ on the horizontal axis;
+- the configuration distances $d_{ij}$ as points; and
+- the fitted monotone disparities $\widehat d_{ij}$ as a curve or step function.
+
+A successful non-metric representation should show configuration distances lying reasonably close to a monotonically increasing fitted relationship.
+
+```{r}
+#| label: prepare-monotone-shepard-data
+
+monotone_shepard <- MASS::Shepard(
+  transformed_delta,
+  monotone_nonmetric_fit$points
+)
+
+monotone_shepard_tbl <- tibble(
+  dissimilarity = monotone_shepard$x,
+  configuration_distance = monotone_shepard$y,
+  disparity = monotone_shepard$yf
+) |>
+  arrange(dissimilarity)
+```
+
+```{r}
+#| label: fig-monotone-shepard-diagram
+#| echo: false
+#| fig-cap: "Shepard diagram for the non-metric MDS fit to cubed Euclidean distances."
+
+ggplot(
+  monotone_shepard_tbl,
+  aes(
+    x = dissimilarity,
+    y = configuration_distance
+  )
+) +
+  geom_point(alpha = 0.7) +
+  geom_line(
+    aes(y = disparity),
+    linewidth = 1
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    x = "Input dissimilarity",
+    y = "Configuration distance"
+  )
+```
+
+The monotone fitted line need not be straight. Non-metric MDS preserves order, not a specific linear relationship between dissimilarity and fitted distance.
+
+## A practical MDS workflow
+
+When applying MDS to a new dataset:
+
+1. **Define the observations.** Decide what each point in the map will represent.
+2. **Choose the dissimilarity.** Make the scientific meaning of similarity explicit.
+3. **Decide on preprocessing.** Transform or standardise variables before computing dissimilarities when justified.
+4. **Inspect the proximity matrix.** Check symmetry, the diagonal, missing values and extreme dissimilarities.
+5. **Choose an MDS method.**
+   - Use classical MDS for Euclidean distances or when the Gram-matrix representation is appropriate.
+   - Use metric MDS to preserve numerical dissimilarities directly.
+   - Use non-metric MDS when preserving order is more defensible than preserving magnitude.
+6. **Fit several dimensions.** Do not assume that two dimensions are adequate merely because they are easy to display.
+7. **Assess fit.** Use eigenvalues, distance comparisons, stress and Shepard diagrams as appropriate.
+8. **Interpret relative positions.** Do not assign substantive meaning to axis signs or orientation.
+
+### Minimal R template
+
+```{r}
+#| label: mds-analysis-template
+#| eval: false
+
+# X contains one row per observation and numeric columns
+X_scaled <- scale(X)
+
+# Choose a scientifically appropriate dissimilarity
+delta <- dist(X_scaled, method = "euclidean")
+
+# Classical MDS
+classical_fit <- cmdscale(
+  delta,
+  k = 2,
+  eig = TRUE
+)
+
+# Non-metric MDS
+nonmetric_fit <- MASS::isoMDS(
+  delta,
+  k = 2,
+  trace = FALSE
+)
+
+# Compare the input dissimilarities with fitted distances
+classical_comparison <- as_distance_table(
+  delta,
+  classical_fit$points
+)
+```
+
+## Supplementary details
+
+::: {.callout-note collapse="true" title="Classical scaling versus metric least-squares MDS"}
+
+Classical scaling and metric least-squares MDS are related but optimise different quantities.
+
+### Classical scaling
+
+Classical scaling finds a low-rank approximation to the centred inner-product matrix:
+
+$$
+\min_{\operatorname{rank}(\mathbf B^*)\leq k}
+\|\mathbf B-\mathbf B^*\|_F^2.
+$$
+
+The eigendecomposition gives an algebraic solution.
+
+### Metric least-squares MDS
+
+A basic metric MDS fit directly minimises discrepancies between fitted distances and target dissimilarities:
+
+$$
+\min_{\mathbf y_1,\ldots,\mathbf y_n}
+\sum_{i<j}
+ w_{ij}
+\left[d_{ij}-f(\delta_{ij})\right]^2.
+$$
+
+This normally requires iterative optimisation.
+
+Even for Euclidean input distances, the two criteria need not yield identical low-dimensional approximations because one approximates inner products and the other approximates distances directly.
+
+:::
+
+
+## Key ideas
+
+1. MDS starts from pairwise dissimilarities and constructs low-dimensional coordinates.
+2. The dissimilarity measure defines the meaning of similarity and must be chosen deliberately.
+3. Classical MDS double-centres squared dissimilarities and eigendecomposes the resulting Gram ($XX^\top$) matrix.
+4. MDS coordinates are identifiable only up to translation, rotation and reflection.
+5. Classical MDS based on Euclidean distances reproduces PCA scores.
+6. A two-dimensional map may distort the input, so fit must be assessed rather than assumed.
+7. Metric MDS seeks to preserve numerical dissimilarities; non-metric MDS seeks to preserve their ordering.
+8. Stress and Shepard diagrams help diagnose iterative MDS fits.
+
+## Conceptual checks
+
+1. Why is a proximity matrix symmetric and hollow in the standard setting?
+2. Why can the axes of an MDS map not be interpreted in the same way as original measured variables?
+3. At what stage should variables be standardised when MDS begins from a data matrix?
+6. What information does non-metric MDS preserve that metric MDS may not prioritise?
+7. What would a poor Shepard diagram look like?
+8. Why is MDS not itself a solution to curved or circular structure?
+
+## References

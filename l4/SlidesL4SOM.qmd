@@ -1,0 +1,529 @@
+---
+title: "Self-Organising Maps"
+author: Miguel Rodo
+date: "2026-08-03"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(cowplot)
+library(ggrepel)
+
+knitr::opts_chunk$set(
+  fig.align = "center",
+  out.width = "80%"
+)
+
+make_som_toy_data <- function(n = 300, seed = 5077) {
+  set.seed(seed)
+
+  u <- runif(n, min = -1, max = 1)
+  v <- runif(n, min = -1, max = 1)
+
+  x1 <- u + rnorm(n, sd = 0.10)
+  x2 <- v + rnorm(n, sd = 0.10)
+  x3 <- sin(pi * u) + cos(pi * v) + rnorm(n, sd = 0.15)
+  x4 <- u * v + rnorm(n, sd = 0.08)
+
+  group <- case_when(
+    u >= 0 & v >= 0 ~ "high u, high v",
+    u < 0 & v >= 0 ~ "low u, high v",
+    u < 0 & v < 0 ~ "low u, low v",
+    TRUE ~ "high u, low v"
+  )
+
+  tibble(
+    observation = seq_len(n),
+    u = u,
+    v = v,
+    group = group,
+    x1 = x1,
+    x2 = x2,
+    x3 = x3,
+    x4 = x4
+  )
+}
+
+make_som_grid <- function(n_rows = 8, n_cols = 8) {
+  expand.grid(
+    row = seq_len(n_rows),
+    col = seq_len(n_cols)
+  ) |>
+    as_tibble() |>
+    mutate(unit = row_number()) |>
+    select(unit, row, col)
+}
+
+initialise_codes <- function(x, grid, seed = 5077) {
+  set.seed(seed)
+  x <- as.matrix(x)
+
+  selected <- sample(seq_len(nrow(x)), size = nrow(grid), replace = TRUE)
+
+  x[selected, , drop = FALSE] +
+    matrix(
+      rnorm(nrow(grid) * ncol(x), sd = 0.05),
+      nrow = nrow(grid),
+      ncol = ncol(x)
+    )
+}
+
+find_bmu <- function(x_i, codes) {
+  which.min(rowSums((codes - matrix(
+    x_i,
+    nrow = nrow(codes),
+    ncol = length(x_i),
+    byrow = TRUE
+  ))^2))
+}
+
+quantisation_error <- function(x, codes) {
+  mean(
+    apply(
+      x,
+      1,
+      function(x_i) sqrt(min(rowSums((codes - matrix(
+        x_i,
+        nrow = nrow(codes),
+        ncol = length(x_i),
+        byrow = TRUE
+      ))^2)))
+    )
+  )
+}
+
+train_som <- function(
+  x,
+  n_rows = 8,
+  n_cols = 8,
+  iterations = 2500,
+  alpha_start = 0.35,
+  alpha_end = 0.02,
+  sigma_start = 4,
+  sigma_end = 0.8,
+  seed = 5077,
+  trace_every = 100
+) {
+  set.seed(seed)
+  x <- as.matrix(x)
+  grid <- make_som_grid(n_rows = n_rows, n_cols = n_cols)
+  codes <- initialise_codes(x, grid, seed = seed)
+
+  trace_tbl <- tibble(
+    iteration = 0,
+    quantisation_error = quantisation_error(x, codes)
+  )
+
+  for (t in seq_len(iterations)) {
+    progress <- t / iterations
+    alpha_t <- alpha_start * (1 - progress) + alpha_end * progress
+    sigma_t <- sigma_start * (1 - progress) + sigma_end * progress
+
+    i <- sample(seq_len(nrow(x)), size = 1)
+    x_i <- x[i, ]
+
+    bmu <- find_bmu(x_i, codes)
+
+    grid_distance <- sqrt(
+      (grid$row - grid$row[bmu])^2 +
+        (grid$col - grid$col[bmu])^2
+    )
+
+    h <- exp(-(grid_distance^2) / (2 * sigma_t^2))
+
+    for (j in seq_len(nrow(codes))) {
+      codes[j, ] <- codes[j, ] + alpha_t * h[j] * (x_i - codes[j, ])
+    }
+
+    if (t %% trace_every == 0) {
+      trace_tbl <- bind_rows(
+        trace_tbl,
+        tibble(
+          iteration = t,
+          quantisation_error = quantisation_error(x, codes)
+        )
+      )
+    }
+  }
+
+  list(
+    grid = grid,
+    codes = codes,
+    trace = trace_tbl
+  )
+}
+
+assign_bmus <- function(x, som_fit) {
+  x <- as.matrix(x)
+
+  tibble(
+    observation = seq_len(nrow(x)),
+    unit = apply(
+      x,
+      1,
+      function(x_i) find_bmu(x_i, som_fit$codes)
+    )
+  ) |>
+    left_join(som_fit$grid, by = "unit")
+}
+
+make_code_table <- function(som_fit, variable_names) {
+  as_tibble(som_fit$codes) |>
+    setNames(variable_names) |>
+    mutate(unit = row_number()) |>
+    left_join(som_fit$grid, by = "unit") |>
+    pivot_longer(
+      cols = all_of(variable_names),
+      names_to = "variable",
+      values_to = "prototype_value"
+    )
+}
+
+make_u_matrix <- function(som_fit) {
+  grid <- som_fit$grid
+  codes <- som_fit$codes
+
+  avg_neighbour_distance <- purrr::map_dbl(
+    seq_len(nrow(grid)),
+    function(j) {
+      neighbour_id <- which(
+        abs(grid$row - grid$row[j]) +
+          abs(grid$col - grid$col[j]) == 1
+      )
+
+      if (length(neighbour_id) == 0) {
+        return(NA_real_)
+      }
+
+      mean(
+        purrr::map_dbl(
+          neighbour_id,
+          function(k) sqrt(sum((codes[j, ] - codes[k, ])^2))
+        )
+      )
+    }
+  )
+
+  grid |>
+    mutate(u_distance = avg_neighbour_distance)
+}
+
+manual_update_example <- function() {
+  prototypes_before <- tibble(
+    unit = c("A", "B", "C"),
+    x = c(-1.2, 0.1, 1.3),
+    y = c(0.0, 0.2, 0.0),
+    h = c(0.5, 1.0, 0.5)
+  )
+
+  x_i <- c(0.0, 1.2)
+  alpha <- 0.45
+
+  prototypes_after <- prototypes_before |>
+    mutate(
+      x = x + alpha * h * (x_i[1] - x),
+      y = y + alpha * h * (x_i[2] - y),
+      stage = "after update"
+    )
+
+  prototypes_before |>
+    mutate(stage = "before update") |>
+    bind_rows(prototypes_after) |>
+    mutate(
+      stage = factor(stage, levels = c("before update", "after update"))
+    )
+}
+```
+
+<!--
+Suggested pacing for a two-hour session:
+
+00:00-00:10  Motivation: a map of high-dimensional observations
+00:10-00:25  Two spaces: data space and map space
+00:25-00:40  Nearest-prototype representation and BMUs
+00:40-01:00  The SOM update and neighbourhood learning
+01:00-01:10  Small worked update
+01:10-01:25  SOM as constrained k-means, but not only that
+01:25-01:45  Interpreting fitted SOM displays
+01:45-01:55  Quality measures and limitations
+01:55-02:00  Recap and link to clustering
+
+The goal is to present SOMs as dimensionality reduction by organised prototypes.
+The k-means connection is important, but it is not the only framing for this lecture.
+-->
+
+## Context
+
+For the same four-dimensional observations, PCA places each observation
+anywhere in a continuous plane.
+A SOM instead assigns each observation to
+one of a fixed number of grid positions.
+
+The grid is usually one- or two-dimensional.
+
+```{r}
+#| label: fig-continuous-pca-discrete-som
+#| code-fold: true
+#| code-summary: "Show PCA and SOM code"
+#| fig-width: 8
+#| fig-height: 10
+#| out-width: "75%"
+#| fig-cap: "PCA gives continuous coordinates, whereas a SOM maps observations to positions on a fixed grid."
+
+# Generate the same four-dimensional data for both methods
+context_data <- make_som_toy_data(
+  n = 250,
+  seed = 5077
+)
+
+x_context <- context_data |>
+  select(x1, x2, x3, x4) |>
+  scale()
+
+# Use consistent colours in both displays
+group_levels <- sort(unique(context_data$group))
+
+group_colours <- setNames(
+  c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"),
+  group_levels
+)
+
+observation_colours <- unname(
+  group_colours[context_data$group]
+)
+
+# PCA
+pca_context <- prcomp(
+  x_context,
+  center = FALSE,
+  scale. = FALSE
+)
+
+pca_scores <- pca_context$x[, 1:2]
+
+variance_explained <- 100 *
+  pca_context$sdev^2 /
+  sum(pca_context$sdev^2)
+
+# SOM with a fixed 5 by 5 hexagonal grid
+set.seed(5077)
+
+som_context <- kohonen::som(
+  x_context,
+  grid = kohonen::somgrid(
+    xdim = 5,
+    ydim = 5,
+    topo = "hexagonal"
+  ),
+  rlen = 200,
+  alpha = c(0.05, 0.01),
+  keep.data = TRUE
+)
+
+# Display the two representations one below the other
+par(
+  mfrow = c(2, 1),
+  mar = c(4, 4, 3, 1)
+)
+
+plot(
+  pca_scores,
+  col = observation_colours,
+  pch = 19,
+  asp = 1,
+  xlab = paste0(
+    "PC1 (",
+    round(variance_explained[1], 1),
+    "%)"
+  ),
+  ylab = paste0(
+    "PC2 (",
+    round(variance_explained[2], 1),
+    "%)"
+  ),
+  main = "PCA: continuous coordinates"
+)
+
+legend(
+  "topright",
+  legend = group_levels,
+  col = group_colours[group_levels],
+  pch = 19,
+  bty = "n",
+  cex = 0.8
+)
+
+plot(
+  som_context,
+  type = "mapping",
+  pchs = 19,
+  col = observation_colours,
+  main = "SOM: positions on a fixed 5 × 5 grid",
+  keepMargins = TRUE
+)
+```
+
+SOMs are typically employed for visualisation.
+They can provide more information in a lower-dimensional plot, as:
+
+- Different multiple separating variables can be important in different parts of the grid, and
+- Extreme observations need not visually distort the plot, as all points lie on a fixed grid.
+
+For example, suppose one variable had very high variation compared the others.
+For the sake of illustration, we choose not to standardise.
+This will wildly distort the PCA biplot, but less so the SOM grid.
+
+```{r}
+#| label: fig-continuous-pca-discrete-som-extreme
+#| code-fold: true
+#| code-summary: "Show PCA and SOM code"
+#| fig-width: 8
+#| fig-height: 10
+#| out-width: "75%"
+#| fig-cap: "PCA gives continuous coordinates, whereas a SOM maps observations to positions on a fixed grid."
+
+# Generate the same four-dimensional data for both methods
+context_data <- context_data |>
+  dplyr::mutate(
+    x2 = ifelse(group == "high u, high v", x2 + 1e3, x2)
+  )
+
+x_context <- context_data |>
+  select(x1, x2, x3, x4) |>
+  scale(scale = FALSE)
+
+# Use consistent colours in both displays
+group_levels <- sort(unique(context_data$group))
+
+group_colours <- setNames(
+  c("#1B9E77", "#D95F02", "#7570B3", "#E7298A"),
+  group_levels
+)
+
+observation_colours <- unname(
+  group_colours[context_data$group]
+)
+
+# PCA
+pca_context <- prcomp(
+  x_context,
+  center = FALSE,
+  scale. = FALSE
+)
+
+pca_scores <- pca_context$x[, 1:2]
+
+variance_explained <- 100 *
+  pca_context$sdev^2 /
+  sum(pca_context$sdev^2)
+
+# SOM with a fixed 5 by 5 hexagonal grid
+set.seed(5077)
+
+som_context <- kohonen::som(
+  x_context,
+  grid = kohonen::somgrid(
+    xdim = 5,
+    ydim = 5,
+    topo = "hexagonal"
+  ),
+  rlen = 200,
+  alpha = c(0.05, 0.01),
+  keep.data = TRUE
+)
+
+# Display the two representations one below the other
+par(
+  mfrow = c(2, 1),
+  mar = c(4, 4, 3, 1)
+)
+
+plot(
+  pca_scores,
+  col = observation_colours,
+  pch = 19,
+  asp = 1,
+  xlab = paste0(
+    "PC1 (",
+    round(variance_explained[1], 1),
+    "%)"
+  ),
+  ylab = paste0(
+    "PC2 (",
+    round(variance_explained[2], 1),
+    "%)"
+  ),
+  main = "PCA: continuous coordinates"
+)
+
+legend(
+  "topright",
+  legend = group_levels,
+  col = group_colours[group_levels],
+  pch = 19,
+  bty = "n",
+  cex = 0.8
+)
+
+plot(
+  som_context,
+  type = "mapping",
+  pchs = 19,
+  col = observation_colours,
+  main = "SOM: positions on a fixed 5 × 5 grid",
+  keepMargins = TRUE
+)
+```
+
+In the example below, different features distinguish different groups of animals along the same axis.
+
+![](`r projr::projr_path_get("raw-data", "img", "animal_data.png")`)
+
+![](`r projr::projr_path_get("raw-data", "img", "animal_som.png")`)
+
+We'll explore later on how to further exploit the grid for easier visualisation.
+
+## Main idea - linked prototypes
+
+Similar to ISOMAPs, SOMs assume that the data lie on a low-dimensional manifold in the high-dimensional space.
+Hwever, SOMs never attempt to represent the actual geodesic distances between observations by linear visual representations.
+Rather, SOMs learn a set of prototypes that are linked together in a low-dimensional grid.
+By "linked", we mean that the prototypes are not defined only by the observations allocated to their grid position, but also by the prototypes in neighbouring grid positions.
+We'll make this more precise in the next section.
+
+## What does each grid unit represent?
+
+Suppose the SOM contains $K$ grid units.
+
+Each unit $j$ has two associated objects:
+
+1. a fixed position on the map,
+   $$
+   \boldsymbol{\ell}_j \in \mathbb{R}^2;
+   $$
+2. a learnt prototype vector,
+   $$
+   \mathbf{m}_j \in \mathbb{R}^p.
+   $$
+
+The prototype has one value for every original variable.
+
+The grid location tells us **where the unit is displayed**.
+
+The prototype tells us **what sort of observation the unit represents**.
+

@@ -326,6 +326,7 @@ The first example is a plane in three-dimensional space.
 ```{r}
 #| label: fig-plane-in-three-dimensions
 #| fig-cap: "A two-dimensional plane embedded in three-dimensional space. The observations have three coordinates but vary in only two independent directions."
+#| echo: false
 #| fig-width: 8
 #| fig-height: 6
 
@@ -418,6 +419,7 @@ v
 \end{bmatrix},
 \qquad u,v\in\mathbb R.
 $$
+
 
 There are three measured coordinates, but only two free quantities, (u) and (v).
 The plane therefore is really only 2D, despite lying in 3D.
@@ -672,7 +674,7 @@ ggplot() +
 
 The shortest distance along the curve between two points is termed the geodesic distance.
 
-If we actually knew the formula for the curve, we could calculate the lower-dimensional distance exactly.
+If we actually knsew the formula for the curve, we could calculate the lower-dimensional distance exactly.
 
 $$
 d_M(A,B)
@@ -1415,61 +1417,6 @@ For a collection of points $\mathbf x_1,\ldots,\mathbf x_n$, the basic construct
 4. weight each edge by the corresponding Euclidean distance;
 5. estimate long-range distances by shortest paths through the graph.
 
-Here is the construction directly in R.
-
-```{r}
-#| label: code-construct-knn-graph
-#| eval: false
-
-construct_knn_graph <- function(point_tbl, k) {
-  coords <- as.matrix(
-    point_tbl[, c("x", "y")]
-  )
-
-  n <- nrow(coords)
-  distance_mat <- as.matrix(
-    dist(coords)
-  )
-
-  search_mat <- distance_mat
-  diag(search_mat) <- Inf
-
-  adjacent <- matrix(
-    FALSE,
-    nrow = n,
-    ncol = n
-  )
-
-  for (i in seq_len(n)) {
-    neighbours <- order(search_mat[i, ])[seq_len(k)]
-    adjacent[i, neighbours] <- TRUE
-  }
-
-  # Treat the graph as undirected.
-  # This connects i and j if either one regards the other as a neighbour.
-  adjacent <- adjacent | t(adjacent)
-
-  edge_index <- which(
-    adjacent & upper.tri(adjacent),
-    arr.ind = TRUE
-  )
-
-  edge_tbl <- tibble::tibble(
-    from = as.character(edge_index[, 1]),
-    to = as.character(edge_index[, 2]),
-    weight = distance_mat[edge_index]
-  )
-
-  igraph::graph_from_data_frame(
-    edge_tbl,
-    directed = FALSE,
-    vertices = tibble::tibble(
-      name = as.character(seq_len(n))
-    )
-  )
-}
-```
-
 Now apply this to the curved one-dimensional example.
 The true lower-dimensional distance from $A$ to $B$ is the arc length of the curve.
 The graph distance estimates this by travelling through neighbouring sampled points.
@@ -1759,45 +1706,6 @@ $$
 \|\mathbf x_i-\mathbf x_j\|\leq \epsilon.
 $$
 
-Here is the corresponding R construction.
-
-```{r}
-#| label: code-construct-epsilon-graph
-#| eval: false
-
-construct_epsilon_graph <- function(point_tbl, epsilon) {
-  coords <- as.matrix(
-    point_tbl[, c("x", "y")]
-  )
-
-  n <- nrow(coords)
-  distance_mat <- as.matrix(
-    dist(coords)
-  )
-
-  adjacent <- distance_mat <= epsilon
-  diag(adjacent) <- FALSE
-
-  edge_index <- which(
-    adjacent & upper.tri(adjacent),
-    arr.ind = TRUE
-  )
-
-  edge_tbl <- tibble::tibble(
-    from = as.character(edge_index[, 1]),
-    to = as.character(edge_index[, 2]),
-    weight = distance_mat[edge_index]
-  )
-
-  igraph::graph_from_data_frame(
-    edge_tbl,
-    directed = FALSE,
-    vertices = tibble::tibble(
-      name = as.character(seq_len(n))
-    )
-  )
-}
-```
 
 This is conceptually simple: every edge is local because every edge must have length at most $\epsilon$.
 The difficulty is that a single value of $\epsilon$ may be too small in sparse regions and too large in dense regions.
@@ -2044,3 +1952,752 @@ The right-hand side is the graph shortest-path distance, obtained by travelling 
 That shortest-path distance is not the true geodesic distance.
 It is an estimate of the geodesic distance based on the sampled observations.
 With enough data, and with a neighbourhood graph that is local but connected, this estimate can be much closer to the true lower-dimensional distance than the direct Euclidean distance.
+
+## From one shortest path to all pairwise distances
+
+The previous examples asked for one distance: how far is point A from point B?
+
+ISOMAP needs more than this.
+It needs an estimated distance between every pair of observations.
+
+The same graph idea applies.
+For each pair of points, we ask:
+
+> What is the shortest route through the graph from one point to the other?
+
+The edge lengths are still ordinary Euclidean distances.
+The change is that we are not allowed to jump directly between any two points unless there is an edge between them.
+
+```{r}
+#| label: calculate-all-pair-curve-distance-matrices
+#| include: false
+
+curve_euclidean_mat <- as.matrix(
+  dist(
+    curve_graph_points[, c("x", "y")]
+  )
+)
+
+curve_graph_distance_mat <- igraph::distances(
+  knn_curve_graph$graph,
+  weights = igraph::E(knn_curve_graph$graph)$weight
+)
+
+selected_curve_vertices <- c(1, 5, 9, 13, 17)
+selected_curve_labels <- paste0("point ", selected_curve_vertices)
+
+curve_euclidean_small <- round(
+  curve_euclidean_mat[
+    selected_curve_vertices,
+    selected_curve_vertices
+  ],
+  2
+)
+
+curve_graph_small <- round(
+  curve_graph_distance_mat[
+    selected_curve_vertices,
+    selected_curve_vertices
+  ],
+  2
+)
+
+rownames(curve_euclidean_small) <- selected_curve_labels
+colnames(curve_euclidean_small) <- selected_curve_labels
+
+rownames(curve_graph_small) <- selected_curve_labels
+colnames(curve_graph_small) <- selected_curve_labels
+```
+
+### The original Euclidean distance matrix
+
+The ordinary Euclidean distance matrix connects every pair of points directly.
+
+```{r}
+#| label: tbl-curve-euclidean-distance-matrix
+#| echo: false
+
+knitr::kable(
+  curve_euclidean_small,
+  caption = "Selected entries from the ordinary Euclidean distance matrix."
+)
+```
+
+### The graph-distance matrix
+
+The graph-distance matrix measures the shortest route through local graph edges.
+
+```{r}
+#| label: tbl-curve-graph-distance-matrix
+#| echo: false
+
+knitr::kable(
+  curve_graph_small,
+  caption = "Selected entries from the graph shortest-path distance matrix."
+)
+```
+
+These two matrices answer different questions.
+
+The Euclidean matrix asks:
+
+> How far apart are two points if we draw a straight line between them?
+
+The graph-distance matrix asks:
+
+> How far apart are two points if we have to travel through the graph?
+
+For neighbouring points, the answers are usually very similar.
+For points far apart along the curve, the graph distance can be much closer to the distance along the underlying object.
+
+```{r}
+#| label: tbl-curve-distance-comparison
+#| echo: false
+
+curve_pair_comparison <- tibble::tibble(
+  pair = c(
+    "point 1 to point 2",
+    "point 1 to point 9",
+    "point 1 to point 17"
+  ),
+  euclidean_distance = c(
+    curve_euclidean_mat[1, 2],
+    curve_euclidean_mat[1, 9],
+    curve_euclidean_mat[1, 17]
+  ),
+  graph_distance = c(
+    curve_graph_distance_mat[1, 2],
+    curve_graph_distance_mat[1, 9],
+    curve_graph_distance_mat[1, 17]
+  )
+) |>
+  dplyr::mutate(
+    euclidean_distance = round(euclidean_distance, 2),
+    graph_distance = round(graph_distance, 2)
+  )
+
+knitr::kable(
+  curve_pair_comparison,
+  caption = "Direct Euclidean distances compared with shortest-path distances through the graph."
+)
+```
+
+The important point is simple:
+
+> ISOMAP replaces the original Euclidean distance matrix with a graph shortest-path distance matrix.
+
+## The ISOMAP algorithm
+
+We can now state ISOMAP as a sequence of four steps.
+
+### Step 1: calculate ordinary Euclidean distances
+
+Start with the observed coordinates.
+Calculate the ordinary Euclidean distance between every pair of observations.
+
+```{r}
+#| label: code-isomap-step-1
+#| eval: false
+
+x <- as.matrix(my_data)
+
+euclidean_distance_mat <- as.matrix(
+  dist(x)
+)
+```
+
+### Step 2: construct a local neighbourhood graph
+
+Keep only local edges.
+This can be done using a $k$-nearest-neighbour graph or an $\epsilon$-neighbourhood graph.
+
+```{r}
+#| label: code-isomap-step-2
+#| eval: false
+
+neighbourhood <- build_knn_graph(
+  x = x,
+  k = 8
+)
+
+graph <- neighbourhood$graph
+```
+
+### Step 3: calculate shortest-path distances through the graph
+
+The graph now tells us which moves are allowed.
+The shortest-path calculation gives a new distance matrix.
+
+```{r}
+#| label: code-isomap-step-3
+#| eval: false
+
+graph_distance_mat <- igraph::distances(
+  graph,
+  weights = igraph::E(graph)$weight
+)
+```
+
+This is the key ISOMAP move.
+The graph distances are trying to estimate distances along the lower-dimensional object.
+
+### Step 4: apply classical MDS
+
+Finally, apply classical MDS to the graph-distance matrix.
+
+```{r}
+#| label: code-isomap-step-4
+#| eval: false
+
+isomap_fit <- cmdscale(
+  as.dist(graph_distance_mat),
+  k = 2,
+  eig = TRUE
+)
+
+isomap_coordinates <- isomap_fit$points
+```
+
+So the overall method is:
+
+$$
+\boxed{
+\text{data}
+\to
+\text{local graph}
+\to
+\text{shortest-path distances}
+\to
+\text{classical MDS}
+}
+$$
+
+ISOMAP is therefore not a completely new version of MDS.
+It is classical MDS applied after changing the distances.
+
+As we will later see, the correct graph is *critical* for the final ISOMAP algorithm.
+
+## A two-dimensional manifold in three-dimensional space
+
+The one-dimensional curve examples show the idea, but ISOMAP is most useful when the lower-dimensional object is not so easy to see.
+
+A standard example is the Swiss roll.
+It is a two-dimensional surface embedded in three-dimensional space.
+
+```{r}
+#| label: simulate-swiss-roll-for-isomap
+
+swiss_tbl <- simulate_swiss_roll(
+  n = 700,
+  seed = 5077
+)
+
+swiss_x <- swiss_tbl |>
+  dplyr::select(x1, x2, x3) |>
+  as.matrix()
+
+swiss_display_tbl <- swiss_tbl |>
+  dplyr::bind_cols(
+    project_3d_to_2d(
+      x1 = swiss_tbl$x1,
+      x2 = swiss_tbl$x2,
+      x3 = swiss_tbl$x3,
+      azimuth = -45,
+      elevation = 20
+    )
+  )
+```
+
+```{r}
+#| label: fig-swiss-roll-view
+#| echo: false
+#| fig-cap: "A two-dimensional Swiss-roll surface embedded in three-dimensional space. Colour shows position along the roll."
+
+plotly::plot_ly(
+  data = swiss_tbl,
+  x = ~x1,
+  y = ~x3,
+  z = ~x2,
+  colour = ~t,
+  colours = viridisLite::viridis(100),
+  type = "scatter3d",
+  mode = "markers",
+  marker = list(
+    size = 2,
+    opacity = 0.8
+  )
+) |>
+  plotly::layout(
+    scene = list(
+      xaxis = list(title = "x1"),
+      yaxis = list(title = "x3"),
+      zaxis = list(title = "Height"),
+      aspectmode = "data",
+      camera = list(
+        eye = list(
+          x = 1.6,
+          y = 1.6,
+          z = 0.8
+        )
+      )
+    )
+  )
+```
+
+Each observation has three measured coordinates.
+But the surface itself has only two intrinsic directions:
+
+1. position along the rolled sheet;
+2. height along the sheet.
+
+## Why Euclidean distance is a problem on the Swiss roll
+
+Points on neighbouring layers of the roll can be close in ordinary three-dimensional distance.
+But to move between them while staying on the surface, one may have to travel a long way around the sheet.
+
+This is the same problem as the curved-line and river examples, but now in three dimensions.
+
+```{r}
+#| label: fit-swiss-roll-pca-and-euclidean-mds
+#| include: false
+
+swiss_pca <- prcomp(
+  swiss_x,
+  center = TRUE,
+  scale. = FALSE
+)
+
+swiss_pca_scores <- swiss_pca$x[, 1:2]
+
+swiss_cmds <- cmdscale(
+  dist(swiss_x),
+  k = 2,
+  eig = TRUE
+)
+
+swiss_linear_tbl <- dplyr::bind_rows(
+  tibble::tibble(
+    dimension_1 = swiss_pca_scores[, 1],
+    dimension_2 = swiss_pca_scores[, 2],
+    t = swiss_tbl$t,
+    method = "PCA"
+  ),
+  tibble::tibble(
+    dimension_1 = swiss_cmds$points[, 1],
+    dimension_2 = swiss_cmds$points[, 2],
+    t = swiss_tbl$t,
+    method = "Classical MDS\nwith Euclidean distance"
+  )
+) |>
+  dplyr::mutate(
+    method = factor(
+      method,
+      levels = c(
+        "PCA",
+        "Classical MDS\nwith Euclidean distance"
+      )
+    )
+  )
+```
+
+```{r}
+#| label: fig-swiss-roll-pca-and-euclidean-mds
+#| echo: false
+#| fig-cap: "PCA and Euclidean classical MDS preserve the rolled geometry rather than unfolding the surface."
+#| out-width: "100%"
+
+ggplot(
+  swiss_linear_tbl,
+  aes(
+    x = dimension_1,
+    y = dimension_2,
+    colour = t
+  )
+) +
+  geom_point(
+    alpha = 0.85,
+    size = 1.2
+  ) +
+  facet_wrap(~ method) +
+  coord_equal() +
+  scale_colour_viridis_c(
+    name = "Position\nalong roll"
+  ) +
+  labs(
+    x = "first dimension",
+    y = "second dimension"
+  ) +
+  cowplot::theme_cowplot() +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+The two plots need not have the same orientation.
+Eigenvector signs and rotations are arbitrary.
+The important point is that both methods are still working with ordinary Euclidean geometry.
+
+## ISOMAP on the Swiss roll
+
+Now use local graph distances instead of direct Euclidean distances.
+
+```{r}
+#| label: choose-connected-swiss-roll-graph
+#| include: false
+
+candidate_k <- c(6, 8, 10, 12, 15)
+
+swiss_connectivity_tbl <- tibble::tibble(
+  k = candidate_k
+) |>
+  dplyr::mutate(
+    graph_info = purrr::map(
+      k,
+      ~ build_knn_graph(
+        x = swiss_x,
+        k = .x
+      )
+    ),
+    components = purrr::map_int(
+      graph_info,
+      ~ .x$components$no
+    )
+  )
+
+swiss_k <- swiss_connectivity_tbl |>
+  dplyr::filter(components == 1) |>
+  dplyr::slice(1) |>
+  dplyr::pull(k)
+
+if (length(swiss_k) == 0) {
+  stop("No connected Swiss-roll graph was found among the candidate k values.")
+}
+```
+
+```{r}
+#| label: fit-swiss-roll-isomap-main
+#| include: false
+
+swiss_isomap <- fit_isomap(
+  x = swiss_x,
+  k = swiss_k,
+  ndim = 2
+)
+
+swiss_isomap_tbl <- tibble::tibble(
+  dimension_1 = swiss_isomap$points[, 1],
+  dimension_2 = swiss_isomap$points[, 2],
+  t = swiss_tbl$t,
+  height = swiss_tbl$height
+)
+```
+
+```{r}
+#| label: fig-swiss-roll-isomap-main
+#| echo: false
+#| fig-cap: "ISOMAP applied to the Swiss roll. The method uses shortest-path distances through a local neighbourhood graph before applying classical MDS."
+#| fig-width: 8
+#| fig-height: 6
+
+ggplot(
+  swiss_isomap_tbl,
+  aes(
+    x = dimension_1,
+    y = dimension_2,
+    colour = t
+  )
+) +
+  geom_point(
+    alpha = 0.85,
+    size = 1.3
+  ) +
+  coord_equal() +
+  scale_colour_viridis_c(
+    name = "Position\nalong roll"
+  ) +
+  labs(
+    x = "first ISOMAP dimension",
+    y = "second ISOMAP dimension"
+  ) +
+  cowplot::theme_cowplot() +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+The colour progression is now much closer to an unrolled representation of the surface.
+
+For this simulated example only, we know the true unrolled coordinates.
+That lets us check whether the ISOMAP representation is recovering the intended structure.
+
+```{r}
+#| label: prepare-swiss-roll-intrinsic-comparison
+#| include: false
+
+swiss_intrinsic_tbl <- swiss_tbl |>
+  dplyr::transmute(
+    dimension_1 = arc_length,
+    dimension_2 = height,
+    t = t,
+    method = "True unrolled\ncoordinates"
+  )
+
+aligned_isomap_coordinates <- align_configuration(
+  reference = swiss_intrinsic_tbl |>
+    dplyr::select(dimension_1, dimension_2),
+  target = swiss_isomap$points
+)
+
+swiss_aligned_isomap_tbl <- tibble::tibble(
+  dimension_1 = aligned_isomap_coordinates[, 1],
+  dimension_2 = aligned_isomap_coordinates[, 2],
+  t = swiss_tbl$t,
+  method = "ISOMAP\nconfiguration"
+)
+
+swiss_compare_tbl <- dplyr::bind_rows(
+  swiss_intrinsic_tbl,
+  swiss_aligned_isomap_tbl
+) |>
+  dplyr::mutate(
+    method = factor(
+      method,
+      levels = c(
+        "True unrolled\ncoordinates",
+        "ISOMAP\nconfiguration"
+      )
+    )
+  )
+```
+
+```{r}
+#| label: fig-swiss-roll-isomap-versus-intrinsic
+#| echo: false
+#| fig-cap: "The true unrolled coordinates compared with the ISOMAP configuration, after allowing for rotation, reflection and scaling."
+#| out-width: "100%"
+
+ggplot(
+  swiss_compare_tbl,
+  aes(
+    x = dimension_1,
+    y = dimension_2,
+    colour = t
+  )
+) +
+  geom_point(
+    alpha = 0.85,
+    size = 1.2
+  ) +
+  facet_wrap(~ method) +
+  coord_equal() +
+  scale_colour_viridis_c(
+    name = "Position\nalong roll"
+  ) +
+  labs(
+    x = "first dimension",
+    y = "second dimension"
+  ) +
+  cowplot::theme_cowplot() +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+```
+
+The next practical question is how we choose the graph.
+If the graph is too sparse, it may break apart.
+If it is too dense, it may add shortcuts between different layers of the roll.
+That is why the graph construction is not just a technical detail.
+
+
+## Choosing the neighbourhood size
+
+The choice of $k$ or $\varepsilon$ is central to ISOMAP.
+
+A useful neighbourhood must be:
+
+- large enough for the graph to be connected; but
+- small enough for edges to remain genuinely local.
+
+### If the neighbourhood is too small
+
+- the graph may be disconnected;
+- shortest paths between components do not exist;
+- within a sparse graph, paths may be unnecessarily long and unstable.
+
+### If the neighbourhood is too large
+
+- edges may jump between nearby folds;
+- these short-circuit edges create unrealistically short graph paths;
+- graph distances move back towards ordinary ambient Euclidean distances;
+- the nonlinear advantage of ISOMAP is lost.
+
+### Sensitivity of the embedding to $k$
+
+Compare a reasonable neighbourhood with a much larger one.
+
+```{r}
+#| label: fit-swiss-roll-isomap-over-k
+
+k_embedding_values <- c(
+  4,
+  5,
+  8,
+  20
+)
+
+swiss_k_fit_tbl <- map_dfr(
+  k_embedding_values,
+  function(k_value) {
+    graph_info <- build_knn_graph(
+      swiss_x,
+      k = k_value
+    )
+
+    if (graph_info$components$no != 1) {
+      return(
+        tibble(
+          dimension_1 = numeric(),
+          dimension_2 = numeric(),
+          t = numeric(),
+          k = integer()
+        )
+      )
+    }
+
+    graph_distance_mat <- igraph::distances(
+      graph_info$graph,
+      weights = igraph::E(
+        graph_info$graph
+      )$weight
+    )
+
+    coordinates <- cmdscale(
+      as.dist(graph_distance_mat),
+      k = 2
+    )
+
+    tibble(
+      dimension_1 = coordinates[, 1],
+      dimension_2 = coordinates[, 2],
+      t = swiss_tbl$t,
+      k = k_value
+    )
+  }
+) |>
+  mutate(
+    k = factor(
+      k,
+      levels = k_embedding_values,
+      labels = paste0(
+        "k = ",
+        k_embedding_values
+      )
+    )
+  )
+```
+
+```{r}
+#| label: fig-swiss-roll-isomap-over-k
+#| echo: false
+#| fig-cap: "ISOMAP embeddings of the Swiss roll under different nearest-neighbour choices."
+#| out-width: "100%"
+
+ggplot(
+  swiss_k_fit_tbl,
+  aes(
+    x = dimension_1,
+    y = dimension_2,
+    colour = t
+  )
+) +
+  geom_point(
+    alpha = 0.75,
+    size = 0.9
+  ) +
+  facet_wrap(
+    ~ k
+  ) +
+  coord_equal() +
+  scale_colour_viridis_c(
+    name = "Position\nalong roll"
+  ) +
+  cowplot::theme_cowplot() +
+  theme(
+    panel.background = element_rect(
+      fill = "white"
+    ),
+    plot.background = element_rect(
+      fill = "white"
+    )
+  ) +
+  labs(
+    x = "First ISOMAP dimension",
+    y = "Second ISOMAP dimension"
+  )
+```
+
+A single visually pleasing result is not enough. A sensible interpretation should remain reasonably stable across nearby defensible values of $k$.
+
+## Comparing dimensionality-reduction methods
+
+| Method | Starting information | Main quantity represented | Where nonlinearity enters |
+|:--|:--|:--|:--|
+| PCA | Data matrix | Variation under linear projection | It does not |
+| Classical MDS | Dissimilarity matrix | Geometry of the supplied dissimilarities | Only through the supplied dissimilarities |
+| Non-metric MDS | Dissimilarity matrix | Ordering of supplied dissimilarities | Through a monotone transformation |
+| ISOMAP | Data matrix and a neighbourhood rule | Estimated geodesic distances | Through graph construction and shortest paths |
+
+Non-metric MDS and ISOMAP solve different problems.
+
+- Non-metric MDS changes how the supplied dissimilarities are matched.
+- ISOMAP changes the dissimilarities themselves before applying classical MDS.
+
+## Failure modes
+
+ISOMAP can work strikingly well on a clean, densely sampled Swiss roll. Its assumptions may be much less convincing in real datasets.
+
+### Disconnected graphs
+
+If the neighbourhood is too small, the graph may separate into components. No finite shortest path joins different components.
+
+Possible responses include:
+
+- increasing the neighbourhood size;
+- analysing components separately; or
+- reconsidering whether a single connected manifold is plausible.
+
+### Short-circuit edges
+
+If the neighbourhood is too large, or folds are close together, edges may cross gaps in the manifold. A single shortcut can distort many shortest paths.
+
+### Uneven sampling density
+
+A global $k$ or $\varepsilon$ may be too large in dense regions and too small in sparse regions.
+
+### Noise
+
+Noise can obscure local geometry, create false neighbours and make graph paths unstable.
+
+### Outliers
+
+An outlier may become isolated or act as an artificial bridge between otherwise separate regions.
+
+### Multiple manifolds
+
+Observations from genuinely distinct populations may not lie on one connected smooth manifold. One global ISOMAP map may then be inappropriate.
+
+## What ISOMAP does not provide
+
+ISOMAP does not automatically provide:
+
+- loadings that relate its axes directly to the original variables;
+- a universally correct value of $k$ or $\varepsilon$;
+- robustness to noise and outliers;
+- a guarantee that apparent groups are genuine clusters;
+- a simple transformation for mapping new observations;
+- recovery of every form of nonlinear structure.
+
+The output axes are coordinates chosen to represent graph distances. Their signs and orientations are arbitrary, just as in MDS.

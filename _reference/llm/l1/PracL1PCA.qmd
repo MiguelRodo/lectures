@@ -1,0 +1,267 @@
+---
+title: "Principal component analysis"
+subtitle: "STA5077Z coding practical"
+author: "Miguel Rodó"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: false
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Introduction
+
+This practical uses survey data collected to assess options for improving food security through the sustainable use of natural resources in the Sikasso region of Mali.
+
+The aim is to practise the main steps of a principal component analysis:
+
+1. exploring the original variables;
+2. deciding whether the variables should be standardised;
+3. fitting PCA with `prcomp()`;
+4. examining the proportion of variation explained;
+5. interpreting loadings and scores; and
+6. producing and interpreting a biplot.
+
+Use comments in your code and short written explanations below each result. Do not report numerical output without explaining what it means in the context of the data.
+
+## Variables
+
+The variables used in this practical are:
+
+| Variable | Description |
+|:--|:--|
+| `family` | Total number of individuals in the household |
+| `dist_rd` | Distance in kilometres to the nearest passable road |
+| `cotton` | Hectares of cotton planted in 2000 |
+| `maize` | Hectares of maize planted in 2000 |
+| `sorg` | Hectares of sorghum planted in 2000 |
+| `millet` | Hectares of millet planted in 2000 |
+| `bull` | Total number of bullocks or draft animals |
+| `cattle` | Total number of cattle |
+| `goats` | Total number of goats |
+
+## Setup
+
+The package installation only needs to be run once.
+
+```{r}
+#| label: install-mali-data-package
+#| eval: false
+
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+
+remotes::install_github(
+  "MiguelRodo/DataTidy23RodoHonsMult@2024"
+)
+```
+
+Load the packages and data.
+
+```{r}
+#| label: load-pca-practical-data
+
+library(tidyverse)
+
+data(
+  "data_tidy_mali",
+  package = "DataTidy23RodoHonsMult"
+)
+
+pca_variables <- c(
+  "family",
+  "dist_rd",
+  "cotton",
+  "maize",
+  "sorg",
+  "millet",
+  "bull",
+  "cattle",
+  "goats"
+)
+
+mali_pca_tbl <- data_tidy_mali |>
+  dplyr::select(dplyr::all_of(pca_variables))
+```
+
+# Core practical
+
+## Question 1: Inspect the data
+
+Inspect the first few rows and calculate suitable numerical summaries for each variable.
+
+Your answer should address:
+
+- the number of observations and variables;
+- whether any values are missing;
+- the centre and spread of each variable; and
+- whether the variables appear to have similar numerical scales.
+
+```{r}
+#| label: inspect-mali-pca-data
+
+# Your code here
+```
+
+**Interpretation:**  
+Write two or three sentences summarising what you found.
+
+## Question 2: Explore pairwise relationships
+
+Construct scatterplots of:
+
+1. household size (`family`) against distance to the nearest passable road (`dist_rd`); and
+2. distance to the nearest passable road (`dist_rd`) against the number of cattle (`cattle`).
+
+```{r}
+#| label: fig-family-distance
+#| fig-cap: "Household size plotted against distance to the nearest passable road."
+
+# Your code here
+```
+
+```{r}
+#| label: fig-distance-cattle
+#| fig-cap: "Number of cattle plotted against distance to the nearest passable road."
+
+# Your code here
+```
+
+Identify any observations that appear unusually far from the main body of the data.
+
+Do not remove an observation merely because it is large.
+Remove an observation only when you can explain why it is likely to distort the analysis or reflect a data problem.
+Record any exclusions clearly and create a dataset called `mali_pca_clean`.
+
+```{r}
+#| label: prepare-clean-mali-pca-data
+
+
+```
+
+**Interpretation:**  
+Describe any potentially unusual observations and justify your decision to retain or exclude them.
+
+## Question 3: Decide whether to standardise
+
+PCA can be performed on:
+
+- the centred variables in their original units; or
+- standardised variables, for which each variable has variance one.
+
+Use the variable descriptions and the numerical summaries from Question 1 to decide which approach is more appropriate here.
+
+```{r}
+#| label: summarise-variable-scales
+
+```
+
+**Interpretation:**  
+Explain whether you will use `scale. = TRUE` or `scale. = FALSE` in `prcomp()`. Your explanation should refer to units, numerical scales and the substantive meaning of the variables.
+
+## Question 4: Fit the PCA using `prcomp`
+
+Fit a PCA using `prcomp()`. Centre the variables and apply the scaling decision made in Question 3.
+
+Store the fitted object as `mali_pca_fit`.
+
+```{r}
+#| label: fit-mali-pca
+
+
+```
+
+The main parts of the fitted object are:
+
+- `mali_pca_fit$rotation`: the loading vectors;
+- `mali_pca_fit$x`: the principal component scores; and
+- `mali_pca_fit$sdev^2`: the variance of each principal component.
+
+Confirm that the score matrix has one row per observation and one column per principal component.
+
+```{r}
+#| label: inspect-mali-pca-object
+
+
+```
+
+## Question 5: Fit the PCA using `eigen`
+
+Fit the PCA using the eigen decomposition of the covariance/correlation matrix (depending on the decision you made earlier regarding standardisation).
+Confirm that the results are equivalent to those from `prcomp()`.
+
+## Question 6: Examine the variation explained
+
+Calculate the proportion and cumulative proportion of variation explained by each principal component.
+Use both the output from `prcomp` and the eigen decomposition to confirm that the results are equivalent.
+
+Store the results in a table called `mali_pve_tbl`.
+
+```{r}
+#| label: calculate-mali-pve
+
+
+```
+
+Construct a scree plot showing the proportion of variation explained by each component.
+
+```{r}
+#| label: fig-mali-pca-scree
+#| fig-cap: "Proportion of variation explained by each principal component in the Mali survey data."
+
+
+```
+
+How many components would you retain for a low-dimensional summary of these data?
+
+
+## Question 7: Interpret the first two loading vectors
+
+Display the loadings for the first two principal components.
+
+```{r}
+#| label: inspect-mali-pca-loadings
+
+
+```
+
+Provide interpretations for the first two principal components.
+
+
+
+## Question 8: Examine the principal component scores
+
+Create a score table containing PC1 and PC2.
+
+```{r}
+#| label: prepare-mali-pca-scores
+
+
+```
+
+Plot the observations using their first two principal component scores.
+
+```{r}
+#| label: fig-mali-pca-scores
+#| fig-cap: "Mali survey observations represented by their scores on the first two principal components."
+
+```
+
+Comment on the plot.
+
+## Question 8: Construct and interpret a biplot
+
+Construct a biplot using the first two principal components.
+
+```{r}
+#| label: fig-mali-pca-biplot
+#| fig-cap: "Biplot of the first two principal components for the standardised Mali survey variables."
+
+```
+

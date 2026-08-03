@@ -1,0 +1,1260 @@
+---
+title: Principal Component Analysis
+author: Miguel Rodo
+date: "2026-07-27"
+bibliography: ../zotero.bib
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+nocite: |
+    @johnson_wichern07
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(cowplot)
+library(ggrepel)
+library(grid)
+
+knitr::opts_chunk$set(
+  fig.align = "center",
+  out.width = "80%"
+)
+
+mutate_proj <- function(data, a) {
+  stopifnot(length(a) == 2)
+  a <- a / sqrt(sum(a^2))
+
+  data |>
+    dplyr::mutate(
+      a1 = a[1],
+      a2 = a[2],
+      score = a1 * height + a2 * weight,
+      proj_x = score * a1,
+      proj_y = score * a2,
+      proj = paste0("(", signif(a1, 2), ", ", signif(a2, 2), ")")
+    )
+}
+
+projection_plot <- function(directions, alpha_points = 0.35) {
+  point_tbl <- tibble::tibble(height = 1.2, weight = 0.3)
+  projection_tbl <- purrr::map_dfr(
+    directions,
+    ~ mutate_proj(point_tbl, .x)
+  )
+
+  ggplot(hw_tbl, aes(x = height, y = weight)) +
+    geom_vline(xintercept = 0, colour = "gray50") +
+    geom_hline(yintercept = 0, colour = "gray50") +
+    geom_point(alpha = alpha_points, colour = "dodgerblue") +
+    geom_abline(
+      data = projection_tbl,
+      aes(slope = a2 / a1, intercept = 0, group = proj),
+      colour = "purple"
+    ) +
+    geom_point(
+      data = projection_tbl,
+      aes(x = height, y = weight),
+      inherit.aes = FALSE,
+      colour = "mediumseagreen",
+      size = 2.5
+    ) +
+    geom_segment(
+      data = projection_tbl,
+      aes(
+        x = height,
+        y = weight,
+        xend = proj_x,
+        yend = proj_y,
+        group = proj
+      ),
+      inherit.aes = FALSE,
+      colour = "gray25",
+      arrow = arrow(length = unit(0.22, "cm"))
+    ) +
+    ggrepel::geom_text_repel(
+      data = projection_tbl,
+      aes(x = a1, y = a2, label = proj),
+      inherit.aes = FALSE,
+      nudge_x = 0.1,
+      nudge_y = 0.1
+    ) +
+    coord_equal(xlim = c(-2.5, 2.5), ylim = c(-2.5, 2.5)) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    theme(
+      panel.background = element_rect(fill = "white"),
+      plot.background = element_rect(fill = "white"),
+      axis.text = element_blank(),
+      axis.ticks = element_blank()
+    ) +
+    labs(x = "Height", y = "Weight")
+}
+```
+
+<!--
+Suggested pacing for a two-hour session:
+
+00:00-00:10  Context, motivation and applications
+00:10-00:30  Projection and the height-weight example
+00:30-00:50  Choosing PC1 and subsequent components
+00:50-01:05  Eigenvectors, eigenvalues and terminology
+01:05-01:20  Variance explained and the scree plot
+01:20-01:35  Centring and scaling
+01:35-01:55  Painted Turtles example in R and biplot
+01:55-02:00  Linear limitation and recap
+
+The theorem proofs and supplementary derivations are collapsed by default in the HTML output.
+-->
+
+## Context
+
+- Multivariate analysis addresses situations where many variables make analysis difficult.
+- **Example:** meteorologists analyse temperature, humidity, wind speed and other variables to understand weather patterns.
+  - Typical questions include:
+    - Which variables are correlated?
+    - Can we represent the main patterns using fewer variables?
+    - Which variables distinguish most clearly between observations?
+
+### Why reduce dimensions?
+
+Dimensionality reduction may help with:
+
+- visualising datasets with many variables;
+- identifying groups of correlated variables; and
+- reducing storage and computation.
+
+### Practical examples of PCA
+
+- **Finance:** reducing correlated stock returns to assist in diversification.
+- **Genomics:** identifying gene-expression patterns that may correspond to biological processes.
+
+#### Image compression
+
+A greyscale image can be represented as a matrix of pixel intensities. PCA allows us to approximate this matrix using only a relatively small number of principal components.
+
+```{r}
+#| label: fig-pca-image-compression
+#| code-fold: true
+#| code-summary: "Show reconstruction code"
+#| layout-ncol: 2
+#| fig-subcap:
+#|   - "Original greyscale image"
+#|   - "PCA reconstruction retaining at least 90% of the variance"
+#| fig-cap: "Image compression using principal component analysis."
+#| out-width: "100%"
+
+# Read the precomputed PCA results
+img_pca <- readRDS(
+  projr::projr_path_get(
+    "raw-data",
+    "pca_image_results.rds",
+    safe = TRUE
+  )
+)
+
+Y <- img_pca$Y
+V <- img_pca$V
+lambda <- img_pca$lambda
+M <- img_pca$M
+
+# Choose the smallest number of components explaining at least 90%
+# of the total variance
+cumulative_variance <- cumsum(lambda) / sum(lambda)
+k_image <- which(cumulative_variance >= 0.90)[1]
+
+# Reconstruct the image using only the first k components
+X_image_k <- sweep(
+  Y[, seq_len(k_image), drop = FALSE] %*%
+    t(V[, seq_len(k_image), drop = FALSE]),
+  MARGIN = 2,
+  STATS = M,
+  FUN = "+"
+)
+
+# Pixel values must lie between zero and one
+X_image_k <- pmin(pmax(X_image_k, 0), 1)
+
+# Read the original image and convert it to greyscale
+img_original <- jpeg::readJPEG(
+  projr::projr_path_get(
+    "raw-data",
+    "gyokeres_mask.jpg",
+    safe = TRUE
+  )
+)
+
+if (length(dim(img_original)) == 3) {
+  img_original <- (
+    0.2989 * img_original[, , 1] +
+    0.5870 * img_original[, , 2] +
+    0.1140 * img_original[, , 3]
+  )
+}
+
+# Save temporary copies for display
+path_img_original <- projr::projr_path_get(
+  "cache", "l1", "original.jpg"
+)
+path_img_reconstructed <- projr::projr_path_get(
+  "cache", "l1", "reconstructed.jpg"
+)
+
+jpeg::writeJPEG(
+  img_original,
+  target = path_img_original,
+  quality = 1
+)
+
+jpeg::writeJPEG(
+  X_image_k,
+  target = path_img_reconstructed,
+  quality = 1
+)
+
+knitr::include_graphics(
+  c(path_img_original, path_img_reconstructed)
+)
+```
+
+The reconstruction uses only **`r k_image` of the `r ncol(V)` available principal components**, while retaining **`r sprintf("%.1f%%", 100 * cumulative_variance[k_image])` of the total variance**.
+
+Using fewer components requires less information to represent the image, but produces a progressively less accurate reconstruction.
+This illustrates the central trade-off in dimensionality reduction.
+
+## Principal component analysis
+
+- Principal component analysis (PCA) is a linear method for reducing the dimensionality of data.
+- The simplest way to think about PCA is that we create a smaller number of new variables that retain as much information as possible about the original variables.
+- Each new variable is a linear combination of the original variables:
+
+$$
+a_1x_1+a_2x_2+\cdots+a_px_p.
+$$
+
+- PCA is an **unsupervised** method: there is no response variable that determines which patterns should be retained.
+
+## Projection onto a direction
+
+Suppose that $\mathbf{x}\in\mathbb{R}^p$ is an observation and $\mathbf{a}$ is a unit vector. The score obtained by projecting $\mathbf{x}$ onto the direction $\mathbf{a}$ is
+
+$$
+y=\mathbf{a}'\mathbf{x}.
+$$
+
+The corresponding projected point is
+
+$$
+\widehat{\mathbf{x}}=(\mathbf{a}'\mathbf{x})\mathbf{a}.
+$$
+
+Thus, a projection score is also a linear combination of the original variables.
+
+### Height and weight example
+
+Suppose we have two correlated variables, such as height and weight. The variables below have been centred and standardised so that the origin represents the mean of each variable.
+
+```{r}
+#| label: data-height-weight
+#| include: false
+set.seed(2106)
+hw_tbl <- tibble::tibble(
+  height = rnorm(100, 160, 10)
+) |>
+  dplyr::mutate(
+    weight = height / 2.5 + rnorm(100, 0, 3.5 * height / 160)
+  ) |>
+  dplyr::mutate(
+    across(everything(), ~ (.x - mean(.x)) / sd(.x))
+  ) |>
+  dplyr::arrange(height)
+```
+
+```{r}
+#| label: fig-height-weight-scatter
+#| echo: false
+#| fig-cap: "Standardised height and weight measurements in the simulated example."
+
+ggplot(hw_tbl, aes(x = height, y = weight)) +
+  geom_vline(xintercept = 0, colour = "gray50") +
+  geom_hline(yintercept = 0, colour = "gray50") +
+  geom_point(alpha = 0.85, colour = "dodgerblue") +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white"),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  labs(x = "Height", y = "Weight")
+```
+
+We could combine the two variables into a single variable representing general size:
+
+$$
+y=a_1\times\text{height}+a_2\times\text{weight}.
+$$
+
+For example, let
+
+$$
+\mathbf{a}=\begin{bmatrix}1/\sqrt{2}\\1/\sqrt{2}\end{bmatrix}
+$$
+
+and consider the observation $\mathbf{x}=[1.2,0.3]'$. Its score is
+
+$$
+y=\frac{1}{\sqrt{2}}\times1.2+\frac{1}{\sqrt{2}}\times0.3=1.06.
+$$
+
+```{r}
+#| label: fig-height-weight-projection
+#| echo: false
+#| fig-cap: "Projection of one observation onto a candidate direction through the standardised height and weight data."
+projection_plot(
+  list(c(1 / sqrt(2), 1 / sqrt(2))),
+  alpha_points = 0.18
+)
+```
+
+### Original variables are also projections
+
+- If $\mathbf{a}=[1,0]'$, the score is simply height.
+- If $\mathbf{a}=[0,1]'$, the score is simply weight.
+- PCA replaces the original coordinate axes with new axes chosen to represent the data more efficiently.
+
+## How should we choose the direction?
+
+Consider three possible directions. The coefficients are normalised to have unit length before the projected variance is calculated.
+
+```{r}
+#| label: fig-candidate-directions
+#| echo: false
+#| fig-cap: "Three candidate projection directions for the standardised height and weight data."
+candidate_tbl <- tibble::tribble(
+  ~direction, ~raw_a1, ~raw_a2,
+  "Mostly weight", 0.5, 2,
+  "Difference", 1, -1,
+  "Together", 1, 1
+) |>
+  dplyr::rowwise() |>
+  dplyr::mutate(
+    norm = sqrt(raw_a1^2 + raw_a2^2),
+    a1 = raw_a1 / norm,
+    a2 = raw_a2 / norm,
+    projected_variance = var(a1 * hw_tbl$height + a2 * hw_tbl$weight)
+  ) |>
+  dplyr::ungroup()
+
+plot_candidate_tbl <- tidyr::crossing(
+  hw_tbl,
+  candidate_tbl |> dplyr::select(direction, a1, a2)
+)
+
+ggplot(plot_candidate_tbl, aes(x = height, y = weight)) +
+  geom_vline(xintercept = 0, colour = "gray70") +
+  geom_hline(yintercept = 0, colour = "gray70") +
+  geom_point(alpha = 0.65, colour = "dodgerblue") +
+  geom_abline(
+    data = candidate_tbl,
+    aes(slope = a2 / a1, intercept = 0),
+    inherit.aes = FALSE,
+    colour = "gray20"
+  ) +
+  facet_wrap(~ direction) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white"),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  labs(x = "Height", y = "Weight")
+```
+
+```{r}
+#| label: tbl-candidate-direction-variance
+#| echo: false
+#| tbl-cap: "Normalised candidate directions and the variance of their resulting projection scores."
+candidate_tbl |>
+  dplyr::select(direction, a1, a2, projected_variance) |>
+  dplyr::mutate(across(where(is.numeric), ~ signif(.x, 3))) |>
+  knitr::kable(
+    col.names = c("Direction", "$a_1$", "$a_2$", "Variance of scores"),
+    escape = FALSE
+  )
+```
+
+Height and weight tend to increase together, so a direction with two positive coefficients captures substantially more variation than a direction contrasting the variables.
+
+## The first principal component
+
+Let $\mathbf{X}\in\mathbb{R}^p$ be a random vector with mean zero and covariance matrix $\mathbf{\Sigma}$. The first principal component is
+
+$$
+Y_1=\mathbf{a}_1'\mathbf{X}.
+$$
+
+We choose the direction that maximises the variance of the scores:
+
+$$
+\mathbf{a}_1
+=
+\underset{\mathbf{a}_1}{\arg\max}\;
+\mathbf{a}_1'\mathbf{\Sigma}\mathbf{a}_1
+$$
+
+subject to
+
+$$
+\mathbf{a}_1'\mathbf{a}_1=1.
+$$
+
+The unit-length constraint is necessary because multiplying every coefficient by a large constant would otherwise increase the variance without changing the direction.
+
+### Why maximise variance?
+
+- If a variable has zero variance, every observation has the same value and it cannot distinguish between observations.
+- A direction with high variance preserves more of the visible differences between observations.
+- For PCA, maximising retained variance is equivalent to minimising the squared reconstruction error when observations are projected onto the retained subspace.
+
+## Additional principal components
+
+Maximising the same objective again would simply produce the first direction. We therefore require later directions to be orthogonal to the earlier directions.
+
+### The second principal component
+
+The second loading vector is chosen as
+
+$$
+\mathbf{a}_2
+=
+\underset{\mathbf{a}_2}{\arg\max}\;
+\mathbf{a}_2'\mathbf{\Sigma}\mathbf{a}_2
+$$
+
+subject to
+
+$$
+\mathbf{a}_2'\mathbf{a}_2=1,
+\qquad
+\mathbf{a}_2'\mathbf{a}_1=0.
+$$
+
+For the height and weight example, a natural pair of directions is
+
+$$
+\mathbf{a}_1=
+\begin{bmatrix}
+1/\sqrt{2}\\
+1/\sqrt{2}
+\end{bmatrix},
+\qquad
+\mathbf{a}_2=
+\begin{bmatrix}
+1/\sqrt{2}\\
+-1/\sqrt{2}
+\end{bmatrix}.
+$$
+
+- The first component behaves like **overall size**.
+- The second component contrasts height and weight. It is relatively high for observations that are tall relative to their weight.
+
+```{r}
+#| label: fig-first-two-principal-directions
+#| echo: false
+#| fig-cap: "The first two orthogonal projection directions for the standardised height and weight data."
+projection_plot(
+  list(
+    c(1 / sqrt(2), 1 / sqrt(2)),
+    c(1 / sqrt(2), -1 / sqrt(2))
+  ),
+  alpha_points = 0.12
+)
+```
+
+### The general principal component
+
+The $k$-th component is chosen as
+
+$$
+\mathbf{a}_k
+=
+\underset{\mathbf{a}_k}{\arg\max}\;
+\mathbf{a}_k'\mathbf{\Sigma}\mathbf{a}_k
+$$
+
+subject to
+
+$$
+\mathbf{a}_k'\mathbf{a}_k=1,
+\qquad
+\mathbf{a}_k'\mathbf{a}_j=0
+\quad\text{for all }j<k.
+$$
+
+At most, there can be as many principal components as original variables. Later components capture progressively less variance.
+
+## Eigenvectors and eigenvalues
+
+### Theorem 1: maximising a quadratic form
+
+Let $\mathbf{B}$ be a $p\times p$ positive semi-definite matrix with ordered eigenvalues
+
+$$
+\lambda_1\geq\lambda_2\geq\cdots\geq\lambda_p\geq0
+$$
+
+and associated orthonormal eigenvectors $\mathbf{e}_1,\ldots,\mathbf{e}_p$. Then
+
+$$
+\max_{\mathbf{x}\neq\mathbf{0}}
+\frac{\mathbf{x}'\mathbf{B}\mathbf{x}}{\mathbf{x}'\mathbf{x}}
+=
+\lambda_1,
+$$
+
+with the maximum attained when $\mathbf{x}=\mathbf{e}_1$. More generally,
+
+$$
+\max_{\substack{\mathbf{x}\neq\mathbf{0}\\
+\mathbf{x}\perp\mathbf{e}_1,\ldots,\mathbf{e}_{i-1}}}
+\frac{\mathbf{x}'\mathbf{B}\mathbf{x}}{\mathbf{x}'\mathbf{x}}
+=
+\lambda_i,
+$$
+
+with the maximum attained when $\mathbf{x}=\mathbf{e}_i$.
+
+::: {.callout-note collapse="true" title="Proof of Theorem 1"}
+Let $\mathbf{P}$ be the orthogonal matrix whose $i$-th column is $\mathbf{e}_i$, and let $\mathbf{\Lambda}$ be the diagonal matrix of ordered eigenvalues. Define $\mathbf{y}=\mathbf{P}'\mathbf{x}$. Then
+
+$$
+\begin{aligned}
+\frac{\mathbf{x}'\mathbf{B}\mathbf{x}}{\mathbf{x}'\mathbf{x}}
+&=
+\frac{\mathbf{x}'\mathbf{P}\mathbf{\Lambda}\mathbf{P}'\mathbf{x}}
+     {\mathbf{x}'\mathbf{P}\mathbf{P}'\mathbf{x}}\\
+&=
+\frac{\mathbf{y}'\mathbf{\Lambda}\mathbf{y}}
+     {\mathbf{y}'\mathbf{y}}\\
+&=
+\frac{\sum_{j=1}^p\lambda_jy_j^2}
+     {\sum_{j=1}^py_j^2}\\
+&\leq\lambda_1.
+\end{aligned}
+$$
+
+When $\mathbf{x}=\mathbf{e}_1$, the transformed vector $\mathbf{y}$ has first entry equal to one and all other entries equal to zero, so the quotient is $\lambda_1$.
+
+Now suppose that $\mathbf{x}$ is orthogonal to $\mathbf{e}_1,\ldots,\mathbf{e}_{i-1}$. The first $i-1$ entries of $\mathbf{y}$ are then zero, and
+
+$$
+\frac{\mathbf{x}'\mathbf{B}\mathbf{x}}{\mathbf{x}'\mathbf{x}}
+=
+\frac{\sum_{j=i}^p\lambda_jy_j^2}
+     {\sum_{j=i}^py_j^2}
+\leq\lambda_i.
+$$
+
+The upper bound is attained by setting $\mathbf{x}=\mathbf{e}_i$.
+:::
+
+### Theorem 2: selecting the principal components
+
+Let $\mathbf{\Sigma}$ have ordered eigenvalue-eigenvector pairs $(\lambda_i,\mathbf{e}_i)$. Then the $i$-th principal component is
+
+$$
+Y_i=\mathbf{e}_i'\mathbf{X},
+$$
+
+with
+
+$$
+\operatorname{Var}(Y_i)=\lambda_i
+$$
+
+and
+
+$$
+\operatorname{Cov}(Y_i,Y_j)=0
+\qquad\text{for }i\neq j.
+$$
+
+::: {.callout-note collapse="true" title="Proof of Theorem 2"}
+By Theorem 1, the unit vector that maximises $\mathbf{a}'\mathbf{\Sigma}\mathbf{a}$ is the eigenvector $\mathbf{e}_1$ corresponding to the largest eigenvalue. Therefore,
+
+$$
+\operatorname{Var}(Y_1)
+=
+\mathbf{e}_1'\mathbf{\Sigma}\mathbf{e}_1
+=
+\lambda_1.
+$$
+
+The same argument applies to each later component under the orthogonality constraints, so $\mathbf{a}_i=\mathbf{e}_i$ and $\operatorname{Var}(Y_i)=\lambda_i$.
+
+For $i\neq j$,
+
+$$
+\begin{aligned}
+\operatorname{Cov}(Y_i,Y_j)
+&=
+\mathbf{e}_i'\mathbf{\Sigma}\mathbf{e}_j\\
+&=
+\mathbf{e}_i'(\lambda_j\mathbf{e}_j)\\
+&=
+\lambda_j\mathbf{e}_i'\mathbf{e}_j\\
+&=0.
+\end{aligned}
+$$
+:::
+
+### Terminology
+
+- The vectors $\mathbf{e}_i$ are the **loading vectors**, **principal axes** or **principal directions**.
+- The observed values of $Y_i=\mathbf{e}_i'\mathbf{X}$ are the **principal component scores**.
+- The eigenvalue $\lambda_i$ is the variance of the $i$-th component.
+
+## PCA as a rotation
+
+PCA can be viewed as rotating the coordinate system:
+
+- the first new axis points along the direction of greatest variation;
+- the second is perpendicular to the first and captures the greatest remaining variation; and
+- continuing through all $p$ components represents the centred data exactly in a different coordinate system.
+
+Dimension reduction occurs when only the first few coordinates in this rotated system are retained.
+
+## Variance explained
+
+### Theorem 3: total variance
+
+Let $\mathbf{X}=[X_1,\ldots,X_p]'$ have covariance matrix $\mathbf{\Sigma}$ with eigenvalues $\lambda_1,\ldots,\lambda_p$. Then
+
+$$
+\sum_{j=1}^p\operatorname{Var}(X_j)
+=
+\sum_{i=1}^p\lambda_i
+=
+\sum_{i=1}^p\operatorname{Var}(Y_i).
+$$
+
+::: {.callout-note collapse="true" title="Proof of Theorem 3"}
+The total variance of the original variables is the trace of the covariance matrix:
+
+$$
+\operatorname{tr}(\mathbf{\Sigma})
+=
+\sum_{j=1}^p\operatorname{Var}(X_j).
+$$
+
+Using $\mathbf{\Sigma}=\mathbf{P}\mathbf{\Lambda}\mathbf{P}'$ and the cyclic property of the trace,
+
+$$
+\operatorname{tr}(\mathbf{\Sigma})
+=
+\operatorname{tr}(\mathbf{P}\mathbf{\Lambda}\mathbf{P}')
+=
+\operatorname{tr}(\mathbf{\Lambda}\mathbf{P}'\mathbf{P})
+=
+\operatorname{tr}(\mathbf{\Lambda})
+=
+\sum_{i=1}^p\lambda_i.
+$$
+
+Theorem 2 gives $\operatorname{Var}(Y_i)=\lambda_i$, proving the final equality.
+:::
+
+The proportion of total variance explained by component $k$ is
+
+$$
+\frac{\lambda_k}{\sum_{i=1}^p\lambda_i},
+$$
+
+and the cumulative proportion explained by the first $r$ components is
+
+$$
+\frac{\sum_{i=1}^r\lambda_i}{\sum_{i=1}^p\lambda_i}.
+$$
+
+### The scree plot
+
+A scree plot displays the variance, or the proportion of variance, associated with each component. A visible elbow may suggest a useful number of components, but it is a heuristic rather than an automatic rule.
+
+```{r}
+#| label: data-scree-example
+#| include: false
+example_vcov <- matrix(
+  c(
+    1, 0.9, 0.9, 0, 0, 0, 0,
+    0.9, 1, 0.9, 0, 0, 0, 0,
+    0.9, 0.9, 1, 0, 0, 0, 0,
+    0, 0, 0, 1, 0.9, 0.9, 0.9,
+    0, 0, 0, 0.9, 1, 0.9, 0.9,
+    0, 0, 0, 0.9, 0.9, 1, 0.9,
+    0, 0, 0, 0.9, 0.9, 0.9, 1
+  ),
+  byrow = TRUE,
+  nrow = 7
+)
+example_eig <- eigen(example_vcov)
+scree_tbl <- tibble::tibble(
+  component = seq_along(example_eig$values),
+  proportion = example_eig$values / sum(example_eig$values)
+)
+```
+
+```{r}
+#| label: fig-example-scree
+#| echo: false
+#| fig-cap: "Proportion of variance explained by each principal component in the seven-variable example."
+
+ggplot(scree_tbl, aes(x = component, y = proportion)) +
+  geom_line(colour = "dodgerblue") +
+  geom_point(colour = "dodgerblue", size = 2) +
+  scale_x_continuous(breaks = scree_tbl$component) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    x = "Principal component",
+    y = "Proportion of variance"
+  )
+```
+
+### How many components should be retained?
+
+Possible considerations include:
+
+- cumulative variance explained;
+- the scree-plot elbow;
+- performance in a downstream task; and
+- the purpose of the analysis.
+
+There is no universally correct proportion of variance that must be retained.
+
+When we are plotting data, we are typically limited to 1 or 2 dimensions.
+In this case, we may choose to retain only 2 components, even if they explain a relatively small proportion of the total variance.
+The fact that they only explain a small proportion of variation serves to guide our interpretation of the plot, as it indicates we must not place too much emphasis on the apparent separation of points in the plot.
+
+## Variance standardisation
+
+One may divide each centred variable by its standard deviation:
+
+$$
+z_{ij}=\frac{x_{ij}-\bar{x}_j}{s_j}.
+$$
+
+This is equivalent to performing PCA on the correlation matrix rather than the covariance matrix.
+
+Scaling may be appropriate when:
+
+- variables use different units, or
+- their numerical scales differ greatly.
+
+Scaling is a modelling choice, not an automatic requirement.
+It changes the question from “which directions contain the most raw variance?” to “which directions contain the most variance after each variable has been given equal marginal variance?”
+The correlation between variables, rather than their individual variances, therefore guides the analysis.
+
+### Standardisation example
+
+Consider the covariance matrix
+
+```{r}
+#| label: covariance-standardisation-example
+cov_mat_scale <- matrix(
+  c(1, 4, 4, 100),
+  nrow = 2
+)
+cov_mat_scale
+```
+
+Its eigendecomposition is
+
+```{r}
+#| label: eigendecomposition-covariance-example
+eigen(cov_mat_scale) |>
+  purrr::map(~ signif(.x, 3))
+```
+
+The corresponding correlation matrix is
+
+```{r}
+#| label: correlation-standardisation-example
+sd_inv <- diag(1 / sqrt(diag(cov_mat_scale)))
+cor_mat_scale <- sd_inv %*% cov_mat_scale %*% sd_inv
+cor_mat_scale
+```
+
+with eigendecomposition
+
+```{r}
+#| label: eigendecomposition-correlation-example
+eigen(cor_mat_scale) |>
+  purrr::map(~ signif(.x, 3))
+```
+
+The principal directions differ substantially because the second variable has a much larger raw variance in the covariance-based analysis.
+
+## Sample principal components
+
+In practice, the population covariance matrix is unknown.
+PCA is therefore performed using the centred sample data matrix $\mathbf{X}_c$ or its sample covariance matrix.
+
+For centred data,
+
+$$
+\mathbf{S}=\frac{1}{n-1}\mathbf{X}_c'\mathbf{X}_c.
+$$
+
+The sample loading vectors are the eigenvectors of $\mathbf{S}$, and the sample scores are obtained from
+
+$$
+\mathbf{Y}=\mathbf{X}_c\mathbf{P},
+$$
+
+where the columns of $\mathbf{P}$ are the loading vectors.
+
+For the height and weight data:
+
+```{r}
+#| label: sample-height-weight-covariance
+hw_cov <- cov(hw_tbl)
+hw_cov |> signif(3)
+```
+
+```{r}
+#| label: sample-height-weight-eigendecomposition
+eigen(hw_cov) |>
+  purrr::map(~ signif(.x, 3))
+```
+
+The leading loading vector has coefficients of roughly equal magnitude and the same sign, matching the general-size interpretation.
+
+## Worked example: Painted Turtles
+
+We use measurements on Painted Turtles [@jolicoeur_mosimann60].
+
+The package installation need only be run once:
+
+```{r}
+#| label: install-painted-turtles-data
+#| eval: false
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+
+remotes::install_github(
+  "MiguelRodo/DataTidy23RodoHonsMult@2024"
+)
+```
+
+Load the data:
+
+```{r}
+#| label: load-painted-turtles-data
+data(
+  "data_tidy_turtle",
+  package = "DataTidy23RodoHonsMult"
+)
+
+data_tidy_turtle
+```
+
+### The measurements are highly correlated
+
+```{r}
+#| label: fig-painted-turtles-measurements
+#| echo: false
+#| fig-cap: "Turtle height plotted against length and width, shown by sex."
+plot_turtle_tbl <- data_tidy_turtle |>
+  tidyr::pivot_longer(
+    length:width,
+    names_to = "measurement",
+    values_to = "value"
+  )
+
+ggplot(
+  plot_turtle_tbl,
+  aes(x = value, y = height, colour = gender)
+) +
+  geom_point(alpha = 0.75) +
+  scale_colour_manual(
+    values = c(male = "dodgerblue", female = "mediumseagreen")
+  ) +
+  facet_wrap(~ measurement, scales = "free_x") +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white"),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  ) +
+  labs(x = "Measurement", y = "Height")
+```
+
+Because the measurements are strongly correlated, they may be summarised well by a small number of principal components.
+
+### Fitting PCA with `prcomp()`
+
+We log-transform the measurements and allow `prcomp()` to centre them.
+We do not scale here because all three variables are comparable physical measurements on a log scale.
+
+```{r}
+#| label: fit-painted-turtles-pca
+pr_obj <- prcomp(
+  ~ log(length) + log(width) + log(height),
+  data = data_tidy_turtle,
+  retx = TRUE
+)
+
+pr_obj
+```
+
+The `rotation` matrix contains the loading vectors.
+The first component has coefficients of similar magnitude, so it behaves like an overall size component.
+
+### Variance explained
+
+```{r}
+#| label: summarise-painted-turtles-pca
+summary(pr_obj)
+```
+
+The first component accounts for almost all of the variation in these three highly correlated measurements.
+
+```{r}
+#| label: fig-painted-turtles-scree
+#| fig-cap: "Variances of the principal components in the Painted Turtles PCA."
+plot(pr_obj)
+```
+
+### Principal component scores
+
+```{r}
+#| label: painted-turtles-scores
+pr_obj$x |>
+  head() |>
+  signif(3)
+```
+
+Each row gives the coordinates of one turtle in the rotated principal-component system.
+
+## Biplots
+
+A biplot displays both observations and variables in a low-dimensional principal-component representation.
+
+- Points represent observations through their scores.
+- Arrows represent variables through their loading directions.
+- An observation in the direction of a variable arrow tends to have an above-average value of that variable.
+- Variables with arrows pointing in similar directions tend to be positively associated.
+- Approximately perpendicular arrows suggest weak association in the displayed dimensions.
+
+```{r}
+#| label: fig-painted-turtles-biplot
+#| fig-cap: "Biplot of the Painted Turtles PCA, showing observation scores and variable loading directions."
+biplot(pr_obj, scale = 0)
+```
+
+A biplot is an approximation whenever fewer than all components are displayed.
+Its interpretation should therefore be considered alongside the proportion of variance explained by the displayed components.
+
+Key aspects to interpret:
+
+- Which (groups of) observations separate from the rest?
+  - Source: position of the points.
+- Which variables are correlated?
+  - Source: angle between the arrows.
+- Which variables are important for the displayed components?
+  - Source: length of the arrows.
+- Which variables are driving the separation of the observations?
+  - Source: which arrows point in the direction of the separated points.
+
+## Note on interpreting principal components
+
+Interpret each componeNt in terms of which original variables have large coefficients in the loading vector. Do *not* simply restate all the coefficient loadings, but attempt to summarise them in some way.
+For example, a component with positive coefficients for all variables may be interpreted as an overall size component, while a component with negative coefficients for some variables and positive coefficients for others may be interpreted as a contrast between those variables.
+
+A sign change in the coefficients does not change the overall interpretation of the component, but it does change the direction of the scores.
+If the loadings for either of the size or contrast components were multipled by $-1$, then their interpretations would stay the same, except that large positive scores would become large negative scores, and vice versa.
+For the size example, a large positive score would switch from meaning a large turtle to meaning a small turtle.
+
+## PCA is a linear method
+
+PCA is effective when the important structure can be represented by a linear subspace. It may not provide a useful one- or two-dimensional representation when the structure is strongly curved or otherwise nonlinear.
+
+```{r}
+#| label: data-structure-examples
+#| include: false
+set.seed(5077)
+n <- 120
+
+linear_tbl <- tibble::tibble(
+  x = runif(n, -2, 2),
+  y = 0.8 * x + rnorm(n, 0, 0.25),
+  pattern = "Linear"
+)
+
+curve_x <- runif(n, -2, 2)
+curve_tbl <- tibble::tibble(
+  x = curve_x,
+  y = 0.6 * curve_x^2 - 1.2 + rnorm(n, 0, 0.15),
+  pattern = "Curved"
+)
+
+theta <- runif(n, 0, 2 * pi)
+ring_tbl <- tibble::tibble(
+  x = cos(theta) + rnorm(n, 0, 0.05),
+  y = sin(theta) + rnorm(n, 0, 0.05),
+  pattern = "Ring"
+)
+
+noise_tbl <- tibble::tibble(
+  x = runif(n, -2, 2),
+  y = runif(n, -2, 2),
+  pattern = "No obvious structure"
+)
+
+structure_tbl <- dplyr::bind_rows(
+  linear_tbl,
+  curve_tbl,
+  ring_tbl,
+  noise_tbl
+) |>
+  dplyr::mutate(
+    pattern = factor(
+      pattern,
+      levels = c(
+        "Linear",
+        "Curved",
+        "Ring",
+        "No obvious structure"
+      )
+    )
+  )
+```
+
+```{r}
+#| label: fig-structure-examples
+#| echo: false
+#| fig-cap: "Four two-dimensional datasets illustrating linear, curved, circular and unstructured patterns."
+
+ggplot(structure_tbl, aes(x = x, y = y)) +
+  geom_point(alpha = 0.7, colour = "dodgerblue", size = 1.2) +
+  facet_wrap(~ pattern) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white"),
+    axis.text = element_blank(),
+    axis.ticks = element_blank()
+  ) +
+  labs(x = NULL, y = NULL)
+```
+
+```{r}
+#| label: fig-pca-structure-scree
+#| echo: false
+#| fig-cap: "Proportion of variance explained by each principal component for the four example datasets."
+
+structure_scree_tbl <- structure_tbl |>
+  dplyr::group_by(pattern) |>
+  dplyr::group_modify(
+    \(data, group) {
+      pca_fit <- prcomp(
+        data |>
+          dplyr::select(x, y),
+        center = TRUE,
+        scale. = TRUE
+      )
+
+      component_variance <- pca_fit$sdev^2
+
+      tibble::tibble(
+        component = seq_along(component_variance),
+        proportion = component_variance / sum(component_variance)
+      )
+    }
+  ) |>
+  dplyr::ungroup()
+
+ggplot(
+  structure_scree_tbl,
+  aes(
+    x = component,
+    y = proportion,
+    group = 1
+  )
+) +
+  geom_line(colour = "dodgerblue") +
+  geom_point(
+    colour = "dodgerblue",
+    size = 2.5
+  ) +
+  facet_wrap(~ pattern) +
+  scale_x_continuous(
+    breaks = 1:2,
+    labels = paste0("PC", 1:2)
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    breaks = seq(0, 1, by = 0.25),
+    labels = scales::label_percent(accuracy = 1)
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    x = "Principal component",
+    y = "Proportion of variance explained"
+  )
+```
+
+This limitation motivates nonlinear dimension-reduction methods studied later in the course.
+
+## Key ideas
+
+1. A principal component is a linear combination of the original variables.
+2. The first component is the direction along which the centred observations vary most.
+3. Later components capture the greatest remaining variation while being orthogonal to earlier components.
+4. Loading vectors describe the directions; scores locate observations along those directions; eigenvalues give component variances.
+5. The proportion of variance explained helps assess how much information is retained.
+6. Scaling is a modelling choice that can change the result substantially.
+7. PCA captures linear structure and may not reveal important nonlinear patterns.
+
+## Conceptual checks
+
+1. Why is a unit-length constraint required when selecting a loading vector?
+2. Why would maximising variance twice return the same direction unless an additional constraint were imposed?
+3. What is the distinction between a loading and a score?
+4. When might covariance-based PCA and correlation-based PCA give very different results?
+5. Why should a biplot be interpreted together with the variance explained by the displayed components?
+
+## Supplementary mathematical detail
+
+### PCA and low-rank approximation
+
+Retaining the first $s$ components produces the rank-$s$ reconstruction
+
+$$
+\widehat{\mathbf{X}}_s
+=
+\mathbf{Y}\mathbf{J}_s\mathbf{P}',
+$$
+
+where $\mathbf{J}_s$ retains the first $s$ components and sets the remaining components to zero. This reconstruction minimises the squared approximation error among all rank-$s$ approximations.
+
+::: {.callout-note collapse="true" title="Why PCA gives the optimal low-rank approximation"}
+Let the centred data matrix have singular value decomposition
+
+$$
+\mathbf{X}=\mathbf{U}\mathbf{D}\mathbf{V}'.
+$$
+
+The best rank-$s$ approximation is obtained by retaining the first $s$ singular values:
+
+$$
+\widehat{\mathbf{X}}_s
+=
+\mathbf{U}\mathbf{D}\mathbf{J}_s\mathbf{V}'.
+$$
+
+The loading vectors from PCA are the eigenvectors of $\mathbf{X}'\mathbf{X}$. Since
+
+$$
+\mathbf{X}'\mathbf{X}
+=
+\mathbf{V}\mathbf{D}^2\mathbf{V}',
+$$
+
+these loading vectors are the right singular vectors, so $\mathbf{P}=\mathbf{V}$. The score matrix is
+
+$$
+\mathbf{Y}=\mathbf{X}\mathbf{P}=\mathbf{X}\mathbf{V}=\mathbf{U}\mathbf{D}.
+$$
+
+Consequently,
+
+$$
+\mathbf{Y}\mathbf{J}_s\mathbf{P}'
+=
+\mathbf{U}\mathbf{D}\mathbf{J}_s\mathbf{V}',
+$$
+
+which is precisely the truncated-SVD approximation.
+:::
+
+### Correlation between components and original variables
+
+For the $i$-th principal component and the $k$-th original variable,
+
+$$
+\rho_{Y_i,X_k}
+=
+\frac{\sqrt{\lambda_i}\,e_{ki}}
+     {\sqrt{\sigma_{kk}}},
+$$
+
+where $e_{ki}$ is the loading of variable $k$ on component $i$.
+
+::: {.callout-note collapse="true" title="Proof of the component-variable correlation formula"}
+Let $\mathbf{c}_k$ be the standard basis vector selecting the $k$-th variable, so that $X_k=\mathbf{c}_k'\mathbf{X}$. Then
+
+$$
+\begin{aligned}
+\operatorname{Cov}(X_k,Y_i)
+&=
+\operatorname{Cov}(\mathbf{c}_k'\mathbf{X},\mathbf{e}_i'\mathbf{X})\\
+&=
+\mathbf{c}_k'\mathbf{\Sigma}\mathbf{e}_i\\
+&=
+\lambda_i\mathbf{c}_k'\mathbf{e}_i\\
+&=
+\lambda_i e_{ki}.
+\end{aligned}
+$$
+
+Because $\operatorname{Var}(Y_i)=\lambda_i$ and $\operatorname{Var}(X_k)=\sigma_{kk}$,
+
+$$
+\rho_{Y_i,X_k}
+=
+\frac{\lambda_i e_{ki}}
+     {\sqrt{\lambda_i}\sqrt{\sigma_{kk}}}
+=
+\frac{\sqrt{\lambda_i}\,e_{ki}}
+     {\sqrt{\sigma_{kk}}}.
+$$
+:::
+
+# Resources
+
+- Source material adapted from the existing PCA notes and code.
+- Further mathematical detail is available in the collapsed sections.
+
+## References

@@ -1,0 +1,461 @@
+---
+title: "ISOMAP in R"
+subtitle: "STA5077Z coding walkthrough"
+author: "Miguel Rodó"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: false
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Aim
+
+This walkthrough applies ISOMAP to two very simple two-dimensional datasets.
+
+In both examples, the data contain two multivariate normal clusters:
+
+1. two roughly spherical clusters that are fairly well separated; and
+2. two long clusters that lie close together.
+
+We ask ISOMAP for two output dimensions so that we can compare the original data with the ISOMAP representation directly.
+
+The cluster labels are used only to colour the plots. They are **not** supplied to ISOMAP.
+
+## Setup
+
+Install the required packages once.
+
+```{r}
+#| label: install-isomap-packages
+#| eval: false
+pkg_vec <- c("tidyverse", "vegan")
+for (x in pkg_vec) {
+  if (!requireNamespace(x, quietly = TRUE)) {
+    install.packages(x)
+  }
+}
+```
+
+Load the packages.
+
+```{r}
+#| label: load-isomap-packages
+
+library(tidyverse)
+library(vegan)
+```
+
+The main ISOMAP code will be:
+
+```r
+fit <- vegan::isomap(
+  dist(x),
+  ndim = 2,
+  k = 12
+)
+```
+
+Here:
+
+- `dist(x)` calculates the ordinary Euclidean distances;
+- `k = 12` constructs a 12-nearest-neighbour graph;
+- ISOMAP replaces the original distances with graph shortest-path distances; and
+- `ndim = 2` asks classical MDS for two output dimensions.
+
+# Scenario 1: spherical clusters
+
+## Simulate the data
+
+We first generate two spherical clusters that are separated, but not completely isolated from one another.
+
+```{r}
+#| label: simulate-spherical-clusters
+
+set.seed(5077)
+
+n_per_cluster <- 100
+
+spherical_covariance <- diag(
+  c(
+    0.7^2,
+    0.7^2
+  )
+)
+
+spherical_cluster_1 <- MASS::mvrnorm(
+  n = n_per_cluster,
+  mu = c(-1.2, 0),
+  Sigma = spherical_covariance
+)
+
+spherical_cluster_2 <- MASS::mvrnorm(
+  n = n_per_cluster,
+  mu = c(1.2, 0),
+  Sigma = spherical_covariance
+)
+
+spherical_tbl <- bind_rows(
+  as_tibble(
+    spherical_cluster_1,
+    .name_repair = ~ c("x1", "x2")
+  ) |>
+    mutate(cluster = "Cluster 1"),
+  as_tibble(
+    spherical_cluster_2,
+    .name_repair = ~ c("x1", "x2")
+  ) |>
+    mutate(cluster = "Cluster 2")
+)
+
+spherical_tbl
+```
+
+## Plot the original data
+
+```{r}
+#| label: fig-spherical-original
+#| fig-cap: "Two approximately spherical multivariate normal clusters."
+#| fig-width: 7
+#| fig-height: 5
+
+ggplot(
+  spherical_tbl,
+  aes(
+    x = x1,
+    y = x2,
+    colour = cluster
+  )
+) +
+  geom_point(
+    alpha = 0.75,
+    size = 2
+  ) +
+  coord_equal() +
+  labs(
+    x = expression(x[1]),
+    y = expression(x[2]),
+    colour = NULL
+  ) +
+  theme_minimal()
+```
+
+## Fit ISOMAP
+
+ISOMAP uses only the two numerical columns.
+
+```{r}
+#| label: fit-isomap-spherical
+
+spherical_x <- spherical_tbl |>
+  select(x1, x2) |>
+  as.matrix()
+
+spherical_isomap <- vegan::isomap(
+  dist(spherical_x),
+  ndim = 2,
+  k = 12
+)
+```
+
+The single call to `isomap()` performs the main steps:
+
+1. construct the nearest-neighbour graph;
+2. calculate shortest-path distances through the graph; and
+3. apply classical MDS to those distances.
+
+## Extract the ISOMAP coordinates
+
+```{r}
+#| label: extract-spherical-isomap-scores
+
+spherical_scores <- vegan::scores(
+  spherical_isomap
+) |>
+  as.data.frame()
+
+names(spherical_scores) <- c(
+  "ISOMAP1",
+  "ISOMAP2"
+)
+
+spherical_embedding_tbl <- spherical_scores |>
+  as_tibble() |>
+  mutate(
+    cluster = spherical_tbl$cluster
+  )
+
+spherical_embedding_tbl
+```
+
+## Plot the ISOMAP representation
+
+```{r}
+#| label: fig-spherical-isomap
+#| fig-cap: "Two-dimensional ISOMAP representation of the spherical-cluster data."
+#| fig-width: 7
+#| fig-height: 5
+
+ggplot(
+  spherical_embedding_tbl,
+  aes(
+    x = ISOMAP1,
+    y = ISOMAP2,
+    colour = cluster
+  )
+) +
+  geom_point(
+    alpha = 0.75,
+    size = 2
+  ) +
+  coord_equal() +
+  labs(
+    x = "ISOMAP axis 1",
+    y = "ISOMAP axis 2",
+    colour = NULL
+  ) +
+  theme_minimal()
+```
+
+The orientation of the ISOMAP plot is arbitrary. It may be rotated or reflected without changing the distances represented by the configuration.
+
+# Scenario 2: close, elongated clusters
+
+## Simulate the data
+
+The next two clusters are much longer and lie close together.
+
+The covariance matrices below simply create two elongated clusters with different orientations.
+
+```{r}
+#| label: simulate-elongated-clusters
+
+set.seed(5077)
+
+elongated_covariance_1 <- matrix(
+  c(
+    1.4,  1.1,
+    1.1,  1.4
+  ),
+  nrow = 2
+)
+
+elongated_covariance_2 <- matrix(
+  c(
+     1.4, -1.1,
+    -1.1,  1.4
+  ),
+  nrow = 2
+)
+
+elongated_cluster_1 <- MASS::mvrnorm(
+  n = n_per_cluster,
+  mu = c(-0.4, 0),
+  Sigma = elongated_covariance_1
+)
+
+elongated_cluster_2 <- MASS::mvrnorm(
+  n = n_per_cluster,
+  mu = c(0.4, 0),
+  Sigma = elongated_covariance_2
+)
+
+elongated_tbl <- bind_rows(
+  as_tibble(
+    elongated_cluster_1,
+    .name_repair = ~ c("x1", "x2")
+  ) |>
+    mutate(cluster = "Cluster 1"),
+  as_tibble(
+    elongated_cluster_2,
+    .name_repair = ~ c("x1", "x2")
+  ) |>
+    mutate(cluster = "Cluster 2")
+)
+
+elongated_tbl
+```
+
+## Plot the original data
+
+```{r}
+#| label: fig-elongated-original
+#| fig-cap: "Two close, elongated multivariate normal clusters."
+#| fig-width: 7
+#| fig-height: 5
+
+ggplot(
+  elongated_tbl,
+  aes(
+    x = x1,
+    y = x2,
+    colour = cluster
+  )
+) +
+  geom_point(
+    alpha = 0.75,
+    size = 2
+  ) +
+  coord_equal() +
+  labs(
+    x = expression(x[1]),
+    y = expression(x[2]),
+    colour = NULL
+  ) +
+  theme_minimal()
+```
+
+## Fit ISOMAP
+
+The code is exactly the same as before.
+
+```{r}
+#| label: fit-isomap-elongated
+
+elongated_x <- elongated_tbl |>
+  select(x1, x2) |>
+  as.matrix()
+
+elongated_isomap <- vegan::isomap(
+  dist(elongated_x),
+  ndim = 2,
+  k = 12
+)
+```
+
+## Extract the ISOMAP coordinates
+
+```{r}
+#| label: extract-elongated-isomap-scores
+
+elongated_scores <- vegan::scores(
+  elongated_isomap
+) |>
+  as.data.frame()
+
+names(elongated_scores) <- c(
+  "ISOMAP1",
+  "ISOMAP2"
+)
+
+elongated_embedding_tbl <- elongated_scores |>
+  as_tibble() |>
+  mutate(
+    cluster = elongated_tbl$cluster
+  )
+
+elongated_embedding_tbl
+```
+
+## Plot the ISOMAP representation
+
+```{r}
+#| label: fig-elongated-isomap
+#| fig-cap: "Two-dimensional ISOMAP representation of the close, elongated-cluster data."
+#| fig-width: 7
+#| fig-height: 5
+
+ggplot(
+  elongated_embedding_tbl,
+  aes(
+    x = ISOMAP1,
+    y = ISOMAP2,
+    colour = cluster
+  )
+) +
+  geom_point(
+    alpha = 0.75,
+    size = 2
+  ) +
+  coord_equal() +
+  labs(
+    x = "ISOMAP axis 1",
+    y = "ISOMAP axis 2",
+    colour = NULL
+  ) +
+  theme_minimal()
+```
+
+# Compare the two examples
+
+In the spherical example, the local neighbourhoods mostly remain within the two visible groups.
+
+In the elongated example, observations from different clusters can be close in the original space. The nearest-neighbour graph may therefore contain many connections between the two groups.
+
+ISOMAP is not a clustering algorithm. It does not use the known cluster labels, and it cannot be expected to separate groups when their local neighbourhoods are strongly mixed.
+
+The graph is therefore critical:
+
+> ISOMAP can preserve only the geometry represented by the neighbourhood graph that we construct.
+
+## Try a different value of $k$
+
+The same data can give a different representation when the neighbourhood size changes.
+
+For example:
+
+```{r}
+#| label: refit-elongated-isomap-different-k
+
+elongated_isomap_k6 <- vegan::isomap(
+  dist(elongated_x),
+  ndim = 2,
+  k = 6
+)
+
+elongated_isomap_k20 <- vegan::isomap(
+  dist(elongated_x),
+  ndim = 2,
+  k = 20
+)
+```
+
+A very small value of $k$ can produce a fragmented graph.
+
+A very large value of $k$ introduces more long-range connections and moves the graph distances closer to ordinary Euclidean distances.
+
+# Minimal template
+
+For a new numerical dataset called `my_data`, the complete workflow is:
+
+```{r}
+#| label: minimal-isomap-template
+#| eval: false
+
+# Keep only the numerical variables.
+x <- my_data |>
+  select(where(is.numeric)) |>
+  as.matrix()
+
+# Fit ISOMAP.
+isomap_fit <- vegan::isomap(
+  dist(x),
+  ndim = 2,
+  k = 12
+)
+
+# Extract the coordinates.
+isomap_coordinates <- vegan::scores(
+  isomap_fit
+)
+
+# Plot the first two ISOMAP axes.
+plot(
+  isomap_coordinates[, 1],
+  isomap_coordinates[, 2],
+  xlab = "ISOMAP axis 1",
+  ylab = "ISOMAP axis 2",
+  pch = 19
+)
+```
+
+The only choices that must be changed for a new analysis are usually:
+
+- the variables included in `x`;
+- the number of output dimensions, `ndim`; and
+- the neighbourhood size, `k`.
