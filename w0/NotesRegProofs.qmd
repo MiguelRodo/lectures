@@ -1,6 +1,5 @@
 ---
-title: "Regression Week II: Additional proofs for the general linear model"
-author: "Yovna Junglee, edited by Miguel Rodo"
+title: "Regression: Proofs for the general linear model"
 institute: University of Cape Town
 date: today
 format:
@@ -17,6 +16,7 @@ format:
 > **Course-notes cross-reference.** The theorem and proposition numbers given below refer to *Applied Linear Regression: Notes and Theorems* (`NotesReg.pdf`).
 
 We work with the general linear model
+
 $$
 Y=X\boldsymbol\beta+\mathbf e,
 \qquad
@@ -54,6 +54,217 @@ $$
 \qquad
 \hat{\mathbf e}=MY.
 $$
+
+# Maximum likelihood estimation in the normal general linear model
+
+> **Related results in the course notes:** Section 3.3, *Maximum Likelihood Estimates and Distributions*, immediately before **Theorem 7**.
+>
+> **Related results in the slides:** In `SlidesRegW2S1LM.qmd`, see **Error assumptions** for the distribution of $Y$, **Estimating the coefficients**, **The normal equations** and **The least-squares estimator** for the OLS derivation, and **Residual variance: MLE and unbiased estimator** for the stated MLE of $\sigma^2$. The proof below connects these results through the multivariate-normal likelihood.
+
+## Theorem
+
+Under the normal general linear model, with $X$ of full column rank, the maximum likelihood estimator of $\boldsymbol\beta$ is the ordinary least-squares estimator
+$$
+\hat{\boldsymbol\beta}_{\mathrm{MLE}}
+=
+(X^TX)^{-1}X^TY.
+$$
+
+The maximum likelihood estimator of $\sigma^2$ is
+$$
+\hat\sigma^2_{\mathrm{MLE}}
+=
+\frac{1}{n}
+(Y-X\hat{\boldsymbol\beta})^T
+(Y-X\hat{\boldsymbol\beta})
+=
+\frac{RSS}{n}.
+$$
+
+## Proof
+
+From the model,
+$$
+Y=X\boldsymbol\beta+\mathbf e,
+\qquad
+\mathbf e\sim N_n(\mathbf 0,\sigma^2I_n),
+$$
+
+we have that
+
+$$
+Y\sim N_n(X\boldsymbol\beta,\sigma^2I_n)
+$$
+
+as the constant $\mathbf{X}\boldsymbol\beta$ merely shifts the mean of the multivariate normal distribution for $\mathbf e$.
+
+After observing $Y=y$, the likelihood is the multivariate normal density evaluated at $y$:
+$$
+\begin{aligned}
+L(\boldsymbol\beta,\sigma^2;y)
+&=f_Y(y;\boldsymbol\beta,\sigma^2)\\
+&=(2\pi)^{-n/2}|\sigma^2I_n|^{-1/2}
+\exp\left\{
+-\frac12
+(y-X\boldsymbol\beta)^T
+(\sigma^2I_n)^{-1}
+(y-X\boldsymbol\beta)
+\right\}\\
+&=(2\pi\sigma^2)^{-n/2}
+\exp\left\{
+-\frac{1}{2\sigma^2}
+(y-X\boldsymbol\beta)^T
+(y-X\boldsymbol\beta)
+\right\}.
+\end{aligned}
+$$
+
+For fixed $\sigma^2$, the factor $(2\pi\sigma^2)^{-n/2}$ does not depend on $\boldsymbol\beta$. Taking logarithms gives
+$$
+\ell(\boldsymbol\beta,\sigma^2)
+=
+-\frac n2\log(2\pi)
+-\frac n2\log(\sigma^2)
+-\frac{1}{2\sigma^2}
+(y-X\boldsymbol\beta)^T(y-X\boldsymbol\beta).
+$$
+
+Its gradient with respect to $\boldsymbol\beta$ is
+$$
+\begin{aligned}
+\nabla_{\boldsymbol\beta}\ell(\boldsymbol\beta,\sigma^2)
+&=
+-\frac{1}{2\sigma^2}
+\left\{-2X^T(y-X\boldsymbol\beta)\right\}\\
+&=
+\frac{1}{\sigma^2}X^T(y-X\boldsymbol\beta).
+\end{aligned}
+$$
+
+Setting this equal to the zero vector gives
+$$
+X^T(y-X\hat{\boldsymbol\beta})=0,
+$$
+and hence
+$$
+X^TX\hat{\boldsymbol\beta}=X^Ty.
+$$
+
+Because $X$ has full column rank, $X^TX$ is invertible, so
+$$
+\hat{\boldsymbol\beta}
+=
+(X^TX)^{-1}X^Ty.
+$$
+
+The Hessian with respect to $\boldsymbol\beta$ is
+$$
+\nabla^2_{\boldsymbol\beta}\ell(\boldsymbol\beta,\sigma^2)
+=
+-\frac{1}{\sigma^2}X^TX.
+$$
+
+Since $X^TX$ is positive definite and $\sigma^2>0$, this Hessian is negative definite.
+The stationary point is therefore the unique global maximum.
+
+To estimate $\sigma^2$, write $v=\sigma^2$ and substitute $\hat{\boldsymbol\beta}$ into the log-likelihood.
+Apart from terms that do not depend on $v$, we then have
+
+$$
+\ell_p(v)
+=
+-\frac n2\log v
+-\frac{RSS(\hat{\boldsymbol\beta})}{2v},
+$$
+where
+$$
+RSS(\hat{\boldsymbol\beta})
+=
+(y-X\hat{\boldsymbol\beta})^T
+(y-X\hat{\boldsymbol\beta}).
+$$
+
+Differentiating with respect to $v$ gives
+$$
+\frac{d\ell_p(v)}{dv}
+=
+-\frac{n}{2v}
++
+\frac{RSS(\hat{\boldsymbol\beta})}{2v^2}.
+$$
+
+Setting this equal to zero gives
+$$
+-nv+RSS(\hat{\boldsymbol\beta})=0,
+$$
+so
+$$
+\hat v
+=
+\hat\sigma^2_{\mathrm{MLE}}
+=
+\frac{RSS(\hat{\boldsymbol\beta})}{n}.
+$$
+
+Finally,
+$$
+\frac{d^2\ell_p(v)}{dv^2}
+=
+\frac{n}{2v^2}
+-
+\frac{RSS(\hat{\boldsymbol\beta})}{v^3}.
+$$
+
+At $\hat v=RSS(\hat{\boldsymbol\beta})/n$,
+$$
+\left.
+\frac{d^2\ell_p(v)}{dv^2}
+\right|_{v=\hat v}
+=
+-\frac{n}{2\hat v^2}
+<0,
+$$
+so the stationary point is a maximum.
+
+\hfill $\square$
+
+::: {.callout-note appearance="simple" icon=false}
+## Connection to ordinary least squares
+
+There is also a direct way to see why the maximum likelihood and
+ordinary least-squares estimators of $\boldsymbol\beta$ coincide.
+
+For fixed $\sigma^2$, the factor $(2\pi\sigma^2)^{-n/2}$ does not
+depend on $\boldsymbol\beta$. Since the exponential function is
+increasing, maximising the likelihood is equivalent to maximising
+
+$$
+-\frac{1}{2\sigma^2}
+(y-X\boldsymbol\beta)^T(y-X\boldsymbol\beta).
+$$
+
+Because $-1/(2\sigma^2)<0$, this is equivalent to minimising
+
+$$
+RSS(\boldsymbol\beta)
+=
+(y-X\boldsymbol\beta)^T(y-X\boldsymbol\beta).
+$$
+
+Thus, under the normal general linear model, maximum likelihood
+estimation of $\boldsymbol\beta$ and ordinary least squares solve
+exactly the same optimisation problem. By the normal-equation result
+derived in `SlidesRegW2S1LM.pdf`,
+
+$$
+\hat{\boldsymbol\beta}_{\mathrm{MLE}}
+=
+\hat{\boldsymbol\beta}_{\mathrm{OLS}}
+=
+(X^TX)^{-1}X^Ty.
+$$
+:::
+
 
 # Distribution of $\hat{\boldsymbol\beta}$
 
@@ -132,7 +343,7 @@ $$
 
 ## Theorem
 
-The maximum likelihood estimator
+As derived in the preceding section, the maximum likelihood estimator
 $$
 \hat\sigma^2
 =
@@ -262,7 +473,8 @@ Therefore $\hat\sigma^2=RSS/n$ is biased downward.
 
 # An unbiased estimator of $\sigma^2$
 
-> **Related result in the course notes:** this is the unbiased estimator introduced immediately after **Theorem 8**. It is not assigned a separate theorem number there.
+> **Related result in the course notes:** this is the unbiased estimator introduced immediately after **Theorem 8**.
+It is not assigned a separate theorem number there.
 
 ## Theorem
 
@@ -350,6 +562,7 @@ $$
 $$
 
 Therefore
+
 $$
 \frac{RSS}{\sigma^2}
 =
@@ -599,7 +812,7 @@ $$
 Adding the constant vector $\boldsymbol\beta$ and multiplying by the
 non-zero constant $\sigma$ recovers $\hat{\boldsymbol\beta}$.
 Likewise, multiplying the second quantity by the positive constant
-$\sigma^2/(n-k)$ recovers $s^2$. These constant affine
+$\sigma^2/(n-k)$ recovers $s^2$. These constant 
 transformations do not change independence. Hence
 
 $$
@@ -674,6 +887,20 @@ $$
 # Summary
 
 The key results are:
+
+$$
+\hat{\boldsymbol\beta}_{\mathrm{MLE}}
+=
+\hat{\boldsymbol\beta}_{\mathrm{OLS}}
+=
+(X^TX)^{-1}X^TY,
+$$
+
+$$
+\hat\sigma^2_{\mathrm{MLE}}
+=
+\frac{RSS}{n},
+$$
 
 $$
 \hat{\boldsymbol\beta}

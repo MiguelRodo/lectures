@@ -1,79 +1,361 @@
 ---
 title: "Regression content and competencies"
-subtitle: "STA2005S, Weeks 1-6"
+subtitle: "STA2005S, Weeks 1-2"
+author: "Department of Statistical Sciences, University of Cape Town"
+date: today
 format:
-  html:
+  pdf:
     toc: true
     toc-depth: 3
-    embed-resources: true
-    smooth-scroll: true
+    number-sections: true
+    colorlinks: true
+    keep-tex: false
+    documentclass: scrartcl
+    papersize: a4
+    geometry:
+      - margin=25mm
+fontsize: 11pt
+lang: en-GB
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
 
 # Introduction
 
-This guide summarises the content and competencies for the six-week regression
-section of STA2005S. It is intended to help you answer three questions:
+This guide provides you with:
 
-1. What should I know?
-2. What should I be able to do?
-3. Where can I learn and practise it?
+1. a detailed outline of course content;
+2. sources for content; and
+3. where to find the most relevant practice material.
 
-The main regression lecture notes, `NotesReg.pdf`, remain a key source
-throughout and are not repeated under every week.
-The weekly slides, supporting
-documents, question bank, tutorials and practicals should be used alongside
-those notes.
+This release covers the first two weeks of the regression section.
+Later weeks
+will be added to the rendered document as they are taught.
+The main regression
+notes, `NotesReg.pdf`, remain a key source throughout and should be used
+alongside the slides and practice material.
 
-::: {.callout-important title="How to use this guide"}
-The guide is comprehensive, but it does not replace instructions given in
-lectures or for a specific assessment.
-Unless explicitly stated otherwise, you should be able to explain, calculate, interpret and apply the listed material,
-not merely recall definitions.
+::: {.callout-important title="Disclaimer"}
+Whilst this document is detailed, its intention is not to be absolutely exhaustive.
+In general, the course outline, notes, slides, what we discuss in class and any practice material define the boundaries of what is examinable.
+If you are unsure whether a topic is examinable, please ask.
 :::
+
+## Recommended study route
+
+After each lecture or slide deck:
+
+1. Review the relevant section of the slides and notes.
+2. Complete the matching Q&A document to check factual understanding.
+3. Work through the relevant tutorial questions.
+4. Work through the relevant practical questions, which also assist in practising the theory.
+5. Use the question bank for additional practice.
+6. If time, work through any past papers.
+
+The Q&A documents are primarily for recall and understanding.
+Tutorials,
+question-bank questions, practicals and past assessments provide more sustained
+problem-solving practice.
+Past papers may be useful, but I try to make the other practice material as comprehensive as possible.
+
+## Where the resources are on Amathuba
+
+- Main notes: `Module 1: Regression/Notes/NotesReg.pdf`.
+- Slides and matching Q&A documents: the `Slides` folder under the relevant
+  week's tab.
+- Tutorials: `Module 1: Regression/Practice material/Tutorials`.
+- Question bank: `Module 1: Regression/Practice material/Question bank`.
+- Practicals: `Module 1: Regression/Practice material/Practicals`.
+- Lecture recordings: `Lecture Videos/2026 Lecture Videos`.
 
 ## Weekly overview
 
-| Week | Main theme | Central questions |
+| Week | Main theme | Main objective |
 |---|---|---|
-| 1 | Foundations and the multivariate normal distribution | What is regression, what mathematical tools does it require, and how do normal random vectors behave under transformations? |
-| 2 | The general linear model | How is the model formulated, how are its parameters estimated, and what are the distributions of the estimators? |
-| 3 | Confidence intervals and hypothesis tests | How do we quantify uncertainty and perform inference for one or several linear combinations of regression coefficients? |
-| 4 | ANOVA and model checking | How are categorical variables represented, how are nested models compared, and how do we assess whether a fitted model is credible? |
-| 5 | Matching the model to the data | How can transformations and interactions improve the model, how do we predict and select variables, and why is OLS special? |
-| 6 | Bootstrapping and principal components analysis | How can resampling support inference, and how can high-dimensional explanatory variables be represented more simply? |
+| 1 | Introduction, prerequisites and the multivariate normal distribution | Understand what regression is for and master the probability and linear-algebra results used in later regression derivations. |
+| 2 | The general linear model | Formulate the model in matrix form, estimate its parameters, and derive the principal sampling distributions. |
 
 # Proofs and derivations
 
-This section identifies the principal proofs and derivations and where they can
-be found.
-Inclusion here means that you should understand the argument and be
-able to use the result.
- Whether you must reproduce every line of a particular
-proof will be clarified in lectures and assessment instructions.
+The proofs below are not separate from the rest of the course.
+You should know
+what each result says, why its assumptions matter, and how the result is used in
+later regression arguments.
 
 ## Week 1
 
-- `SlidesRegW1S3IntroMVN.pdf`
-  - Distribution of a linear transformation of a multivariate normal random
-    vector, page 9.
-  - A partition of a multivariate normal random vector is multivariate normal,
-    page 19.
-  - A quadratic form in a standard multivariate normal vector with a symmetric
-    idempotent matrix has a chi-squared distribution, page 23.
+In `SlidesRegW1S3MVN.pdf`:
+
+- a linear transformation of a multivariate normal random vector is
+  multivariate normal;
+- a selected component or partition of a multivariate normal random vector is
+  multivariate normal;
+- if $\mathbf Z\sim N_k(\mathbf 0,\mathbf I)$ and $\mathbf A$ is symmetric and
+  idempotent, then
+
+  $$
+  \mathbf Z^T\mathbf A\mathbf Z
+  \sim \chi^2_{\operatorname{rank}(\mathbf A)}.
+  $$
 
 ## Week 2
 
-- `SlidesRegW2L1GLM.pdf`
-  - OLS estimator for simple linear regression, page 7.
-  - Maximum likelihood estimator of $\boldsymbol{\beta}$ in multiple linear
-    regression, page 13.
-  - Distribution of $\hat{\boldsymbol{\beta}}$, page 19.
-  - Maximum likelihood estimator of $\sigma^2$, page 25.
-- `SlidesRegW2L1GLMProofsAdditional.pdf`
-  - Bias of $\hat{\sigma}^2_{\mathrm{MLE}}$, page 2.
-  - Unbiasedness of $s^2$, page 3.
-  - Distribution
-    $\frac{(n-k)s^2}{\sigma^2}\sim\chi^2_{n-k}$, page 3.
+In `SlidesRegW2S1LM.pdf` and `NotesRegProofs.pdf`:
+
+- derivation of the least-squares estimator
+
+  $$
+  \hat{\boldsymbol\beta}
+  =(\mathbf X^T\mathbf X)^{-1}\mathbf X^T\mathbf Y;
+  $$
+
+- why this is also the maximum-likelihood estimator under normally distributed errors;
+- derivation of the distribution of $\hat{\boldsymbol\beta}$;
+- derivation of the maximum-likelihood estimator of $\sigma^2$;
+- bias of $\hat\sigma^2_{\mathrm{MLE}}$ and unbiasedness of
+  $s^2=\mathrm{SSE}/(n-k)$;
+- derivation of
+
+  $$
+  \frac{(n-k)s^2}{\sigma^2}\sim\chi^2_{n-k}.
+  $$
+
+# Week 1: Introduction and multivariate normal foundations
+
+## What you need to know
+
+### Purpose and scope of regression
+
+You should understand:
+
+- the roles of the response variable, explanatory variables and random error;
+- what a regression model provides beyond an overall mean, a correlation
+  coefficient or a two-sample comparison;
+- the distinction between simple and multiple linear regression;
+- the main assumptions of a linear regression model at a conceptual level
+
+### Statistical-distribution prerequisites
+
+You should be able to move between the normal, chi-squared, $t$ and $F$
+distributions.
+
+### Linear-algebra prerequisites
+
+You should be comfortable with:
+
+- matrix dimensions, rows, columns, transposes and multiplication;
+- block matrices and block-matrix multiplication;
+- orthogonality and orthonormality;
+- trace, including the cyclic trace property;
+- rank, full column/row rank and linear dependence;
+- invertibility;
+- eigenvalues and eigenvectors;
+- symmetric, positive-definite, positive-semidefinite and idempotent matrices;
+- orthonormal eigendecompositions of symmetric matrices;
+- the fact that the eigenvalues of an idempotent matrix are zero or one.
+
+### The multivariate normal distribution
+
+You should know and be able to use:
+
+- the univariate and multivariate normal density functions;
+- the mean vector and variance-covariance matrix of a multivariate normal random
+  vector;
+- the moment-generating function of a multivariate normal random vector;
+- the theorem for a linear transformation
+
+  $$
+  \mathbf Y=\mathbf A\mathbf X+\mathbf b;
+  $$
+
+- selection matrices for extracting individual components and subvectors;
+- the result that partitions and marginal subvectors of a multivariate normal
+  random vector are themselves multivariate normal;
+- chi-squared quadratic-form results, including
+
+  $$
+  (\mathbf X-\boldsymbol\mu)^T
+  \boldsymbol\Sigma^{-1}
+  (\mathbf X-\boldsymbol\mu)
+  \sim\chi^2_p
+  $$
+
+  when $\mathbf X\sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$ with invertible
+  $\boldsymbol\Sigma$;
+- the symmetric-idempotent quadratic-form theorem stated in the proofs section.
+
+::: {.callout-note title="What is not required for assessment"}
+You are not required to derive the multivariate normal density, derive its MGF,
+or determine the mean and covariance matrix by manipulating the exponent of an
+MVN density.
+You must nevertheless be able to **state and use** the density, MGF
+and associated theorems.
+:::
+
+## Content
+
+1. Relevant parts of `NotesReg.pdf`, which are reproduced in `Prerequisites/NotesRegW1S0Prereq.pdf`.
+2. `SlidesRegW1S1Intro.pdf`.
+3. `SlidesRegW1S3MVN.pdf`.
+
+## Practice material
+
+- `QARegNotesW1S0Prereq.pdf`
+- `QARegSlidesW1S3IntroMVN.pdf`
+- `TutReg1IntroMVNQuestions.pdf`
+- `QuestionBankRegQuestions.pdf`, namely:
+  - `Prerequisites > Linear algebra`.
+- `PracReg1Questions.qmd`
+
+# Week 2: The general linear model
+
+## What you need to know
+
+### Model formulation
+
+The general linear model is
+
+$$
+\mathbf Y=\mathbf X\boldsymbol\beta+\boldsymbol\epsilon,
+$$
+
+where $\mathbf Y$ is an $n\times1$ response vector, $\mathbf X$ is a fixed
+$n\times k$ design matrix, $\boldsymbol\beta$ is a $k\times1$ parameter vector,
+and $\boldsymbol\epsilon$ is an $n\times1$ random error vector.
+
+You should understand:
+
+- scalar, vector and matrix representations of the same model;
+- which quantities are observed, fixed, unknown or random;
+- the role of the intercept column;
+- how numerical explanatory variables enter the design matrix;
+- the assumptions
+
+  $$
+  \operatorname E(\boldsymbol\epsilon)=\mathbf 0,
+  \qquad
+  \operatorname{Var}(\boldsymbol\epsilon)=\sigma^2\mathbf I;
+  $$
+
+- the additional normality assumption when exact finite-sample distributions
+  are required;
+- why $\mathbf X$ must have full column rank and why $n>k$;
+- simple and multiple linear regression as special cases.
+
+### Estimating the regression coefficients
+
+You should know:
+
+- ordinary least squares as minimisation of
+
+  $$
+  \operatorname{RSS}(\boldsymbol\beta)
+  =(\mathbf Y-\mathbf X\boldsymbol\beta)^T
+   (\mathbf Y-\mathbf X\boldsymbol\beta);
+  $$
+
+- the normal equations;
+- the estimator
+
+  $$
+  \hat{\boldsymbol\beta}
+  =(\mathbf X^T\mathbf X)^{-1}\mathbf X^T\mathbf Y;
+  $$
+
+- why normality is not needed to obtain the least-squares formula;
+- why the same estimator is the MLE under normal errors;
+- unbiasedness and the variance-covariance matrix of the estimator;
+- under normal errors,
+
+  $$
+  \hat{\boldsymbol\beta}
+  \sim
+  N_k\left(
+    \boldsymbol\beta,
+    \sigma^2(\mathbf X^T\mathbf X)^{-1}
+  \right);
+  $$
+
+- distributions of individual coefficients and linear functions such as
+  $\boldsymbol\ell^T\hat{\boldsymbol\beta}$ and
+  $\mathbf L\hat{\boldsymbol\beta}$;
+- how the scale and mutual correlation of explanatory variables affect the
+  precision and covariance of coefficient estimators.
+
+### Fitted values, residuals and residual variance
+
+You should know:
+
+- fitted values
+
+  $$
+  \hat{\mathbf Y}=\mathbf X\hat{\boldsymbol\beta};
+  $$
+
+- residuals
+
+  $$
+  \hat{\boldsymbol\epsilon}
+  =\mathbf Y-\hat{\mathbf Y};
+  $$
+
+- the difference between an unobserved error and an observed residual;
+- the hat matrix
+
+  $$
+  \mathbf H
+  =\mathbf X(\mathbf X^T\mathbf X)^{-1}\mathbf X^T;
+  $$
+
+- the residual-maker matrix $\mathbf M=\mathbf I-\mathbf H$ and the projection
+  interpretation of $\mathbf H\mathbf Y$ and $\mathbf M\mathbf Y$;
+- the residual sum of squares and the estimators
+
+  $$
+  \hat\sigma^2_{\mathrm{MLE}}
+  =\frac{\mathrm{SSE}}{n},
+  \qquad
+  s^2=\frac{\mathrm{SSE}}{n-k};
+  $$
+
+- why the MLE is biased, why $s^2$ is unbiased, and the role of residual degrees
+  of freedom;
+- the chi-squared distribution of the scaled unbiased variance estimator.
+
+### Interpretation
+
+A coefficient in a multiple regression model describes the change in the
+conditional mean response associated with a one-unit increase in its
+explanatory variable, **holding the other explanatory variables fixed**.
+The interpretation must include the units, the comparison and the fact that it is a
+mean effect under the model.
+
+## Content
+
+1. Relevant parts of `NotesReg.pdf`. The proofs are reproduced in `NotesRegProofs.pdf` (favour the demonstrations in `NotesRegProofs.pdf` in your answers in tests and exams).
+2. `SlidesRegW2S1LM.pdf`.
+
+## Practice material
+
+- `QARegSlidesW2S1LM.pdf`
+- `TutReg2LMQuestions.pdf`
+- `QuestionBankRegQuestions.pdf`, especially
+  - `Week Two > Model formulation`
+- `PracReg2Questions.pdf`
+
+<!--
+===============================================================================
+FUTURE CONTENT: RETAINED IN THE SOURCE BUT HIDDEN FROM ALL RENDERED OUTPUTS
+===============================================================================
+
+The material below was present in the fuller six-week outline. It is retained
+here so that it can be reviewed, revised and released in later versions without
+having to reconstruct it.
+
+
+# Future proofs and derivations
 
 ## Week 3
 
@@ -121,237 +403,8 @@ proof will be clarified in lectures and assessment instructions.
   - Why the loading vectors are eigenvectors of the covariance matrix.
   - Why component variances equal the corresponding eigenvalues.
 
-# Week 1: Foundations
 
-## Content
-
-### The purpose and scope of regression
-
-- Response and explanatory variables.
-- Explanatory versus predictive aims.
-- What regression adds beyond:
-  - a correlation coefficient;
-  - a two-sample $t$ test;
-  - estimating an overall mean.
-- Simple versus multiple linear regression.
-- The broad regression workflow:
-  - formulate the question;
-  - explore the data;
-  - specify and fit a model;
-  - quantify uncertainty;
-  - check the model;
-  - interpret and communicate the result.
-- The assumptions of a linear regression model and why each matters.
-
-### Statistical distributions
-
-- Moving between the normal, chi-squared, $t$ and $F$ distributions.
-- Constructing chi-squared variables from independent standard normal variables.
-- Constructing $t$ and $F$ variables from normal and chi-squared variables.
-- Degrees of freedom and their role in the shapes and quantiles of these
-  distributions.
-
-### Linear algebra
-
-- Dimensions, rows, columns and notation.
-- Matrix addition, multiplication and transposition.
-- Block matrices and block-matrix multiplication.
-- Orthogonality and orthonormality.
-- Trace and the cyclic trace property.
-- Rank, full rank and linear dependence.
-- Invertibility and conditions under which an inverse exists.
-- Eigenvalues and eigenvectors.
-- Symmetric, positive-definite and idempotent matrices.
-- Factorisations of symmetric matrices and properties of the eigenvalues of
-  idempotent matrices.
-
-### Multivariate normal distribution
-
-- The univariate and multivariate normal density functions.
-- Mean vector, variance-covariance matrix and marginal distributions.
-- The moment-generating function of a multivariate normal random vector.
-- Linear transformations of multivariate normal random vectors.
-- Partitions and marginal distributions of multivariate normal random vectors.
-- Quadratic forms:
-  - using the inverse covariance matrix;
-  - using a symmetric idempotent matrix;
-  - the connection to the chi-squared distribution.
-
-## Competencies
-
-By the end of Week 1, you should be able to:
-
-- explain when regression is useful and distinguish explanatory from predictive
-  goals;
-- identify the response, explanatory variables and sources of random
-  variability in an applied problem;
-- perform matrix calculations and keep track of dimensions;
-- determine whether a matrix is symmetric, full rank, orthogonal,
-  positive-definite or idempotent;
-- use block matrices and eigenvalue properties in short proofs;
-- state the parameters of a multivariate normal distribution;
-- find the distribution of a linear transformation or partition of a
-  multivariate normal random vector;
-- derive or recognise chi-squared quadratic forms;
-- reproduce the principal Week 1 proofs and adapt the same results in new
-  derivations;
-- use R to explore a response and its relationships with possible explanatory
-  variables.
-
-## Sources
-
-- [Prerequisite notes](NotesRegW1S0Prereq.qmd)
-- [Introduction slides](../w1/SlidesRegW1S1Intro.qmd)
-- [End-to-end regression demonstration](../w1/DemRegW1S2IntroEndToEnd.qmd)
-- [Regression scenarios demonstration](../w1/DemRegW1S2IntroScenario.qmd)
-- [Multivariate normal slides](../w1/SlidesRegW1S3Intro.qmd)
-- [Introduction Q&A](../w1/QARegSlidesW1S1Intro.qmd)
-- [Multivariate normal Q&A](../w1/QARegSlidesW1S3IntroMVN.qmd)
-
-## Practice and assessment emphasis
-
-- [Question bank: Prerequisites](../question_bank/QuestionBankRegQuestions.qmd)
-  - matrix notation, dimensions and properties;
-  - block matrices;
-  - orthonormality, rank, eigenvalues and idempotency.
-- [Previous introductory MVN tutorial](../_reference/eval/2025/TutReg1IntroMVNQuestions.qmd)
-- Previous assessment questions have required students to use idempotency,
-  orthonormal diagonalisation and block-matrix arguments inside later regression
-  derivations, rather than treating the linear algebra as isolated recall.
-
-# Week 2: The general linear model
-
-## Content
-
-### Model formulation
-
-- General linear model:
-
-  $$
-  \mathbf{Y}=\mathbf{X}\boldsymbol{\beta}+\boldsymbol{\epsilon}.
-  $$
-
-- Scalar, vector and matrix representations.
-- Dimensions and roles of $\mathbf{Y}$, $\mathbf{X}$,
-  $\boldsymbol{\beta}$ and $\boldsymbol{\epsilon}$.
-- Known quantities, unknown parameters and unobserved random variables.
-- The fixed-design interpretation of $\mathbf{X}$.
-- Mean and variance of $\mathbf{Y}$.
-- Model assumptions:
-  - linearity in the parameters;
-  - zero conditional mean of the errors;
-  - constant error variance;
-  - uncorrelated errors;
-  - normality where exact finite-sample inference requires it;
-  - full column rank of $\mathbf{X}$;
-  - more observations than estimated parameters.
-- Recognising plausible violations in applied settings.
-- Simple and multiple linear regression as special cases.
-
-### Design matrices and model interpretation
-
-- The intercept column.
-- Constructing design matrices for numerical explanatory variables.
-- Column ordering and its effect on the coefficient vector.
-- Full column rank, collinearity and why
-  $(\mathbf{X}'\mathbf{X})^{-1}$ must exist.
-- Interpreting a regression coefficient while holding other explanatory
-  variables fixed.
-- How variation and correlation among explanatory variables affect the
-  variances and covariances of coefficient estimators.
-
-### Estimating $\boldsymbol{\beta}$
-
-- OLS in simple linear regression.
-- OLS and maximum likelihood in the normal general linear model:
-
-  $$
-  \hat{\boldsymbol{\beta}}
-  =(\mathbf{X}'\mathbf{X})^{-1}\mathbf{X}'\mathbf{Y}.
-  $$
-
-- Derivation and calculation of the estimator.
-- Unbiasedness and variance-covariance matrix.
-- Distribution:
-
-  $$
-  \hat{\boldsymbol{\beta}}
-  \sim
-  N_k\left(
-    \boldsymbol{\beta},
-    \sigma^2(\mathbf{X}'\mathbf{X})^{-1}
-  \right).
-  $$
-
-- Distributions of single and multiple linear combinations:
-  $\boldsymbol{\ell}'\hat{\boldsymbol{\beta}}$ and
-  $\mathbf{L}\hat{\boldsymbol{\beta}}$.
-
-### Estimating $\sigma^2$
-
-- Maximum likelihood estimator of $\sigma^2$.
-- Bias of the maximum likelihood estimator.
-- Unbiased estimator
-  $s^2=\mathrm{SSE}/(n-k)$.
-- Distribution of $(n-k)s^2/\sigma^2$.
-- Effect of the residual degrees of freedom on the precision of $s^2$.
-
-### Fitted values and residuals
-
-- Fitted values:
-  $\hat{\mathbf{Y}}=\mathbf{X}\hat{\boldsymbol{\beta}}$.
-- Residuals:
-  $\hat{\boldsymbol{\epsilon}}=\mathbf{Y}-\hat{\mathbf{Y}}$.
-- Errors versus residuals.
-- Hat matrix
-  $\mathbf{H}=\mathbf{X}(\mathbf{X}'\mathbf{X})^{-1}\mathbf{X}'$.
-- Residual-maker matrix $\mathbf{I}-\mathbf{H}$.
-- Fitted values and residuals as projections.
-- SSE, MSE and their relationship to $s^2$.
-
-## Competencies
-
-By the end of Week 2, you should be able to:
-
-- translate an applied model between scalar, vector and matrix notation;
-- identify known quantities, parameters, errors, responses and fitted values;
-- construct a design matrix and state the dimensions of every model component;
-- state the assumptions and explain likely violations;
-- calculate $\hat{\boldsymbol{\beta}}$ from first principles;
-- state when the OLS formula is well-defined;
-- interpret individual regression coefficients precisely;
-- calculate fitted values and residuals and distinguish residuals from errors;
-- derive and use the distribution of
-  $\hat{\boldsymbol{\beta}}$ and its linear combinations;
-- calculate the maximum likelihood and unbiased estimators of $\sigma^2$;
-- explain the bias of $\hat{\sigma}^2_{\mathrm{MLE}}$ and the role of
-  residual degrees of freedom;
-- explain how the design matrix affects estimator precision.
-
-## Sources
-
-- `SlidesRegW2L1GLM.pdf`
-- `SlidesRegW2L1GLMProofsAdditional.pdf`
-- [Multiple-regression scenarios](../w2/DocsRegW2S1GLMMultiple.qmd)
-- [Week 2 Q&A](../w2/QARegW2S1GLM.qmd)
-
-## Practice and assessment emphasis
-
-- [Question bank: Week Two](../question_bank/QuestionBankRegQuestions.qmd)
-  - model formulation;
-  - fitted values and residuals;
-  - scalar, vector and matrix representations.
-- [Previous Week 2 practical](../_reference/eval/2025/PracRegW2Questions.qmd)
-  - simulation and data exploration;
-  - simple and multiple regression;
-  - manual construction of the design matrix and OLS calculation.
-- [Previous regression test](../_reference/eval/2025/TestRegQuestions.qmd)
-  - identifying assumption violations;
-  - deriving the distribution of $\hat{\boldsymbol{\beta}}$;
-  - inference about $s^2$ and $\hat{\sigma}^2_{\mathrm{MLE}}$.
-- [Previous assignment](../_reference/eval/2025/AssignmentRegQuestions.qmd)
-  - fitting simple regression from first principles;
-  - reproducing the essential elements of `summary(lm(...))`.
+# Future weekly content
 
 # Week 3: Confidence intervals and hypothesis tests
 
@@ -980,3 +1033,5 @@ depending on a memorised example:
 - connect the mathematics to the corresponding R output;
 - reproduce the required proofs and adapt the underlying results to a new
   derivation.
+
+-->

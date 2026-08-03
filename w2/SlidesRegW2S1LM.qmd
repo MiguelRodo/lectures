@@ -69,6 +69,7 @@ By the end of this deck, you should be able to:
 $$
 \hat{\boldsymbol\beta}=(X^TX)^{-1}X^TY
 $$
+- Explain why, under normal errors, this same estimator is also the maximum likelihood estimator
 - State the sampling distribution of $\hat{\boldsymbol\beta}$ under normal errors
 - Define fitted values, residuals and the residual variance estimator
 - Interpret regression coefficients in a multiple regression model
@@ -190,9 +191,10 @@ $$
 - $\beta_0$ is the intercept and $\beta_1$ is the slope.
 - $e_i$ is the random error term.
 
-# Simple linear regression in matrix form
+# Simple linear regression in vector form
 
 The simple linear regression model can be written as
+
 $$
 Y=\beta_0\mathbf 1_n+\beta_1X_1+\mathbf e,
 $$
@@ -205,9 +207,15 @@ X_1=\begin{pmatrix}x_1\\ \vdots\\ x_n\end{pmatrix},
 \mathbf e=\begin{pmatrix}e_1\\ \vdots\\ e_n\end{pmatrix}.
 $$
 
-\pause
+# Simple linear regression in matrix form
 
-Equivalently,
+Equivalently, define 
+
+$$
+X=\begin{bmatrix} \mathbf 1_n & X_1 \end{bmatrix} \;\text{and}\; \boldsymbol\beta=\begin{pmatrix}\beta_0\\\beta_1\end{pmatrix}.
+$$
+Then the model can be written as
+
 $$
 Y=
 \begin{pmatrix}
@@ -217,7 +225,10 @@ Y=
 \end{pmatrix}
 \begin{pmatrix}\beta_0\\\beta_1\end{pmatrix}
 +
-\mathbf e.
+\mathbf e
+= \begin{bmatrix} \mathbf 1_n & X_1 \end{bmatrix} \boldsymbol\beta +
+\mathbf e =
+X\boldsymbol\beta+\mathbf e
 $$
 
 # Ordinary least squares
@@ -281,6 +292,66 @@ box()
 par(old_par)
 ```
 
+# The estimated slope and correlation
+
+For simple linear regression with an intercept,
+$$
+\hat\beta_1
+=
+\frac{\sum_{i=1}^n(x_i-\bar x)(y_i-\bar y)}
+{\sum_{i=1}^n(x_i-\bar x)^2}.
+$$
+
+\pause
+
+Using the sample covariance, variance and correlation,
+$$
+\hat\beta_1
+=
+\frac{s_{XY}}{s_X^2}
+=
+r_{XY}\frac{s_Y}{s_X}.
+$$
+
+\pause
+
+Thus,
+$$
+\boxed{
+\text{estimated slope in original units}
+=
+\text{standardised direction and magnitude}
+\times
+\text{scale conversion}
+}
+$$
+
+# Interpreting the relationship
+
+For simple linear regression with an intercept,
+
+$$
+\hat\beta_1
+=
+r_{XY}\frac{s_Y}{s_X}.
+$$
+
+\pause
+
+The ratio $s_Y/s_X$ converts from the scale of $X$ to the scale of $Y$.
+
+\pause
+
+The correlation $r_{XY}$ gives the slope when both variables are measured in standard-deviation units.
+
+\pause
+
+Therefore, if both $X$ and $Y$ are standardised,
+
+$$
+\boxed{\hat\beta_1=r_{XY}.}
+$$
+
 # From simple to multiple regression
 
 The Advertising example has more than one possible predictor:
@@ -293,9 +364,6 @@ The Advertising example has more than one possible predictor:
 
 A multiple regression model lets us study the relationship between sales and all three advertising budgets at the same time.
 
-\pause
-
-This is a special case of the **general linear model**.
 
 # The general linear model
 
@@ -378,11 +446,11 @@ $$
 
 \pause
 
-Under normal errors, this is also the maximum likelihood estimator of $\boldsymbol\beta$.
+This slide deck first derives the estimator by ordinary least squares.
 
 \pause
 
-For estimation, the normality assumption is not what gives the formula. The formula comes from minimising the squared residuals.
+The additional proofs document then shows that, under the normal general linear model, the same estimator is also the maximum likelihood estimator.
 
 # The normal equations {.smaller}
 
@@ -418,7 +486,7 @@ If $X$ has full column rank, then $X^TX$ is invertible and the normal equations 
 \begin{block}{Least-squares estimator}
 $$
 \boxed{
-\hat{\boldsymbol\beta}
+\hat{\boldsymbol\beta}_{\mathrm{OLS}}
 =
 (X^TX)^{-1}X^TY
 }.
@@ -427,9 +495,48 @@ $$
 
 \pause
 
+Under normal errors, the additional proofs show that this is also
+$$
+\hat{\boldsymbol\beta}_{\mathrm{MLE}}.
+$$
+
+\pause
+
 - Full column rank means the columns of $X$ are linearly independent.
 - This rules out exact collinearity among the intercept and predictors.
 - If $X^TX$ is not invertible, the fitted model is not uniquely identified by this formula.
+
+# OLS and MLE: the connection {.smaller}
+
+Under the normal error model,
+$$
+Y\sim N_n(X\boldsymbol\beta,\sigma^2I_n).
+$$
+
+\pause
+
+Therefore the likelihood is the multivariate normal density evaluated at the observed vector $y$:
+$$
+L(\boldsymbol\beta,\sigma^2;y)
+=
+(2\pi\sigma^2)^{-n/2}
+\exp\left\{-\frac{1}{2\sigma^2}
+(y-X\boldsymbol\beta)^T(y-X\boldsymbol\beta)\right\}.
+$$
+
+\pause
+
+For fixed $\sigma^2$, the only part involving $\boldsymbol\beta$ is
+
+$$
+-\frac{1}{2\sigma^2}RSS(\boldsymbol\beta).
+$$
+
+\pause
+
+So maximising the normal likelihood with respect to $\boldsymbol\beta$ is the same problem as minimising $RSS(\boldsymbol\beta)$.
+
+Normality is only needed for the likelihood argument and exact sampling distributions.
 
 # Fitted values and residuals
 
@@ -479,6 +586,7 @@ $$
 \pause
 
 This follows because $Y$ is multivariate normal and $\hat{\boldsymbol\beta}$ is a linear transformation of $Y$.
+See proofs document for demonstration.
 
 # Why $\hat{\boldsymbol\beta}$ is random
 
@@ -613,9 +721,10 @@ $$
 
 # Residual variance: MLE and unbiased estimator
 
-The maximum likelihood estimator of $\sigma^2$ is
+The same likelihood calculation also gives the maximum likelihood estimator of $\sigma^2$:
+
 $$
-\hat\sigma^2
+\hat\sigma^2_{\mathrm{MLE}}
 =
 \frac{1}{n}(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta})
 =
@@ -624,11 +733,13 @@ $$
 
 \pause
 
-This estimator is biased because fitting $k$ coefficients uses $k$ degrees of freedom.
+The additional proofs derive this by profiling the normal log-likelihood after substituting $\hat{\boldsymbol\beta}$.
 
 \pause
 
-We therefore use
+This MLE is biased because fitting $k$ coefficients uses $k$ degrees of freedom (see proofs document).
+For inference, we therefore usually use
+
 $$
 \boxed{
 s^2
@@ -636,8 +747,10 @@ s^2
 \frac{1}{n-k}(Y-X\hat{\boldsymbol\beta})^T(Y-X\hat{\boldsymbol\beta})
 =
 \frac{RSS}{n-k}
-}.
+},
 $$
+
+which is unbiased (again, see proofs document).
 
 # Distribution of the residual variance
 
@@ -653,12 +766,6 @@ $$
 \end{block}
 
 \pause
-
-The $n-k$ degrees of freedom arise because:
-
-- there are $n$ observed responses
-- $k$ regression coefficients are estimated
-- the residual vector is constrained to lie in an $(n-k)$-dimensional residual space
 
 # The residual-maker matrix {.smaller}
 
@@ -710,6 +817,7 @@ and, under normal errors,
 $$
 RSS/\sigma^2\sim\chi^2_{n-k}.
 $$
+See proofs document for demonstration.
 
 # Advertising model
 
@@ -784,7 +892,11 @@ $$
 
 The key estimates and distributions are
 $$
-\hat{\boldsymbol\beta}=(X^TX)^{-1}X^TY,
+\hat{\boldsymbol\beta}_{\mathrm{OLS}}
+=
+\hat{\boldsymbol\beta}_{\mathrm{MLE}}
+=
+(X^TX)^{-1}X^TY,
 $$
 $$
 \hat{\boldsymbol\beta}
@@ -792,7 +904,11 @@ $$
 N_k\left(\boldsymbol\beta,\sigma^2(X^TX)^{-1}\right),
 $$
 $$
+\hat\sigma^2_{\mathrm{MLE}}=\frac{RSS}{n},
+\qquad
 s^2=\frac{RSS}{n-k},
 \qquad
 \frac{(n-k)s^2}{\sigma^2}\sim\chi^2_{n-k}.
 $$
+
+The additional proofs document gives the likelihood derivation connecting OLS and MLE.
