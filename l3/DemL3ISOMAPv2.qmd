@@ -1,0 +1,334 @@
+---
+title: "ISOMAP: worked coding demonstration"
+subtitle: "STA5077Z coding practical"
+author: "Miguel Rodó"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: false
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Introduction
+
+This short demonstration shows how ISOMAP is implemented in R.
+
+We will:
+
+1. construct and plot a nearest-neighbour graph;
+2. calculate shortest-path distances through the graph;
+3. pass those distances to `cmdscale()`; and
+4. obtain the same result directly using `vegan::isomap()`.
+
+The example uses observations lying on a curved one-dimensional object in two-dimensional space. ISOMAP should replace the curve with a one-dimensional representation.
+
+## Setup
+
+The package installation only needs to be run once.
+
+```{r}
+#| label: install-isomap-demonstration-packages
+#| eval: false
+
+install.packages(c("FNN", "igraph", "vegan"))
+```
+
+Load the packages.
+
+```{r}
+#| label: load-isomap-demonstration-packages
+
+library(FNN)
+library(igraph)
+library(vegan)
+```
+
+## Create a simple curved dataset
+
+The variable `theta` records position along the curve. It is not supplied to ISOMAP, but will be used to colour the observations so that we can see whether their ordering is recovered.
+
+```{r}
+#| label: simulate-curved-data
+
+n <- 60
+
+theta <- seq(
+  from = 0.2,
+  to = 1.8 * pi,
+  length.out = n
+) + 0.008 * sin(seq_len(n))
+
+curve_x <- cbind(
+  x1 = cos(theta),
+  x2 = sin(theta)
+)
+
+point_colour <- hcl.colors(n, palette = "Viridis")
+```
+
+Plot the observations in their original two-dimensional space.
+
+```{r}
+#| label: fig-curved-data
+#| fig-cap: "Observations lying on a curved one-dimensional object. Colour records position along the curve."
+#| fig-width: 6.2
+#| fig-height: 5.2
+
+plot(
+  curve_x,
+  pch = 19,
+  col = point_colour,
+  asp = 1,
+  xlab = expression(x[1]),
+  ylab = expression(x[2])
+)
+```
+
+The observations require two coordinates to be displayed in the original space, but their position on the curve is described by only one quantity, `theta`.
+
+# Construct ISOMAP step by step
+
+## Step 1: Construct a nearest-neighbour graph
+
+We use `FNN::get.knn()` to find the nearest neighbours and `igraph::graph_from_adjacency_matrix()` to construct the graph.
+
+Set the number of nearest neighbours to retain.
+
+```{r}
+#| label: choose-neighbourhood-size
+
+k <- 3
+```
+
+Calculate the ordinary Euclidean distances and find the three nearest neighbours of every observation.
+
+```{r}
+#| label: find-nearest-neighbours
+
+euclidean_distance_mat <- as.matrix(dist(curve_x))
+
+nearest_neighbours <- FNN::get.knn(
+  curve_x,
+  k = k
+)$nn.index
+```
+
+Convert the neighbour indices into a symmetric adjacency matrix. Two observations are connected when either observation regards the other as one of its `k` nearest neighbours.
+
+```{r}
+#| label: construct-neighbourhood-adjacency
+
+adjacent <- matrix(FALSE, nrow = n, ncol = n)
+
+adjacent[cbind(
+  rep(seq_len(n), each = k),
+  as.vector(t(nearest_neighbours))
+)] <- TRUE
+
+adjacent <- adjacent | t(adjacent)
+```
+
+Construct a weighted graph. Each retained edge is weighted by the ordinary Euclidean distance between the two connected observations.
+
+```{r}
+#| label: construct-weighted-neighbourhood-graph
+
+curve_graph <- igraph::graph_from_adjacency_matrix(
+  adjacent * euclidean_distance_mat,
+  mode = "undirected",
+  weighted = TRUE,
+  diag = FALSE
+)
+
+igraph::is_connected(curve_graph)
+```
+
+The graph must be connected if we want a finite shortest-path distance between every pair of observations.
+
+## Step 2: Plot the graph
+
+An `igraph` graph is usually plotted using an automatically generated layout. Here we instead use the original observations as the layout. This lets us see whether the graph edges follow the curve.
+
+```{r}
+#| label: fig-curved-neighbourhood-graph
+#| fig-cap: "The three-nearest-neighbour graph plotted at the original observation coordinates."
+#| fig-width: 6.2
+#| fig-height: 5.2
+
+plot(
+  curve_graph,
+  layout = curve_x,
+  vertex.color = point_colour,
+  vertex.size = 5,
+  vertex.label = NA,
+  edge.color = "grey70",
+  asp = 1
+)
+```
+
+Only local movements along the displayed edges are now permitted.
+
+## Step 3: Calculate graph distances
+
+Use `igraph::distances()` to calculate the shortest-path distance between every pair of observations.
+
+```{r}
+#| label: calculate-graph-distances
+
+graph_distance_mat <- igraph::distances(
+  curve_graph,
+  weights = igraph::E(curve_graph)$weight
+)
+```
+
+The matrix `graph_distance_mat` is the dissimilarity matrix used by ISOMAP. It contains distances through the graph, rather than direct distances through the surrounding two-dimensional space.
+
+For example, compare the two types of distance between the first and last observations.
+
+```{r}
+#| label: compare-selected-distances
+
+c(
+  direct_euclidean_distance = euclidean_distance_mat[1, n],
+  graph_distance = graph_distance_mat[1, n]
+)
+```
+
+The endpoints are relatively close through the surrounding space, but far apart when movement is restricted to the curve.
+
+## Step 4: Pass the graph distances to `cmdscale()`
+
+ISOMAP now applies classical MDS to the graph-distance matrix.
+
+```{r}
+#| label: fit-isomap-with-cmdscale
+
+isomap_step_by_step <- cmdscale(
+  as.dist(graph_distance_mat),
+  k = 1,
+  eig = TRUE
+)
+
+step_by_step_coordinate <- isomap_step_by_step$points[, 1]
+```
+
+Plot the resulting one-dimensional configuration.
+
+```{r}
+#| label: fig-step-by-step-isomap
+#| fig-cap: "One-dimensional ISOMAP configuration obtained from graph distances and cmdscale()."
+#| fig-width: 7
+#| fig-height: 2.5
+
+plot(
+  step_by_step_coordinate,
+  rep(0, n),
+  pch = 19,
+  col = point_colour,
+  yaxt = "n",
+  xlab = "ISOMAP coordinate",
+  ylab = ""
+)
+```
+
+The smooth progression in colour shows that the one-dimensional coordinate has recovered position along the curve. The direction could be reversed without changing the result.
+
+# Fit ISOMAP with one function
+
+The `vegan` package performs the same three main operations inside a single function:
+
+1. retain local distances;
+2. replace the remaining distances with shortest-path distances; and
+3. apply classical MDS.
+
+```{r}
+#| label: fit-isomap-with-vegan
+
+isomap_vegan <- vegan::isomap(
+  dist(curve_x),
+  k = k,
+  ndim = 1
+)
+
+vegan_coordinate <- isomap_vegan$points[, 1]
+```
+
+Plot the fitted coordinate.
+
+```{r}
+#| label: fig-vegan-isomap
+#| fig-cap: "One-dimensional ISOMAP configuration obtained directly using vegan::isomap()."
+#| fig-width: 7
+#| fig-height: 2.5
+
+plot(
+  vegan_coordinate,
+  rep(0, n),
+  pch = 19,
+  col = point_colour,
+  yaxt = "n",
+  xlab = "ISOMAP coordinate",
+  ylab = ""
+)
+```
+
+Finally, compare the two fitted coordinates.
+
+```{r}
+#| label: compare-isomap-implementations
+
+abs(cor(
+  step_by_step_coordinate,
+  vegan_coordinate
+))
+```
+
+We use the absolute correlation because an MDS axis may be reflected. A correlation close to one shows that the two approaches give the same one-dimensional representation, apart from arbitrary orientation and minor implementation details.
+
+# What to notice
+
+The complete calculation was
+
+$$
+\text{observations}
+\longrightarrow
+\text{nearest-neighbour graph}
+\longrightarrow
+\text{shortest-path distances}
+\longrightarrow
+\texttt{cmdscale()}.
+$$
+
+The last two steps can be seen directly in the code:
+
+```{r}
+#| label: show-essential-isomap-code
+#| eval: false
+
+graph_distance_mat <- igraph::distances(curve_graph)
+
+isomap_fit <- cmdscale(
+  as.dist(graph_distance_mat),
+  k = 1
+)
+```
+
+For routine use, the full calculation can instead be written as:
+
+```{r}
+#| label: show-one-function-isomap-code
+#| eval: false
+
+isomap_fit <- vegan::isomap(
+  dist(curve_x),
+  k = 3,
+  ndim = 1
+)
+```
+
+In the main practical, we will investigate what happens when the neighbourhood graph is too sparse, too dense or disconnected.
