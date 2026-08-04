@@ -1,0 +1,867 @@
+### The main idea
+
+A self-organising map learns a set of representative vectors called **prototypes** or **codebook vectors**.
+
+Each prototype has:
+
+- a learnt position in the original data space; and
+- a fixed position on a low-dimensional grid.
+
+The map is trained so that nearby grid positions tend to represent similar data patterns.
+
+### Why this belongs in dimensionality reduction
+
+After training, each observation is represented by its nearest prototype.
+
+$$
+\mathbf{x}_i
+\quad\longmapsto\quad
+\text{nearest prototype}
+\quad\longmapsto\quad
+\text{grid location}.
+$$
+
+So a high-dimensional observation is represented by a low-dimensional grid location.
+
+The representation is discrete rather than continuous.
+
+### What a SOM is useful for
+
+Self-organising maps are mainly exploratory tools.
+
+They are used to:
+
+- visualise high-dimensional observations on a two-dimensional grid;
+- find broad gradients across the data;
+- inspect possible groups or boundaries;
+- summarise observations by prototypes; and
+- study how original variables change across the map.
+
+## Two spaces
+
+A common source of confusion is that a SOM uses two different spaces.
+
+### Data space
+
+The observations live in the original data space:
+
+$$
+\mathbf{x}_i \in \mathbb{R}^p.
+$$
+
+Each SOM unit has a prototype vector:
+
+$$
+\mathbf{m}_j \in \mathbb{R}^p.
+$$
+
+The prototype has the same number of components as the original observations.
+
+### Map space
+
+Each unit also has a fixed grid location:
+
+$$
+\boldsymbol{\ell}_j = (\text{row}_j, \text{column}_j).
+$$
+
+For example, a $6 \times 6$ SOM has 36 grid positions.
+
+The grid positions are fixed.
+
+The prototypes are learnt.
+
+### Keep these separate
+
+The prototype tells us **what the unit represents**.
+
+The grid location tells us **where the unit appears on the map**.
+
+$$
+\begin{array}{ccc}
+\text{unit } j
+&\longrightarrow&
+\mathbf{m}_j \in \mathbb{R}^p \\
+&\longrightarrow&
+\boldsymbol{\ell}_j \in \mathbb{R}^2
+\end{array}
+$$
+
+## A first visual example
+
+Here is a simple simulated example.
+
+The original observations have four measured variables, but the data were generated from two hidden coordinates.
+
+```{r}
+#| label: fig-som-toy-data
+#| code-fold: true
+#| code-summary: "Show simulation code"
+#| fig-cap: "A toy dataset with four measured variables generated from two hidden coordinates."
+
+som_data <- make_som_toy_data(n = 300, seed = 5077)
+
+som_data |>
+  ggplot(aes(x = u, y = v, colour = group)) +
+  geom_point(alpha = 0.75, size = 2) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  labs(
+    x = "Hidden coordinate u",
+    y = "Hidden coordinate v",
+    colour = "Region"
+  )
+```
+
+In practice, we would not know these hidden coordinates.
+
+The SOM will only see the four measured variables.
+
+## Nearest-prototype representation
+
+Suppose the SOM has $K$ prototypes:
+
+$$
+\mathbf{m}_1,\mathbf{m}_2,\ldots,\mathbf{m}_K.
+$$
+
+For each observation, we find the closest prototype:
+
+$$
+c(i)
+=
+\arg\min_j
+\left\|\mathbf{x}_i-\mathbf{m}_j\right\|.
+$$
+
+This closest prototype is called the **best matching unit**, or **BMU**.
+
+### The BMU uses data-space distance
+
+The distance
+
+$$
+\left\|\mathbf{x}_i-\mathbf{m}_j\right\|
+$$
+
+is computed in the original $p$-dimensional data space.
+
+This is not a distance on the SOM grid.
+
+### Small numerical example
+
+Suppose
+
+$$
+\mathbf{x}=(1,-2,2),
+$$
+
+and two prototypes are
+
+$$
+\mathbf{m}_1=(2,-1,3),
+\qquad
+\mathbf{m}_2=(-2,0,1).
+$$
+
+Then
+
+$$
+\begin{aligned}
+\|\mathbf{x}-\mathbf{m}_1\|
+&=
+\sqrt{(1-2)^2+(-2+1)^2+(2-3)^2}
+=\sqrt{3},\\
+\|\mathbf{x}-\mathbf{m}_2\|
+&=
+\sqrt{(1+2)^2+(-2-0)^2+(2-1)^2}
+=\sqrt{14}.
+\end{aligned}
+$$
+
+So prototype 1 is the BMU.
+
+## Why add a grid?
+
+If the prototypes were unrelated, their labels would be arbitrary.
+
+Prototype 7 would not have any special relationship to prototype 8.
+
+A SOM places prototypes on a fixed grid and encourages neighbouring grid units to represent similar data patterns.
+
+$$
+\text{nearby on the grid}
+\quad\Rightarrow\quad
+\text{similar prototype vectors}.
+$$
+
+This is the topological idea behind the method.
+
+### Buttons on a flexible sheet
+
+A useful picture is to imagine the prototypes as buttons sewn onto a sheet.
+
+The sheet begins as a regular grid.
+
+During training, the buttons move through the high-dimensional data space, but neighbouring buttons are encouraged to move together.
+
+The fitted SOM is therefore like a discrete low-dimensional surface sitting inside the original feature space.
+
+## The SOM algorithm
+
+The online SOM algorithm processes observations one at a time.
+
+At each step, it performs three actions.
+
+### Step 1: Find the BMU
+
+For the current observation $\mathbf{x}_i$, find
+
+$$
+b
+=
+\arg\min_j
+\left\|
+\mathbf{x}_i-\mathbf{m}_j
+\right\|.
+$$
+
+This is the competition step.
+
+The prototypes compete to represent the observation.
+
+### Step 2: Find the BMU's map neighbours
+
+Now look at the BMU's position on the map grid.
+
+Units close to the BMU on the grid should also learn from this observation.
+
+The grid distance is
+
+$$
+\left\|
+\boldsymbol{\ell}_b-\boldsymbol{\ell}_j
+\right\|.
+$$
+
+This is a distance in map space.
+
+### Step 3: Update the prototypes
+
+Each prototype is moved towards the observation:
+
+$$
+\mathbf{m}_j^{\text{new}}
+=
+\mathbf{m}_j^{\text{old}}
++
+\alpha_t h_{bj}(t)
+\left(
+\mathbf{x}_i-\mathbf{m}_j^{\text{old}}
+\right).
+$$
+
+Here:
+
+- $\alpha_t$ is the learning rate;
+- $h_{bj}(t)$ is the neighbourhood weight; and
+- $\mathbf{x}_i-\mathbf{m}_j^{\text{old}}$ points from the prototype towards the observation.
+
+### Neighbourhood weights
+
+A common choice is a Gaussian neighbourhood:
+
+$$
+h_{bj}(t)
+=
+\exp\left\{
+-
+\frac{
+\left\|
+\boldsymbol{\ell}_b-\boldsymbol{\ell}_j
+\right\|^2
+}{
+2\sigma_t^2
+}
+\right\}.
+$$
+
+The closer unit $j$ is to the BMU on the grid, the larger $h_{bj}(t)$ is.
+
+### Two distances, two roles
+
+This is the most important technical distinction.
+
+$$
+\left\|\mathbf{x}_i-\mathbf{m}_j\right\|
+$$
+
+chooses the BMU in the original data space.
+
+$$
+\left\|\boldsymbol{\ell}_b-\boldsymbol{\ell}_j\right\|
+$$
+
+decides how strongly nearby grid units learn together.
+
+## A small update by hand
+
+Suppose the BMU is unit B.
+
+Units A and C are immediate neighbours of B on a one-dimensional map.
+
+We use:
+
+$$
+\alpha=0.45,
+\qquad
+h_B=1,
+\qquad
+h_A=h_C=0.5.
+$$
+
+```{r}
+#| label: fig-som-manual-update
+#| code-fold: true
+#| code-summary: "Show update code"
+#| fig-cap: "One SOM update. The BMU moves most strongly, while neighbouring units move partway towards the same observation."
+
+update_tbl <- manual_update_example()
+observation_tbl <- tibble(x = 0, y = 1.2)
+
+update_tbl |>
+  ggplot(aes(x = x, y = y)) +
+  geom_path(
+    data = update_tbl |> arrange(stage, unit),
+    aes(group = stage, linetype = stage),
+    linewidth = 0.8,
+    alpha = 0.6
+  ) +
+  geom_point(
+    aes(shape = stage),
+    size = 3
+  ) +
+  geom_text_repel(aes(label = unit), seed = 5077) +
+  geom_point(
+    data = observation_tbl,
+    aes(x = x, y = y),
+    inherit.aes = FALSE,
+    size = 4
+  ) +
+  annotate("text", x = 0.15, y = 1.25, label = "observation", hjust = 0) +
+  coord_equal(xlim = c(-1.5, 1.5), ylim = c(-0.2, 1.4)) +
+  cowplot::theme_cowplot() +
+  labs(
+    x = "Feature 1",
+    y = "Feature 2",
+    shape = NULL,
+    linetype = NULL
+  )
+```
+
+The BMU moves most.
+
+Its neighbours also move, but less strongly.
+
+Far-away units would barely move at all.
+
+## Why learning rates and neighbourhoods shrink
+
+Early in training, the neighbourhood radius is usually large.
+
+This means many units move together.
+
+That helps the map organise itself globally.
+
+### Early training
+
+Large $\sigma_t$:
+
+- many prototypes are updated together;
+- the map is smooth;
+- the broad ordering of the map is established.
+
+### Late training
+
+Small $\sigma_t$:
+
+- mainly the BMU and close neighbours are updated;
+- prototypes can fit local detail;
+- the map becomes more precise.
+
+Usually both $\alpha_t$ and $\sigma_t$ decrease over time.
+
+## Fitting the toy SOM
+
+Now train an $8 \times 8$ SOM using the four measured variables.
+
+```{r}
+#| label: fit-som-toy
+#| include: false
+
+som_variables <- c("x1", "x2", "x3", "x4")
+som_x <- som_data |>
+  select(all_of(som_variables)) |>
+  scale()
+
+som_fit <- train_som(
+  som_x,
+  n_rows = 8,
+  n_cols = 8,
+  iterations = 2500,
+  alpha_start = 0.35,
+  alpha_end = 0.02,
+  sigma_start = 4,
+  sigma_end = 0.8,
+  seed = 5077,
+  trace_every = 100
+)
+
+som_assignment <- assign_bmus(som_x, som_fit) |>
+  left_join(som_data, by = "observation") |>
+  mutate(
+    plot_col = col + runif(n(), min = -0.32, max = 0.32),
+    plot_row = row + runif(n(), min = -0.32, max = 0.32)
+  )
+
+som_codes <- make_code_table(som_fit, variable_names = som_variables)
+som_u_matrix <- make_u_matrix(som_fit)
+```
+
+### Training progress
+
+```{r}
+#| label: fig-som-training-progress
+#| code-fold: true
+#| code-summary: "Show training progress code"
+#| fig-cap: "Quantisation error during SOM training. A continued decrease suggests that more training may still help."
+
+som_fit$trace |>
+  ggplot(aes(x = iteration, y = quantisation_error)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.7) +
+  cowplot::theme_cowplot() +
+  labs(
+    x = "Iteration",
+    y = "Quantisation error"
+  )
+```
+
+The error measures how far observations are from their assigned prototypes.
+
+It should usually decrease and then flatten out.
+
+## The fitted map
+
+Each observation is assigned to its BMU and placed at that BMU's grid location.
+
+```{r}
+#| label: fig-som-fitted-map
+#| code-fold: true
+#| code-summary: "Show fitted map code"
+#| fig-cap: "Observations represented by their BMU locations on the fitted SOM grid. The colours use the hidden regions only for explanation."
+
+som_assignment |>
+  ggplot(aes(x = plot_col, y = plot_row, colour = group)) +
+  geom_point(alpha = 0.75, size = 1.8) +
+  scale_x_continuous(breaks = seq_len(8)) +
+  scale_y_continuous(breaks = seq_len(8)) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  labs(
+    x = "SOM column",
+    y = "SOM row",
+    colour = "Hidden region"
+  )
+```
+
+The SOM has converted four-dimensional observations into positions on an $8 \times 8$ grid.
+
+Nearby locations tend to represent similar observations.
+
+## Node counts
+
+A node count plot shows how many observations are assigned to each unit.
+
+```{r}
+#| label: fig-som-node-counts
+#| code-fold: true
+#| code-summary: "Show node-count code"
+#| fig-cap: "Node counts for the fitted SOM. Empty or heavily occupied nodes are often informative."
+
+som_assignment |>
+  count(row, col, name = "node_count") |>
+  right_join(som_fit$grid, by = c("row", "col")) |>
+  mutate(node_count = replace_na(node_count, 0)) |>
+  ggplot(aes(x = col, y = row, fill = node_count)) +
+  geom_tile(colour = "white") +
+  geom_text(aes(label = node_count), size = 3) +
+  scale_x_continuous(breaks = seq_len(8)) +
+  scale_y_continuous(breaks = seq_len(8)) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  labs(
+    x = "SOM column",
+    y = "SOM row",
+    fill = "Count"
+  )
+```
+
+A large count means many observations are represented by the same prototype.
+
+Empty nodes may indicate that the map is too large or that the data occupy only part of the grid.
+
+## U-matrix
+
+A U-matrix displays how different neighbouring prototypes are from one another.
+
+For each grid unit, we compute its average distance to its immediate neighbours in data space.
+
+```{r}
+#| label: fig-som-u-matrix
+#| code-fold: true
+#| code-summary: "Show U-matrix code"
+#| fig-cap: "U-matrix for the fitted SOM. Larger values indicate sharper changes between neighbouring prototypes."
+
+som_u_matrix |>
+  ggplot(aes(x = col, y = row, fill = u_distance)) +
+  geom_tile(colour = "white") +
+  scale_x_continuous(breaks = seq_len(8)) +
+  scale_y_continuous(breaks = seq_len(8)) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  labs(
+    x = "SOM column",
+    y = "SOM row",
+    fill = "Neighbour\ndistance"
+  )
+```
+
+Large values may indicate boundaries between different regions of the map.
+
+A U-matrix is not a formal clustering method.
+
+It is a visual diagnostic for the fitted prototypes.
+
+## Component planes
+
+A component plane colours each SOM unit according to one component of its prototype vector.
+
+For variable $r$, unit $j$ is coloured by $m_{jr}$.
+
+```{r}
+#| label: fig-som-component-planes
+#| code-fold: true
+#| code-summary: "Show component-plane code"
+#| fig-cap: "Component planes for the fitted SOM. Each panel shows how one original variable changes across the map."
+#| fig-height: 7
+
+som_codes |>
+  mutate(variable = factor(variable, levels = som_variables)) |>
+  ggplot(aes(x = col, y = row, fill = prototype_value)) +
+  geom_tile(colour = "white") +
+  facet_wrap(~ variable, ncol = 2) +
+  scale_x_continuous(breaks = seq_len(8)) +
+  scale_y_continuous(breaks = seq_len(8)) +
+  coord_equal() +
+  cowplot::theme_cowplot() +
+  labs(
+    x = "SOM column",
+    y = "SOM row",
+    fill = "Prototype\nvalue"
+  )
+```
+
+Component planes help us interpret the map.
+
+They show which variables are high or low in each region.
+
+They can also show whether two variables have similar or opposite patterns across the map.
+
+## SOMs and k-means
+
+The k-means connection is important, but we do not need to start there.
+
+Both methods use prototypes.
+
+Both assign observations to their nearest prototype.
+
+The difference is what happens after the nearest prototype has been found.
+
+### K-means-style update
+
+If only the BMU is updated, then
+
+$$
+h_{bj}
+=
+\begin{cases}
+1, & j=b,\\
+0, & j\neq b.
+\end{cases}
+$$
+
+The update becomes
+
+$$
+\mathbf{m}_b
+\leftarrow
+\mathbf{m}_b+
+\alpha_t
+\left(\mathbf{x}_i-\mathbf{m}_b\right).
+$$
+
+Only the winning prototype moves.
+
+### SOM update
+
+In a SOM, the BMU and its map neighbours move:
+
+$$
+\mathbf{m}_j
+\leftarrow
+\mathbf{m}_j+
+\alpha_t h_{bj}(t)
+\left(\mathbf{x}_i-\mathbf{m}_j\right).
+$$
+
+This keeps nearby grid units similar.
+
+### The key comparison
+
+| Method | Representation | Neighbourhood structure |
+|---|---|---|
+| K-means | nearest prototype | prototypes are independent |
+| SOM | nearest prototype on a grid | neighbouring prototypes learn together |
+
+So a SOM can be viewed as a constrained or regularised form of k-means.
+
+But in this part of the course, the more useful framing is:
+
+$$
+\text{SOM}=
+\text{prototype-based dimensionality reduction on a fixed grid}.
+$$
+
+## What the map does not guarantee
+
+A fitted SOM is useful, but it should not be over-interpreted.
+
+The map does not guarantee that:
+
+- Euclidean distance on the grid equals Euclidean distance in the original data space;
+- all original neighbourhoods are preserved;
+- empty space on the grid means empty space in the original data;
+- visual separation automatically means genuine clusters; or
+- cluster size and density are faithfully represented.
+
+A SOM tries to preserve local organisation.
+
+It does not perfectly preserve all distances.
+
+## Quality measures
+
+A useful SOM should represent the data well and organise the prototypes coherently.
+
+These are different goals.
+
+### Quantisation error
+
+Quantisation error measures how far observations are from their assigned prototypes:
+
+$$
+\frac{1}{n}
+\sum_{i=1}^n
+\left\|
+\mathbf{x}_i-
+\mathbf{m}_{c(i)}
+\right\|.
+$$
+
+Lower values mean better prototype representation.
+
+### Topographic error
+
+For each observation:
+
+1. find the closest prototype;
+2. find the second-closest prototype;
+3. check whether those two prototypes are adjacent on the grid.
+
+A topographic error occurs when the two closest prototypes are not grid neighbours.
+
+This indicates that the map may have broken local topology.
+
+### The trade-off
+
+A good SOM balances:
+
+$$
+\text{representation accuracy}
+\qquad\text{and}\qquad
+\text{topological organisation}.
+$$
+
+K-means will usually have smaller quantisation error if it uses the same number of prototypes.
+
+That does not automatically make k-means better, because k-means does not produce an organised low-dimensional map.
+
+## Practical choices
+
+When fitting a SOM, we need to choose:
+
+- whether variables should be scaled;
+- the map size, such as $6 \times 6$ or $10 \times 10$;
+- the grid shape, such as rectangular or hexagonal;
+- the number of training iterations;
+- the initial learning rate;
+- the initial neighbourhood radius; and
+- the decay schedule for learning rate and radius.
+
+### Scaling
+
+SOMs commonly use Euclidean distance.
+
+If variables have very different scales, large-scale variables can dominate the map.
+
+As with PCA and MDS, scaling is often essential.
+
+### Map size
+
+A small map gives a coarse summary.
+
+A large map gives more detail, but may be harder to interpret.
+
+A very large map may contain many empty or unstable units.
+
+## A typical R workflow
+
+The practical workflow is usually:
+
+1. prepare and scale the data matrix;
+2. choose the grid size;
+3. train the SOM;
+4. assign observations to BMUs;
+5. inspect training progress;
+6. inspect node counts, U-matrix and component planes; and
+7. decide whether the map is useful for the scientific question.
+
+### Example using the `kohonen` package
+
+```{r}
+#| label: code-kohonen-workflow
+#| eval: false
+#| code-fold: false
+
+library(kohonen)
+
+x_scaled <- scale(my_data)
+
+grid <- somgrid(
+  xdim = 8,
+  ydim = 8,
+  topo = "hexagonal"
+)
+
+fit <- som(
+  data = x_scaled,
+  grid = grid,
+  rlen = 200,
+  alpha = c(0.05, 0.01)
+)
+
+plot(fit, type = "changes")
+plot(fit, type = "counts")
+plot(fit, type = "dist.neighbours")
+plot(fit, type = "codes")
+```
+
+The exact plotting functions depend on the package, but the interpretation is the same.
+
+## Link to the other methods
+
+| Method | Low-dimensional representation | Main organising principle |
+|---|---|---|
+| PCA | continuous component scores | preserve variance |
+| MDS | continuous map coordinates | preserve dissimilarities |
+| ISOMAP | continuous map coordinates | preserve graph-based geodesic distances |
+| SOM | discrete grid coordinates | learn organised prototypes |
+| K-means | cluster labels | minimise within-cluster prototype error |
+
+SOMs sit naturally between dimensionality reduction and clustering.
+
+They give a low-dimensional map, but the map is built from prototypes.
+
+## Recap
+
+A self-organising map learns prototypes attached to a fixed low-dimensional grid.
+
+Each observation is assigned to its BMU.
+
+The BMU and its neighbours move towards the observation.
+
+This creates an organised map of high-dimensional data.
+
+The k-means connection is:
+
+$$
+\text{SOM with no neighbourhood learning}
+\approx
+\text{online k-means}.
+$$
+
+The dimensionality-reduction connection is:
+
+$$
+\mathbf{x}_i\in\mathbb{R}^p
+\quad\longmapsto\quad
+\boldsymbol{\ell}_{c(i)}\in\mathbb{R}^2.
+$$
+
+## Conceptual checks
+
+1. What is the difference between a prototype vector and a grid location?
+2. Which distance is used to choose the BMU?
+3. Which distance is used to decide how strongly neighbouring units are updated?
+4. Why do we usually decrease the learning rate and neighbourhood radius during training?
+5. In what sense is a SOM related to k-means?
+6. Why can a SOM be useful for dimensionality reduction even if it is not a distance-preserving map?
+7. What does a component plane show?
+8. What is the difference between quantisation error and topographic error?
+9. Why should visual clusters in a SOM be interpreted cautiously?
+10. Why should variables often be scaled before fitting a SOM?
+
+## Supplementary detail
+
+### Batch SOM
+
+The online algorithm updates prototypes one observation at a time.
+
+A batch version updates each prototype using all observations assigned to relevant neighbouring units.
+
+A simplified batch update has the form
+
+$$
+\mathbf{m}_j
+=
+\frac{
+\sum_i w_{ij}\mathbf{x}_i
+}{
+\sum_i w_{ij}
+},
+$$
+
+where $w_{ij}$ is larger when observation $i$ is assigned to a unit close to $j$ on the grid.
+
+If the neighbourhood contains only the BMU, this resembles the usual k-means centroid update.
+
+### Why the SOM constraint can be checked
+
+Because SOM uses the same nearest-prototype representation as k-means, we can compare reconstruction errors using the same number of prototypes.
+
+K-means should generally have smaller reconstruction error because its prototypes are unconstrained.
+
+If the SOM error is much larger, the low-dimensional grid constraint may be unsuitable for the dataset.
+
+If the SOM error is close, the organised grid may be a useful approximation.
+

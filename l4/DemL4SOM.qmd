@@ -1,0 +1,892 @@
+---
+title: "Self-organising maps with the wines data"
+subtitle: "STA5077Z demonstration"
+author: "Miguel Rodó"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Introduction
+
+This demonstration applies a self-organising map (SOM) to the `wines`
+dataset supplied with the `kohonen` package.
+
+The data contain chemical and spectroscopic measurements on 177 wines from
+three grape cultivars grown in the Piedmont region of Italy. There are 13
+measured variables. The accompanying object `vintages` contains the known
+cultivar labels.
+
+The SOM will be trained using only the 13 measurements. The cultivar labels
+will be added afterwards to help us assess and interpret the unsupervised
+map.
+
+The main aims are to:
+
+1. inspect and standardise the variables;
+2. fit a hexagonal SOM;
+3. examine training progress and node occupancy;
+4. display the observations on the fitted map;
+5. interpret component planes and the U-matrix;
+6. calculate quantisation and topographic error; and
+7. add post hoc cluster boundaries to the map.
+
+## Setup
+
+Install the required package once if necessary.
+
+```{r}
+#| label: install-kohonen
+#| eval: false
+
+install.packages("kohonen")
+```
+
+Load the package and set a reproducible seed.
+
+```{r}
+#| label: setup
+
+library(kohonen)
+
+set.seed(5077)
+
+knitr::opts_chunk$set(
+  fig.align = "center",
+  out.width = "80%"
+)
+
+map_palette <- function(n) {
+  hcl.colors(n, palette = "YlOrRd", rev = TRUE)
+}
+```
+
+## Load and inspect the data
+
+Loading `wines` also loads the associated factor `vintages`.
+
+```{r}
+#| label: load-wines-data
+
+data("wines", package = "kohonen")
+
+wine_x <- as.matrix(wines)
+wine_class <- factor(vintages)
+
+dim(wine_x)
+head(wine_x)
+table(wine_class)
+```
+
+The class labels are **not** included among the SOM inputs.
+
+```{r}
+#| label: inspect-wine-variables
+
+wine_summary <- data.frame(
+  variable = colnames(wine_x),
+  mean = apply(wine_x, 2, mean) |> signif(2),
+  standard_deviation = apply(wine_x, 2, sd) |> signif(2),
+  minimum = apply(wine_x, 2, min) |> signif(2),
+  maximum = apply(wine_x, 2, max) |> signif(2),
+  row.names = NULL
+)
+wine_summary
+```
+
+The variables are measured in different units and have very different
+numerical spreads. Without standardisation, variables with large numerical
+variation would dominate the Euclidean distances used by the SOM.
+
+```{r}
+#| label: fig-wine-raw-scales
+#| fig-cap: "Raw standard deviations of the 13 wine variables, shown on a logarithmic scale."
+#| fig-width: 9
+#| fig-height: 5
+
+barplot(
+  log10(apply(wine_x, 2, sd)),
+  names.arg = colnames(wine_x),
+  las = 2,
+  ylab = "log10(standard deviation)",
+  main = "The original variables have very different scales"
+)
+```
+
+Standardise each variable to have mean zero and standard deviation one.
+
+```{r}
+#| label: standardise-wine-data
+
+wine_scaled <- scale(
+  wine_x,
+  center = TRUE,
+  scale = TRUE
+)
+
+round(
+  cbind(
+    mean = apply(wine_scaled, 2, mean),
+    standard_deviation = apply(wine_scaled, 2, sd)
+  ),
+  3
+)
+```
+
+## A familiar comparison: PCA
+
+Before fitting the SOM, display the observations using their first two
+principal component scores.
+
+The cultivar labels are used only for colouring the plot.
+
+```{r}
+#| label: fig-wine-pca
+#| fig-cap: "The wines represented by their first two principal component scores."
+#| fig-width: 7
+#| fig-height: 6
+
+wine_pca <- prcomp(
+  wine_scaled,
+  center = FALSE,
+  scale. = FALSE
+)
+
+pca_variance <- 100 *
+  wine_pca$sdev^2 /
+  sum(wine_pca$sdev^2)
+
+class_colours <- hcl.colors(
+  nlevels(wine_class),
+  palette = "Dark 3"
+)
+
+plot(
+  wine_pca$x[, 1],
+  wine_pca$x[, 2],
+  col = class_colours[as.integer(wine_class)],
+  pch = 19,
+  xlab = paste0("PC1 (", round(pca_variance[1], 1), "%)"),
+  ylab = paste0("PC2 (", round(pca_variance[2], 1), "%)"),
+  main = "PCA score plot"
+)
+
+legend(
+  "topright",
+  legend = levels(wine_class),
+  col = class_colours,
+  pch = 19,
+  bty = "n"
+)
+```
+
+PCA gives every observation a pair of continuous coordinates. The SOM will
+instead assign each wine to one of a fixed number of grid units.
+
+## Fit the SOM
+
+Use a $6\times4$ hexagonal grid, giving 24 prototype vectors.
+
+Every prototype has 13 components, one for each standardised wine variable.
+
+```{r}
+#| label: fit-wine-som
+
+wine_grid <- somgrid(
+  xdim = 6,
+  ydim = 4,
+  topo = "hexagonal",
+  neighbourhood.fct = "gaussian"
+)
+
+set.seed(5077)
+
+wine_som <- som(
+  X = wine_scaled,
+  grid = wine_grid,
+  rlen = 500,
+  alpha = c(0.05, 0.01),
+  keep.data = TRUE
+)
+
+wine_som
+summary(wine_som)
+```
+
+Here:
+
+- `xdim` and `ydim` determine the number of map units;
+- `topo = "hexagonal"` gives most interior units six immediate neighbours;
+- `rlen = 500` means 500 complete passes through the data;
+- `alpha` decreases from 0.05 to 0.01 during training; and
+- the neighbourhood radius is also reduced automatically during training.
+
+## Training progress
+
+The `changes` plot shows the mean distance from observations to their
+closest codebook vectors during training.
+
+It measures representation error during training. It does not directly show
+how far the prototypes moved at each iteration, and it does not prove that a
+global optimum has been found.
+
+```{r}
+#| label: fig-wine-training-progress
+#| fig-cap: "Mean distance to the closest prototype during SOM training."
+#| fig-width: 7
+#| fig-height: 5
+
+plot(
+  wine_som,
+  type = "changes",
+  main = "Training progress"
+)
+```
+
+The curve should generally settle as training proceeds. Small fluctuations
+are not surprising because the online algorithm updates the map from
+individual observations.
+
+## Node counts
+
+Each wine is represented by its best matching unit (BMU). The count plot
+shows how many wines map to each unit.
+
+```{r}
+#| label: fig-wine-node-counts
+#| fig-cap: "Number of wines assigned to each SOM unit."
+#| fig-width: 8
+#| fig-height: 6
+
+plot(
+  wine_som,
+  type = "counts",
+  shape = "straight",
+  palette.name = map_palette,
+  main = "Node counts"
+)
+```
+
+A large count means that many observations share the same prototype. Empty
+units are possible and are shown separately by the plotting method.
+
+## Map the wines to the grid
+
+The cultivar labels were not used to train the SOM. We now overlay them on
+the fitted map.
+
+The numbers and colours correspond to the three levels of `vintages`.
+
+```{r}
+#| label: fig-wine-mapping
+#| fig-cap: "Wine observations mapped to their BMUs. Cultivar labels are overlaid after unsupervised training."
+#| fig-width: 9
+#| fig-height: 6
+
+class_number <- as.integer(wine_class)
+
+plot(
+  wine_som,
+  type = "mapping",
+  labels = class_number,
+  col = class_colours[class_number],
+  shape = "straight",
+  main = "Wine cultivars on the fitted SOM",
+  keepMargins = TRUE
+)
+
+legend(
+  "topright",
+  legend = paste(
+    seq_along(levels(wine_class)),
+    levels(wine_class),
+    sep = ": "
+  ),
+  text.col = class_colours,
+  bty = "n"
+)
+```
+
+Interpret the map using neighbourhoods rather than ordinary Cartesian
+distance:
+
+- wines mapped to the same unit share the same prototype;
+- wines in adjacent units tend to have similar chemical profiles;
+- the horizontal and vertical axes have no intrinsic substantive meaning;
+- the map may be rotated or reflected without changing its interpretation.
+
+The extent to which the three known cultivars occupy separate regions is a
+useful external check, but it is not part of the unsupervised fitting
+criterion.
+
+## Cultivar composition of each unit
+
+A unit may contain wines from one cultivar or a mixture of cultivars.
+
+```{r}
+#| label: unit-cultivar-counts
+
+n_units <- nrow(getCodes(wine_som))
+
+unit_class_table <- table(
+  unit = factor(
+    wine_som$unit.classif,
+    levels = seq_len(n_units)
+  ),
+  cultivar = wine_class
+)
+
+unit_class_table
+```
+
+For visual interpretation, colour each unit by the cultivar that occurs most
+frequently among the wines mapped to it. Grey units are empty.
+
+This is a post hoc summary. It did not influence the SOM training.
+
+```{r}
+#| label: fig-wine-majority-cultivar
+#| fig-cap: "SOM units coloured by their majority cultivar, with individual wine labels overlaid."
+#| fig-width: 9
+#| fig-height: 6
+
+majority_class <- apply(
+  unit_class_table,
+  1,
+  function(z) {
+    if (sum(z) == 0) {
+      return(NA_integer_)
+    }
+
+    which.max(z)
+  }
+)
+
+unit_background <- rep("grey90", n_units)
+
+unit_background[!is.na(majority_class)] <- adjustcolor(
+  class_colours[majority_class[!is.na(majority_class)]],
+  alpha.f = 0.35
+)
+
+plot(
+  wine_som,
+  type = "mapping",
+  labels = class_number,
+  col = class_colours[class_number],
+  bgcol = unit_background,
+  shape = "straight",
+  border = "grey40",
+  main = "Majority cultivar by SOM unit",
+  keepMargins = TRUE
+)
+
+legend(
+  "topright",
+  legend = levels(wine_class),
+  fill = adjustcolor(class_colours, alpha.f = 0.35),
+  border = NA,
+  bty = "n"
+)
+```
+
+## Component planes
+
+The fitted codebook matrix has one row per SOM unit and one column per
+original variable.
+
+```{r}
+#| label: inspect-wine-codes
+
+wine_codes <- getCodes(wine_som)
+
+dim(wine_codes)
+head(wine_codes)
+```
+
+A component plane colours each unit according to one component of its
+prototype vector.
+
+The following four variables are shown:
+
+1. alcohol;
+2. flavonoids;
+3. colour intensity; and
+4. proline.
+
+Because the SOM was trained on standardised variables, the displayed values
+are standardised prototype values.
+
+```{r}
+#| label: fig-wine-selected-component-planes
+#| fig-cap: "Selected component planes. Each panel shows how one standardised prototype component changes across the SOM."
+#| fig-width: 10
+#| fig-height: 8
+
+selected_components <- c(
+  "Alcohol" = 1,
+  "Flavonoids" = 7,
+  "Colour intensity" = 10,
+  "Proline" = 13
+)
+
+old_par <- par(
+  mfrow = c(2, 2),
+  mar = c(2.5, 2.5, 3, 3)
+)
+
+for (component_name in names(selected_components)) {
+  j <- selected_components[[component_name]]
+
+  plot(
+    wine_som,
+    type = "property",
+    property = wine_codes[, j],
+    shape = "straight",
+    palette.name = map_palette,
+    main = component_name
+  )
+}
+
+par(old_par)
+```
+
+When interpreting component planes:
+
+- nearby units with similar colours have similar prototype values for that
+  variable;
+- contrasting regions show gradients across the map;
+- similar spatial patterns in two component planes suggest that the
+  variables tend to vary together across the fitted prototypes; and
+- opposite patterns suggest opposing gradients.
+
+The orientation of a SOM is arbitrary. The substantive interpretation comes
+from comparing regions and neighbouring units, not from assigning inherent
+meaning to "top", "bottom", "left" or "right".
+
+### All component planes
+
+The complete set of component planes can be displayed as follows.
+
+```{r}
+#| label: fig-wine-all-component-planes
+#| code-fold: true
+#| code-summary: "Show code for all component planes"
+#| fig-cap: "Component planes for all 13 wine variables."
+#| fig-width: 12
+#| fig-height: 12
+
+old_par <- par(
+  mfrow = c(4, 4),
+  mar = c(1.5, 1.5, 2.3, 2)
+)
+
+for (j in seq_len(ncol(wine_codes))) {
+  plot(
+    wine_som,
+    type = "property",
+    property = wine_codes[, j],
+    shape = "straight",
+    palette.name = map_palette,
+    main = colnames(wine_codes)[j],
+    heatkey = FALSE
+  )
+}
+
+plot.new()
+text(0.5, 0.5, "Each panel shows\none prototype component")
+
+par(old_par)
+```
+
+## U-matrix
+
+The U-matrix summarises differences between neighbouring prototypes.
+
+For every unit, the `kohonen` plot displays the **sum** of its distances to
+all immediate neighbours in the original standardised feature space.
+
+```{r}
+#| label: fig-wine-u-matrix
+#| fig-cap: "U-matrix for the wine SOM. Larger values indicate sharper changes between neighbouring prototypes."
+#| fig-width: 8
+#| fig-height: 6
+
+u_values <- plot(
+  wine_som,
+  type = "dist.neighbours",
+  shape = "straight",
+  palette.name = map_palette,
+  main = "U-matrix: distances to neighbouring prototypes"
+)
+```
+
+Interpretation:
+
+- low values indicate locally similar prototypes;
+- high values indicate a sharper change across that part of the map;
+- connected high-value regions may suggest possible boundaries; and
+- the U-matrix is a diagnostic, not a formal clustering procedure.
+
+Because boundary units have fewer neighbours than interior units, the
+package's sum-based display is partly affected by the number of neighbours.
+Its main use is comparative visual interpretation across the fitted map.
+
+## Quantisation error
+
+For observation $i$, the observation-level quantisation error is its
+distance to its BMU:
+
+$$
+q_i
+=
+\left\|
+\mathbf{x}_i-\mathbf{m}_{b(i)}
+\right\|.
+$$
+
+The overall quantisation error is the mean of these distances over
+observations:
+
+$$
+Q
+=
+\frac{1}{n}
+\sum_{i=1}^n
+q_i.
+$$
+
+```{r}
+#| label: calculate-wine-quantisation-error
+
+wine_distance_to_bmu <- dist2WU(wine_som)
+
+overall_quantisation_error <- mean(wine_distance_to_bmu)
+
+overall_quantisation_error
+summary(wine_distance_to_bmu)
+```
+
+The average is over observations, not over map units. A heavily occupied
+unit therefore contributes once for every wine assigned to it, while an
+empty unit contributes nothing.
+
+The `quality` plot instead shows the average BMU distance separately within
+each occupied unit.
+
+```{r}
+#| label: fig-wine-unit-quality
+#| fig-cap: "Mean distance to the BMU prototype among wines assigned to each unit."
+#| fig-width: 8
+#| fig-height: 6
+
+plot(
+  wine_som,
+  type = "quality",
+  shape = "straight",
+  palette.name = map_palette,
+  main = "Within-unit representation quality"
+)
+```
+
+Large values indicate units whose mapped wines are relatively poorly
+represented by their prototype.
+
+## Topographic error
+
+For each observation:
+
+1. find the closest prototype;
+2. find the second-closest prototype; and
+3. check whether those two prototypes are immediate grid neighbours.
+
+An observation contributes an error if its closest two prototypes are not
+adjacent.
+
+$$
+\operatorname{TE}
+=
+\frac{1}{n}
+\sum_{i=1}^n
+I\left\{
+b_1(i)\text{ and }b_2(i)\text{ are not adjacent}
+\right\}.
+$$
+
+```{r}
+#| label: calculate-wine-topographic-error
+
+topographic_error <- function(data, som_model) {
+  data <- as.matrix(data)
+  codes <- getCodes(som_model)
+
+  squared_distances <- vapply(
+    seq_len(nrow(codes)),
+    function(j) {
+      rowSums(
+        sweep(
+          data,
+          MARGIN = 2,
+          STATS = codes[j, ],
+          FUN = "-"
+        )^2
+      )
+    },
+    numeric(nrow(data))
+  )
+
+  nearest_two <- t(
+    apply(
+      squared_distances,
+      1,
+      order
+    )
+  )[, 1:2, drop = FALSE]
+
+  map_distances <- unit.distances(som_model$grid)
+
+  first_second_map_distance <- map_distances[
+    cbind(
+      nearest_two[, 1],
+      nearest_two[, 2]
+    )
+  ]
+
+  mean(first_second_map_distance > 1 + 1e-8)
+}
+
+wine_topographic_error <- topographic_error(
+  wine_scaled,
+  wine_som
+)
+
+wine_topographic_error
+```
+
+A value of zero would mean that every observation's two closest prototypes
+are adjacent. Larger values indicate more frequent local breaks in the
+organisation of the map.
+
+Topographic error is binary at the observation level. A second BMU two grid
+steps away and one several grid steps away both count as one error.
+
+## Post hoc clustering of the prototypes
+
+The SOM itself gives an organised grid of prototypes, not a final set of
+discrete clusters.
+
+We can cluster the 24 prototype vectors after training. Here, hierarchical
+clustering is applied to the codebook vectors and cut into three groups.
+
+```{r}
+#| label: cluster-wine-prototypes
+
+code_distances <- object.distances(
+  wine_som,
+  type = "codes"
+)
+
+code_hclust <- hclust(
+  code_distances,
+  method = "ward.D2"
+)
+
+unit_cluster <- cutree(
+  code_hclust,
+  k = 3
+)
+
+unit_cluster
+```
+
+The number of clusters is chosen here for demonstration and to facilitate
+comparison with the three known cultivars. It was not selected by the SOM
+algorithm.
+
+Draw the cluster boundaries on top of the U-matrix.
+
+```{r}
+#| label: fig-wine-cluster-boundaries
+#| fig-cap: "Hierarchical clusters of the SOM prototypes, displayed as boundaries on the U-matrix."
+#| fig-width: 8
+#| fig-height: 6
+
+plot(
+  wine_som,
+  type = "dist.neighbours",
+  shape = "straight",
+  palette.name = map_palette,
+  main = "Post hoc clusters of SOM prototypes"
+)
+
+add.cluster.boundaries(
+  wine_som,
+  clustering = unit_cluster,
+  lwd = 4
+)
+```
+
+These lines are reproducible post hoc cluster boundaries:
+
+1. the SOM prototypes are clustered;
+2. every map unit receives a cluster label; and
+3. a boundary is drawn between adjacent units with different labels.
+
+The boundaries are not produced by the basic SOM training algorithm.
+
+Compare the post hoc prototype clusters with the known cultivars.
+
+```{r}
+#| label: compare-clusters-and-cultivars
+
+wine_cluster <- unit_cluster[wine_som$unit.classif]
+
+table(
+  SOM_cluster = wine_cluster,
+  cultivar = wine_class
+)
+```
+
+Cluster numbers are arbitrary. The comparison should focus on whether each
+cluster is dominated by one cultivar and where mixing occurs.
+
+## What has the SOM shown?
+
+The fitted map provides several related views of the same model:
+
+- the mapping plot shows where individual wines are represented;
+- the count plot shows how many wines use each prototype;
+- component planes show what the prototypes represent chemically;
+- the U-matrix shows where neighbouring prototypes differ sharply;
+- the quality plot shows where observations are represented less well;
+- quantisation error measures average representation accuracy;
+- topographic error measures local failures of grid organisation; and
+- post hoc clustering turns the continuous prototype organisation into
+  discrete regions.
+
+These views should be interpreted together. No single plot is sufficient on
+its own.
+
+## Optional extension: sensitivity to map size
+
+A larger map contains more prototypes and will usually reduce quantisation
+error, but may contain more empty units and may not improve topographic
+organisation.
+
+The following code compares three grid sizes.
+
+```{r}
+#| label: compare-wine-map-sizes
+#| code-fold: true
+#| code-summary: "Show map-size comparison"
+
+fit_wine_som <- function(xdim, ydim, seed) {
+  set.seed(seed)
+
+  som(
+    data = wine_scaled,
+    grid = somgrid(
+      xdim = xdim,
+      ydim = ydim,
+      topo = "hexagonal",
+      neighbourhood.fct = "gaussian"
+    ),
+    rlen = 500,
+    alpha = c(0.05, 0.01),
+    keep.data = TRUE
+  )
+}
+
+map_sizes <- list(
+  "4 x 3" = c(4, 3),
+  "6 x 4" = c(6, 4),
+  "8 x 6" = c(8, 6)
+)
+
+map_size_results <- lapply(
+  seq_along(map_sizes),
+  function(i) {
+    dimensions <- map_sizes[[i]]
+
+    fit <- fit_wine_som(
+      xdim = dimensions[1],
+      ydim = dimensions[2],
+      seed = 5077 + i
+    )
+
+    data.frame(
+      map = names(map_sizes)[i],
+      units = prod(dimensions),
+      empty_units = sum(
+        tabulate(
+          fit$unit.classif,
+          nbins = prod(dimensions)
+        ) == 0
+      ),
+      quantisation_error = mean(dist2WU(fit)),
+      topographic_error = topographic_error(
+        wine_scaled,
+        fit
+      )
+    )
+  }
+)
+
+do.call(
+  rbind,
+  map_size_results
+)
+```
+
+Do not select a map solely because it has the smallest quantisation error.
+Map size should balance:
+
+- representation accuracy;
+- topographic organisation;
+- the number of empty units;
+- stability across initialisations; and
+- interpretability.
+
+## Discussion questions
+
+1. Why was standardisation important for these data?
+2. Which plot directly shows where individual wines map?
+3. What additional information is supplied by the component planes?
+4. What does a high U-matrix value mean?
+5. How does the unit-level quality plot differ from the overall
+   quantisation error?
+6. Why does topographic error use the first and second BMUs?
+7. Were the cultivar labels used to train this SOM?
+8. Are the post hoc cluster boundaries part of the SOM algorithm?
+9. Why should the horizontal and vertical directions of the map not be
+   interpreted as ordinary variables?
+10. How would increasing the number of units affect quantisation error and
+    interpretability?
+
+## Recap
+
+The wine SOM converts 13-dimensional observations into positions on a fixed
+two-dimensional grid:
+
+$$
+\mathbf{x}_i
+\longmapsto
+\text{BMU}
+\longmapsto
+\text{grid location}.
+$$
+
+The prototypes remain 13-dimensional. The two-dimensional grid organises
+those prototypes so that neighbouring units tend to represent similar
+chemical profiles.
+
+The cultivar labels provide useful external information after fitting, but
+the map itself is learnt without them.

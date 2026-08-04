@@ -23,5 +23,5 @@ build:
     latest-2026-sta5077z:
       content: raw-content
 dev:
-  scripts: l1/PracL1PCA.qmd
+  scripts: l4/SlidesL4SOM.qmd
 

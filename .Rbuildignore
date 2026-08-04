@@ -24,5 +24,8 @@
 ^_output$
 ^_projr\.yml$
 ^README\.Rmd$
+^BUILDLOG\.md$
+^CHANGELOG\.md$
+^manifest\.csv$
 # End of projr section
 
