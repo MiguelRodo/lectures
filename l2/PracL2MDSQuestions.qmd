@@ -31,70 +31,72 @@ library(dplyr)
 library(ggplot2)
 ```
 
-The following code generates three groups of observations and constructs a recorded dissimilarity matrix containing several deliberate errors.
+The following code generates three groups of observations and constructs a dissimilarity matrix (`diss_mat_orig`) containing several deliberate errors.
 
 ```{r}
 #| label: create-mds-practical-data
-#| include: false
+#| echo: true
+#| eval: false
 
 set.seed(5077)
 
-simulate_group <- function(group, mean, sigma, n = 8) {
+pos_def <- function(n, covEvMin = 0.25, covEvMax = 0.75) {
+    # Generates a positive definite matrix of dimension n
+    # Upper and lower bounds control the range of the variance eigenvalues.
+
+    # Generate the bounded eigenvalues before matrix decomposition
+    ev <- runif(n, min = covEvMin, max = covEvMax)
+
+    if (n == 1) {
+        return(matrix(ev, 1, 1))
+    }
+
+    z <- matrix(ncol = n, rnorm(n^2))
+    decomp <- qr(z)
+    q <- qr.Q(decomp)
+    r <- qr.R(decomp)
+    d <- diag(r)
+    ph <- d / abs(d)
+
+    o <- q %*% diag(ph, nrow = n)
+    z <- t(o) %*% diag(ev, nrow = n) %*% o
+    return(z)
+}
+
+simulate_group <- function(group, mean, n = 8) {
   simulated_values <- MASS::mvrnorm(
     n = n,
     mu = mean,
-    Sigma = sigma
+    Sigma = pos_def(length(mean))
   )
+  colnames(simulated_values) <- paste0("v", seq_len(length(mean)))
 
   tibble(
     label = paste0(group, seq_len(n)),
-    group = group,
-    feature_1 = simulated_values[, 1],
-    feature_2 = simulated_values[, 2]
-  )
+    group = group
+  ) |>
+    dplyr::bind_cols(
+      as_tibble(simulated_values)
+    )
 }
 
 mds_observations_tbl <- bind_rows(
   simulate_group(
     group = "A",
-    mean = c(-2.2, -0.6),
-    sigma = matrix(
-      c(
-        0.18, 0.08,
-        0.08, 0.28
-      ),
-      nrow = 2,
-      byrow = TRUE
-    )
+    mean = c(-2.2, -0.6, -1, -4)
   ),
   simulate_group(
     group = "B",
-    mean = c(0.0, 1.8),
-    sigma = matrix(
-      c(
-        0.25, -0.10,
-       -0.10,  0.16
-      ),
-      nrow = 2,
-      byrow = TRUE
-    )
+    mean = c(0.0, 1.8, 1, 1.5)
   ),
   simulate_group(
     group = "C",
-    mean = c(2.1, -0.7),
-    sigma = matrix(
-      c(
-        0.20, 0.04,
-        0.04, 0.20
-      ),
-      nrow = 2,
-      byrow = TRUE
-    )
+    mean = c(2.1, -0.7, 1, 3)
   )
 )
 
 mds_feature_mat <- mds_observations_tbl |>
-  dplyr::select(feature_1, feature_2) |>
+  dplyr::select(v1, v2, v3, v4) |>
   as.matrix()
 
 rownames(mds_feature_mat) <- mds_observations_tbl$label
@@ -131,17 +133,14 @@ mds_group_key_tbl <- mds_observations_tbl |>
 
 ## Question 1: Repair the dissimilarity matrix
 
-Inspect part of `diss_mat_orig` and confirm its dimensions.
+Identify and fix the errors in `diss_mat_orig`.
+Hint: if need be, off-diagonal elements can be averaged using 
 
-```{r}
-#| label: inspect-recorded-dissimilarities
-
-diss_mat_orig |>
-  dim()
-diss_mat_orig |> signif(2)
-```
-
-Identify the 
+$$
+\delta_{ij}^{*}
+=
+\frac{\delta_{ij}+\delta_{ji}}{2}.
+$$
 
 ```{r}
 #| label: identify-invalid-dissimilarities
@@ -149,39 +148,9 @@ Identify the
 # Your code here
 ```
 
-For this practical, assume that the two directional records for a pair are equally credible. Repair the matrix by:
-
-1. setting every diagonal entry to zero; and
-2. replacing each pair of directional records by their arithmetic mean,
-   
-   $$
-   \delta_{ij}^{*}
-   =
-   \frac{\delta_{ij}+\delta_{ji}}{2}.
-   $$
-
-Store the repaired matrix as `repaired_dissimilarity_mat`.
-
-```{r}
-#| label: repair-dissimilarity-matrix
-
-# Your code here
-```
-
-Confirm that the repaired matrix is hollow, symmetric and non-negative. Then convert it to a `dist` object called `repaired_delta`.
-
-```{r}
-#| label: validate-repaired-dissimilarities
-
-# Your code here
-```
-
-**Interpretation:**  
-Explain why the matrix should be repaired before calling `as.dist()`. What information is lost when the two directional values are replaced by their mean?
-
 ## Question 2: Apply and interpret classical MDS
 
-Fit a two-dimensional classical MDS representation using `cmdscale()`. Request the eigenvalues and store the result as `classical_mds_fit`.
+Fit a two-dimensional classical MDS representation using `cmdscale()` to your repaired distance matrix.
 
 ```{r}
 #| label: fit-classical-mds
@@ -189,43 +158,22 @@ Fit a two-dimensional classical MDS representation using `cmdscale()`. Request t
 # Your code here
 ```
 
-Construct a table containing:
-
-- the observation label;
-- the first two MDS coordinates; and
-- the known group membership.
-
-Store the result as `classical_mds_tbl`.
-
-```{r}
-#| label: prepare-classical-mds-coordinates
-
-# Your code here
-```
-
-Plot the fitted configuration. Use equal scaling on the two axes, colour the observations by group and label the points.
+Plot the coordinates, indicating group membership, which are provided by the object `mds_group_key_tbl` in the `group` column.
+The ordering of the `diss_mat_orig` and `mds_group_key_tbl` are the same, i.e. the $i$-th row of `mds_group_key_tbl` matches the $i$-th row/column of `diss_mat_orig`.
+Use equal scaling on the two axes and colour the observations by group.
 
 ```{r}
 #| label: fig-classical-mds-configuration
-#| fig-cap: "Two-dimensional classical MDS representation of the repaired dissimilarities."
 
 # Your code here
 ```
 
-**Interpretation:**  
-Describe the within-group and between-group relationships visible in the map. Explain why the directions and signs of the two MDS axes should not be interpreted substantively.
+Describe the within-group and between-group relationships visible in the map.
 
 ## Question 3: Choose the number of dimensions
 
-For a configuration with coordinates $\mathbf y_1,\ldots,\mathbf y_n$, let
-
-$$
-d_{ij}
-=
-\lVert \mathbf y_i-\mathbf y_j\rVert
-$$
-
-be the distance between fitted points. We will assess a configuration using
+Fit classical MDS representations using one to five dimensions and calculate the relative distance error for each representation.
+Comment on the results.
 
 $$
 \text{relative distance error}
@@ -239,300 +187,78 @@ $$
 \right]^{1/2}.
 $$
 
-Complete the function below.
-
-```{r}
-#| label: define-relative-distance-error
-
-relative_distance_error <- function(delta, coordinates) {
-  input_dissimilarities <- as.vector(delta)
-
-  # Calculate the pairwise distances in the fitted configuration.
-  fitted_distances <-
-
-  # Return the relative distance error.
-}
-```
-
-Fit classical MDS representations using one to five dimensions and calculate the relative distance error for each representation.
-
-Store the results in `dimension_fit_tbl`.
-
 ```{r}
 #| label: calculate-dimension-fit
 
 # Your code here
 ```
 
-Plot relative distance error against the number of dimensions.
-
-```{r}
-#| label: fig-mds-dimension-fit
-#| fig-cap: "Relative distance error for classical MDS representations of different dimensions."
-
-# Your code here
-```
-
-Inspect the eigenvalues returned by `classical_mds_fit` and compare them with the distance-error plot.
-
-```{r}
-#| label: inspect-classical-mds-eigenvalues
-
-# Your code here
-```
-
-**Interpretation:**  
-How many dimensions would you retain? Explain your answer using both the distance-error plot and the eigenvalues. Why might the error not become exactly zero in two dimensions, even though the data were generated from two features?
-
 ## Question 4: Compare fitted and input dissimilarities
 
-For the two-dimensional classical MDS fit, construct a table containing one row for every distinct pair of observations and the following columns:
-
-- `observation_1`;
-- `observation_2`;
-- `input_dissimilarity`; and
-- `configuration_distance`.
-
-Store the table as `classical_distance_comparison_tbl`.
+Plot the interpoint distances from the two-dimensional MDS fit on the y-axis against the original dissimilarities on the x-axis.
 
 ```{r}
-#| label: prepare-classical-distance-comparison
-
-repaired_mat <- as.matrix(repaired_delta)
-fitted_distance_mat <- as.matrix(dist(classical_mds_fit$points))
-pair_indices <- which(lower.tri(repaired_mat), arr.ind = TRUE)
-
-# Complete the table.
-classical_distance_comparison_tbl <-
-```
-
-Plot the input dissimilarities against the distances in the fitted configuration. Add the line $y=x$.
-
-```{r}
-#| label: fig-classical-distance-comparison
-#| fig-cap: "Input dissimilarities compared with distances in the two-dimensional classical MDS configuration."
+#| label: fig-classical-mds-distance-comparison
 
 # Your code here
 ```
 
-Calculate the signed and absolute discrepancies,
-
-$$
-d_{ij}-\delta_{ij}
-\qquad\text{and}\qquad
-|d_{ij}-\delta_{ij}|,
-$$
-
-and identify the eight pairs with the largest absolute discrepancies.
-
-```{r}
-#| label: identify-largest-classical-discrepancies
-
-# Your code here
-```
-
-Add the group membership of both observations to the table. Determine whether the largest discrepancies mostly concern pairs within the same group or pairs from different groups.
-
-```{r}
-#| label: classify-largest-classical-discrepancies
-
-# Your code here
-```
-
-**Interpretation:**  
-Describe any systematic pattern in the comparison plot. Which relationships are represented least accurately by the two-dimensional configuration?
+Comment on how well the two-dimensional configuration reproduces the input dissimilarities.
 
 ## Question 5: Experiment with the dissimilarities
 
-You may now use the two original measured features in `mds_observations_tbl`.
+### Part a
 
-Construct the following dissimilarities between observations:
-
-1. Euclidean distance;
-2. Manhattan distance; and
-3. cubed Euclidean dissimilarity,
-   
-   $$
-   \delta_{ij}^{(3)}
-   =
-   \delta_{ij}^{3}.
-   $$
-
-Store the first and third objects as `original_euclidean_delta` and `cubed_euclidean_delta` because they will be used again in Question 6.
-
-```{r}
-#| label: construct-alternative-dissimilarities
-
-# Your code here
-```
-
-Verify that cubing changes the numerical spacing of the Euclidean dissimilarities but does not change their ordering.
-
-```{r}
-#| label: verify-cubed-dissimilarity-order
-
-# Your code here
-```
-
-Apply two-dimensional classical MDS separately to all three dissimilarity objects. Combine the coordinates into one table and plot the three configurations in separate panels.
-
-```{r}
-#| label: fit-alternative-classical-mds
-
-# Your code here
-```
-
-```{r}
-#| label: fig-alternative-classical-mds
-#| fig-cap: "Classical MDS configurations obtained from Euclidean, Manhattan and cubed Euclidean dissimilarities."
-
-# Your code here
-```
-
-For each representation, calculate the relative distance error against the dissimilarities supplied to that fit.
-
-```{r}
-#| label: assess-alternative-classical-mds
-
-# Your code here
-```
-
-**Interpretation:**  
-Compare the three configurations. Explain why changing the dissimilarity can change the map even though the observations themselves have not changed. Comment on whether each two-dimensional classical MDS representation reproduces its own input dissimilarities well.
-
-## Question 6: Compare classical MDS, non-metric MDS and Sammon mapping
-
-Use the cubed Euclidean dissimilarities from Question 5. Cubing is a monotone transformation: it preserves the order of the original Euclidean dissimilarities while greatly changing their numerical spacing.
+Cube each of the distances in your dissimilarity matrix.
 
 Fit the following two-dimensional representations:
 
 1. classical MDS using `cmdscale()`;
 2. non-metric MDS using `MASS::isoMDS()`; and
-3. Sammon mapping using `MASS::sammon()`.
-
-Use the classical MDS coordinates as the starting configuration for the two iterative methods.
-
-```{r}
-#| label: fit-three-mds-methods
-
-# Your code here
-```
-
-Sammon mapping minimises an objective proportional to
+3. least-squares MDS minimising the following objective function:
 
 $$
-\sum_{i<j}
-\frac{
-(\delta_{ij}-d_{ij})^2
-}{
-\delta_{ij}
-}.
+\sum_{i<j}(d_{ij}-\delta_{ij})^2/\delta_{ij}^2
 $$
 
-The factor $1/\delta_{ij}$ gives greater weight to the accurate representation of small input dissimilarities.
+As some help to do the least-squares MDS:
 
-Combine the three fitted configurations into one table and plot them in separate panels. Colour observations by their known group membership.
+- note that your goal is to obtain $n$ pairs of 2-dimensional coordinate positions, i.e. you are trying to obtain an $n\times 2$ matrix, where each row corresponds to a single observation and the columns correspond to the x- and y-axis coordinate positions (or, equivalently, two variable values).
+- You can use the `optim` function.
+- Use the `cmdscale` coordinates as the starting values.
+- The function that you are minimising must treat the coordinates as the parameters with respect to which the objective is minimised, and should return the value of the objective function as defined above. It does not return the coordinate values themselves.
+  - You will need to use the coordinate values internally to that function to calculate the MDS interpoint distances.
+  - These need to be compared to the input dissimilarities.
+- As a check on whether you are correct, the `MASS::sammon` function optimises a somewhat similar objective function, with denominator $\delta_{ij}$ rather than $\delta_{ij}^2$.
 
 ```{r}
-#| label: prepare-three-mds-configurations
+#| label: fit-cubed-dissimilarity-mds
+
+# Your code here
+```
+
+### Part b
+
+Assess each approach, using the following plots:
+
+1. Plot the MDS coordinates.
+2. Plot the interpoint distances against the original dissimilarities.
+3. Plot the interpoint distances against the ranks of the original dissimilarities.
+
+```{r}
+#| label: fig-compare-mds-configurations
 
 # Your code here
 ```
 
 ```{r}
-#| label: fig-three-mds-configurations
-#| fig-cap: "Classical MDS, non-metric MDS and Sammon representations of the cubed Euclidean dissimilarities."
-
-# Your code here
-```
-
-Construct a Shepard diagram for the non-metric MDS fit. Show:
-
-- the cubed input dissimilarities on the horizontal axis;
-- the distances in the fitted configuration as points; and
-- the fitted monotone disparities as a line.
-
-```{r}
-#| label: prepare-nonmetric-shepard-data
+#| label: fig-compare-mds-distances
 
 # Your code here
 ```
 
 ```{r}
-#| label: fig-nonmetric-shepard-diagram
-#| fig-cap: "Shepard diagram for the non-metric MDS representation of the cubed Euclidean dissimilarities."
+#| label: fig-compare-mds-ranks
 
 # Your code here
 ```
-
-Now compare what the three methods recover from the **original, untransformed Euclidean dissimilarities**.
-
-For each method:
-
-1. calculate all pairwise distances in the fitted configuration;
-2. retain the corresponding original Euclidean dissimilarities;
-3. calculate the ranks of the original dissimilarities; and
-4. calculate the ranks of the fitted configuration distances.
-
-Store the combined result as `three_method_distance_tbl`.
-
-```{r}
-#| label: compare-three-method-distances
-
-method_coordinates <- list(
-  "Classical MDS" = classical_cubed_fit,
-  "Non-metric MDS" = nonmetric_cubed_fit$points,
-  "Sammon mapping" = sammon_cubed_fit$points
-)
-
-# Construct one row per pair and method.
-three_method_distance_tbl <-
-```
-
-For each method, calculate:
-
-- the Pearson correlation between the original dissimilarities and fitted configuration distances; and
-- the correlation between their ranks, equivalently the Spearman correlation.
-
-Store the results as `three_method_summary_tbl`.
-
-```{r}
-#| label: summarise-three-method-distance-recovery
-
-# Your code here
-```
-
-Plot fitted configuration distance against original Euclidean dissimilarity for each method.
-
-```{r}
-#| label: fig-three-method-distance-recovery
-#| fig-cap: "Distances in the three fitted configurations compared with the original Euclidean dissimilarities."
-
-# Your code here
-```
-
-Plot the rank of the fitted configuration distance against the rank of the original Euclidean dissimilarity.
-
-```{r}
-#| label: fig-three-method-rank-recovery
-#| fig-cap: "Ranks of fitted configuration distances compared with ranks of the original Euclidean dissimilarities."
-
-# Your code here
-```
-
-Finally, divide the original Euclidean dissimilarities into three equally sized groups containing small, medium and large dissimilarities. Compare the three methods within these groups.
-
-```{r}
-#| label: assess-local-distance-recovery
-
-# Your code here
-```
-
-**Interpretation:**  
-Compare the three methods using the configuration plots, Shepard diagram, distance correlations and rank correlations. Your discussion should address:
-
-- which method best recovers the numerical relationships in the original Euclidean distances;
-- which method best recovers their ordering;
-- why non-metric MDS can perform well after the dissimilarities are cubed;
-- whether Sammon mapping represents the smaller dissimilarities particularly well; and
-- why stress values from methods with different objectives should not be compared as though they measured exactly the same criterion.

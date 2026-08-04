@@ -29,6 +29,12 @@ library(MASS)
 library(tibble)
 library(dplyr)
 library(ggplot2)
+
+dir.create(
+  file.path("_tmp", "l2"),
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 ```
 
 The following code generates three groups of observations and constructs a dissimilarity matrix (`diss_mat_orig`) containing several deliberate errors.
@@ -132,7 +138,7 @@ mds_group_key_tbl <- mds_observations_tbl |>
 
 ## Question 1: Repair the dissimilarity matrix
 
-Identify and fix the errors in `orig_diss_mat`.
+Identify and fix the errors in `diss_mat_orig`.
 Hint: if need be, off-diagonal elements can be averaged using 
 
 $$
@@ -143,26 +149,32 @@ $$
 
 ```{r}
 #| label: identify-invalid-dissimilarities
+
 diss_mat <- diss_mat_orig
+
 for (i in seq_len(nrow(diss_mat))) {
   for (j in seq_len(nrow(diss_mat))) {
     if (i == j) {
       diss_mat[i, i] <- 0
     } else {
-      diss_mat[i, j] <- mean(diss_mat_orig[i, j], diss_mat_orig[j, i])
+      diss_mat[i, j] <- mean(
+        c(diss_mat_orig[i, j], diss_mat_orig[j, i])
+      )
     }
   }
 }
 
-# faster way is to first set all diagonal elements to zero, add the transpose and then average
-# for (i in seq_len(nrow(diss_mat))) diss_mat[i, i] <- 0
+all(diag(diss_mat) == 0)
+isSymmetric(diss_mat)
+
+# A faster equivalent is:
+# diag(diss_mat) <- 0
 # diss_mat <- (diss_mat + t(diss_mat)) / 2
 ```
 
 ## Question 2: Apply and interpret classical MDS
 
 Fit a two-dimensional classical MDS representation using `cmdscale()` to your repaired distance matrix.
-
 
 ```{r}
 #| label: fit-classical-mds
@@ -175,7 +187,7 @@ cmdscale_obj <- cmdscale(
 ```
 
 Plot the coordinates, indicating group membership, which are provided by the object `mds_group_key_tbl` in the `group` column.
-The ordering of the `diss_mat_orig` and `mds_group_key_tbl` are the same, i.e. the $i$-th row of `mds_group_key_tbl` matches the `i`-th row/column of `diss_mat_orig`.
+The ordering of the `diss_mat_orig` and `mds_group_key_tbl` are the same, i.e. the $i$-th row of `mds_group_key_tbl` matches the $i$-th row/column of `diss_mat_orig`.
 Use equal scaling on the two axes and colour the observations by group.
 
 ```{r}
@@ -207,9 +219,9 @@ p <- ggplot(
     plot.background = element_rect(fill = "white"),
     panel.background = element_rect(fill = "white")
   )
-path_p <- projr::projr_path_get(
-  "cache", "l2", "p-q1.png"
-)
+
+path_p <- file.path("_tmp", "l2", "p-q1.png")
+
 ggsave(
   filename = path_p,
   plot = p,
@@ -221,7 +233,7 @@ ggsave(
 
 ![](`r path_p`)
 
-Describe the within-group and between-group relationships visible in the map.
+The observations form three visible groups. Observations within a group are generally closer together than observations belonging to different groups. Groups A and C lie furthest apart, with group B between them.
 
 ## Question 3: Choose the number of dimensions
 
@@ -249,65 +261,89 @@ err_vec <- purrr::map_dbl(1:5, function(n_dim) {
     eig = FALSE,
     add = FALSE
   )
+
   diss_vec <- diss_mat[lower.tri(diss_mat)]
   denom <- sum(diss_vec^2)
-  dist_coord <- dist(cmdscale_obj, upper = TRUE, diag = TRUE) |>
+
+  dist_coord <- dist(
+    cmdscale_obj,
+    upper = TRUE,
+    diag = TRUE
+  ) |>
     as.matrix()
+
   numerator <- 0
-  for (i in seq(1, ncol(diss_mat) - 1)) {
+
+  for (i in seq_len(ncol(diss_mat) - 1)) {
     for (j in seq(i + 1, ncol(diss_mat))) {
-      numerator <- (diss_mat[i, j] - dist_coord[i, j])^2
+      numerator <- numerator +
+        (diss_mat[i, j] - dist_coord[i, j])^2
     }
   }
-  sqrt(sum(numerator) / denom)
+
+  sqrt(numerator / denom)
 })
-err_vec |> stats::setNames(paste0("n_dim_", 1:5)) |> signif(2)
+
+err_vec |>
+  stats::setNames(paste0("n_dim_", 1:5)) |>
+  signif(2)
 ```
 
-Errors drop by an order of magnitude from 2 to 3 dimensions and from 3 to 4 dimensions.
-Data were generated in 4 dimensions, so this makes sense.
-Errors become negligible from 3 dimensions onwards.
+The error decreases as dimensions are added. The observations were generated in four dimensions, so the substantial improvement up to four dimensions is expected. The repaired matrix is not exactly the original Euclidean distance matrix, so the error need not become exactly zero.
 
 ## Question 4: Compare fitted and input dissimilarities
 
-Plot the interpoint distances from the two-dimensional MDS fit (y-axis) against the original dissimilarities (x-axis).
+Plot the interpoint distances from the two-dimensional MDS fit on the y-axis against the original dissimilarities on the x-axis.
 
 ```{r}
+#| label: fig-classical-mds-distance-comparison
 cmdscale_obj <- cmdscale(
   diss_mat,
   k = 2,
   eig = FALSE,
   add = FALSE
 )
-diss_vec <- diss_mat[lower.tri(diss_mat)]
-denom <- sum(diss_vec^2)
-dist_coord <- dist(cmdscale_obj, upper = TRUE, diag = TRUE) |>
+
+dist_coord <- dist(
+  cmdscale_obj,
+  upper = TRUE,
+  diag = TRUE
+) |>
   as.matrix()
+
 plot_tbl <- tibble(
-  ind = seq(1, (24 * 23) / 2),
+  ind = seq_len((24 * 23) / 2),
   orig = rep(NA_real_, (24 * 23) / 2),
   fit = rep(NA_real_, (24 * 23) / 2)
 )
+
 k <- 0
-for (i in seq(1, ncol(diss_mat) - 1)) {
+
+for (i in seq_len(ncol(diss_mat) - 1)) {
   for (j in seq(i + 1, ncol(diss_mat))) {
     k <- k + 1
     plot_tbl[k, "orig"] <- diss_mat[i, j]
     plot_tbl[k, "fit"] <- dist_coord[i, j]
   }
 }
-p <- ggplot(plot_tbl, aes(x = orig, y= orig)) +
+
+p <- ggplot(plot_tbl, aes(x = orig, y = fit)) +
   geom_abline(slope = 1, intercept = 0) +
   geom_point(alpha = 0.5, size = 0.5) +
+  coord_equal() +
+  labs(
+    x = "Input dissimilarity",
+    y = "Coordinate distance"
+  ) +
   cowplot::theme_cowplot() +
   cowplot::background_grid(major = "xy") +
   theme(
     plot.background = element_rect(fill = "white"),
     panel.background = element_rect(fill = "white")
   )
-path_p <- projr::projr_path_get(
-  "cache", "l2", "p-q3.png"
-)
+
+path_p <- file.path("_tmp", "l2", "p-q3.png")
+
 ggsave(
   filename = path_p,
   plot = p,
@@ -319,7 +355,7 @@ ggsave(
 
 ![](`r path_p`)
 
-Reproduced almost perfectly.
+The two-dimensional solution retains the broad distance structure, but does not reproduce the dissimilarities perfectly because the observations were generated in four dimensions.
 
 ## Question 5: Experiment with the dissimilarities
 
@@ -328,7 +364,9 @@ Reproduced almost perfectly.
 Cube each of the distances in your dissimilarity matrix.
 
 ```{r}
-diss_mat <- diss_mat^3 
+#| label: cube-dissimilarities
+
+diss_mat_cubed <- diss_mat^3
 ```
 
 Fit the following two-dimensional representations:
@@ -343,20 +381,304 @@ $$
 
 As some help to do the least-squares MDS:
 
-- note that your goal is to obtain $n$ pairs of 2-dimensional coordinate positions, i.e. you are trying to obtain an $n\times 2$ matrix, where each row corresponds to a single observation and the columns corresponds to the x- and y-axis coordinate positions (or, equivalently, two variable values).
+- note that your goal is to obtain $n$ pairs of 2-dimensional coordinate positions, i.e. you are trying to obtain an $n\times 2$ matrix, where each row corresponds to a single observation and the columns correspond to the x- and y-axis coordinate positions (or, equivalently, two variable values).
 - You can use the `optim` function.
 - Use the `cmdscale` coordinates as the starting values.
-- The function that you are minimising must treat the coordinates as the parameters to be maximised with respect to, and should return the value of the objective function as defined above (it does not return the coordinate values themselves).
-  - You will need to use the coordinate values internally to that function to calculate the mds interpoint distances.
-  - These need to be compared to the original dissimilarities.
-- As a check on whether you are correct, the `MASS::sammon` function optimises a somewhat similar objective function (the denominator is $\delta_{ij}$ rather than $\delta_{ij}^2$).
+- The function that you are minimising must treat the coordinates as the parameters with respect to which the objective is minimised, and should return the value of the objective function as defined above. It does not return the coordinate values themselves.
+  - You will need to use the coordinate values internally to that function to calculate the MDS interpoint distances.
+  - These need to be compared to the input dissimilarities.
+- As a check on whether you are correct, the `MASS::sammon` function optimises a somewhat similar objective function, with denominator $\delta_{ij}$ rather than $\delta_{ij}^2$.
 
-#### Part b
+```{r}
+#| label: fit-cubed-dissimilarity-mds
+
+n_obs <- nrow(diss_mat_cubed)
+diss_cubed_obj <- as.dist(diss_mat_cubed)
+diss_cubed_vec <- as.vector(diss_cubed_obj)
+
+classical_points <- cmdscale(
+  diss_cubed_obj,
+  k = 2,
+  eig = FALSE,
+  add = FALSE
+)
+
+nonmetric_fit <- MASS::isoMDS(
+  diss_cubed_obj,
+  y = classical_points,
+  k = 2,
+  trace = FALSE
+)
+
+weighted_ls_objective <- function(
+  par,
+  input_dissimilarities,
+  n_obs
+) {
+  coordinates <- matrix(
+    par,
+    nrow = n_obs,
+    ncol = 2
+  )
+
+  coordinate_distances <- as.vector(
+    dist(coordinates)
+  )
+
+  sum(
+    (coordinate_distances - input_dissimilarities)^2 /
+      input_dissimilarities^2
+  )
+}
+
+weighted_ls_optim <- optim(
+  par = as.vector(classical_points),
+  fn = weighted_ls_objective,
+  input_dissimilarities = diss_cubed_vec,
+  n_obs = n_obs,
+  method = "BFGS",
+  control = list(
+    maxit = 5000,
+    reltol = 1e-10
+  )
+)
+
+weighted_ls_points <- matrix(
+  weighted_ls_optim$par,
+  nrow = n_obs,
+  ncol = 2
+)
+
+weighted_ls_optim$convergence
+weighted_ls_optim$value
+
+sammon_check <- MASS::sammon(
+  diss_cubed_obj,
+  y = classical_points,
+  k = 2,
+  trace = FALSE
+)
+
+weighted_ls_objective(
+  as.vector(sammon_check$points),
+  input_dissimilarities = diss_cubed_vec,
+  n_obs = n_obs
+)
+```
+
+The final line evaluates the weighted least-squares objective at the Sammon coordinates. The two fits need not agree because `MASS::sammon()` uses $1/\delta_{ij}$ weights rather than $1/\delta_{ij}^2$ weights.
+
+### Part b
 
 Assess each approach, using the following plots:
 
 1. Plot the MDS coordinates.
-2. Plot the interpoint distances against the original dissimilarites.
+2. Plot the interpoint distances against the original dissimilarities.
 3. Plot the interpoint distances against the ranks of the original dissimilarities.
 
-The last two plots are Shepard's pies (whoops, plots).
+```{r}
+#| label: prepare-mds-comparisons
+
+coordinate_tbl <- bind_rows(
+  tibble(
+    method = "Classical MDS",
+    group = mds_group_key_tbl$group,
+    coordinate_1 = classical_points[, 1],
+    coordinate_2 = classical_points[, 2]
+  ),
+  tibble(
+    method = "Non-metric MDS",
+    group = mds_group_key_tbl$group,
+    coordinate_1 = nonmetric_fit$points[, 1],
+    coordinate_2 = nonmetric_fit$points[, 2]
+  ),
+  tibble(
+    method = "Weighted least-squares MDS",
+    group = mds_group_key_tbl$group,
+    coordinate_1 = weighted_ls_points[, 1],
+    coordinate_2 = weighted_ls_points[, 2]
+  )
+)
+
+make_distance_comparison <- function(points, method_name) {
+  tibble(
+    method = method_name,
+    input_dissimilarity = diss_cubed_vec,
+    input_rank = rank(diss_cubed_vec),
+    coordinate_distance = as.vector(dist(points))
+  )
+}
+
+distance_comparison_tbl <- bind_rows(
+  make_distance_comparison(
+    classical_points,
+    "Classical MDS"
+  ),
+  make_distance_comparison(
+    nonmetric_fit$points,
+    "Non-metric MDS"
+  ),
+  make_distance_comparison(
+    weighted_ls_points,
+    "Weighted least-squares MDS"
+  )
+)
+```
+
+```{r}
+#| label: fig-compare-mds-configurations
+
+plot_configuration <- function(method_name) {
+  coordinate_tbl |>
+    filter(method == method_name) |>
+    ggplot(
+      aes(
+        x = coordinate_1,
+        y = coordinate_2,
+        colour = group
+      )
+    ) +
+    geom_point(size = 2.5) +
+    coord_equal() +
+    labs(
+      title = method_name,
+      x = "Coordinate 1",
+      y = "Coordinate 2",
+      colour = "Group"
+    ) +
+    cowplot::theme_cowplot() +
+    cowplot::background_grid(major = "xy") +
+    theme(
+      plot.background = element_rect(fill = "white"),
+      panel.background = element_rect(fill = "white")
+    )
+}
+
+p <- cowplot::plot_grid(
+  plot_configuration("Classical MDS"),
+  plot_configuration("Non-metric MDS"),
+  plot_configuration("Weighted least-squares MDS"),
+  nrow = 1
+)
+
+path_p <- file.path(
+  "_tmp", "l2", "p-q5-configurations.png"
+)
+
+ggsave(
+  filename = path_p,
+  plot = p,
+  units = "cm",
+  height = 10,
+  width = 22
+)
+```
+
+![](`r path_p`)
+
+```{r}
+#| label: fig-compare-mds-distances
+
+p <- ggplot(
+  distance_comparison_tbl,
+  aes(
+    x = input_dissimilarity,
+    y = coordinate_distance
+  )
+) +
+  geom_abline(slope = 1, intercept = 0) +
+  geom_point(alpha = 0.5, size = 0.7) +
+  facet_wrap(~method, scales = "free") +
+  labs(
+    x = "Input dissimilarity",
+    y = "Coordinate distance"
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white")
+  )
+
+path_p <- file.path(
+  "_tmp", "l2", "p-q5-distances.png"
+)
+
+ggsave(
+  filename = path_p,
+  plot = p,
+  units = "cm",
+  height = 10,
+  width = 22
+)
+```
+
+![](`r path_p`)
+
+```{r}
+#| label: fig-compare-mds-ranks
+
+p <- ggplot(
+  distance_comparison_tbl,
+  aes(
+    x = input_rank,
+    y = coordinate_distance
+  )
+) +
+  geom_line(alpha = 0.5) +
+  geom_point(alpha = 0.5, size = 0.7) +
+  facet_wrap(~method, scales = "free_y") +
+  labs(
+    x = "Rank of input dissimilarity",
+    y = "Coordinate distance"
+  ) +
+  cowplot::theme_cowplot() +
+  cowplot::background_grid(major = "xy") +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white")
+  )
+
+path_p <- file.path(
+  "_tmp", "l2", "p-q5-ranks.png"
+)
+
+ggsave(
+  filename = path_p,
+  plot = p,
+  units = "cm",
+  height = 10,
+  width = 22
+)
+```
+
+![](`r path_p`)
+
+```{r}
+#| label: summarise-mds-comparison
+
+comparison_summary_tbl <- distance_comparison_tbl |>
+  group_by(method) |>
+  summarise(
+    relative_distance_error = sqrt(
+      sum(
+        (coordinate_distance - input_dissimilarity)^2
+      ) /
+        sum(input_dissimilarity^2)
+    ),
+    weighted_relative_error = sum(
+      (coordinate_distance - input_dissimilarity)^2 /
+        input_dissimilarity^2
+    ),
+    rank_correlation = cor(
+      input_rank,
+      coordinate_distance,
+      method = "spearman"
+    ),
+    .groups = "drop"
+  )
+
+comparison_summary_tbl
+```
+
+Classical MDS targets the inner-product structure implied by the dissimilarities, rather than either of the two plotted criteria directly. Non-metric MDS is intended to preserve the ordering of the dissimilarities, so it should perform best in the rank comparison. The weighted least-squares fit directly minimises the squared relative discrepancies and therefore gives much less weight to errors associated with large dissimilarities.
