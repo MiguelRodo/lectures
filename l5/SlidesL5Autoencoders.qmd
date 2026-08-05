@@ -1,0 +1,1261 @@
+---
+title: "Autoencoders: Learning a Representation by Reconstruction"
+author: Miguel Rodo
+date: "2026-08-05"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-depth: 3
+    urlcolor: cyan
+    linkcolor: blue
+    filecolor: magenta
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+
+knitr::opts_chunk$set(
+  fig.align = "center",
+  out.width = "80%"
+)
+
+plot_theme <- theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+curve_data <- function(
+  n = 250,
+  seed = 5077,
+  noise_sd = 0.08
+) {
+  set.seed(seed)
+  t <- sort(runif(n, -2.8, 2.8))
+
+  x1 <- t
+  x2 <- 0.45 * t^2 + sin(1.5 * t)
+
+  tibble(
+    t = t,
+    x1 = x1 + rnorm(n, sd = noise_sd),
+    x2 = x2 + rnorm(n, sd = noise_sd),
+    curve_x1 = x1,
+    curve_x2 = x2
+  )
+}
+
+reconstruct_pca <- function(x, k) {
+  pca_fit <- prcomp(x, center = TRUE, scale. = FALSE)
+
+  scores <- pca_fit$x[, seq_len(k), drop = FALSE]
+  reconstruction <-
+    scores %*% t(pca_fit$rotation[, seq_len(k), drop = FALSE])
+
+  reconstruction <- sweep(
+    reconstruction,
+    MARGIN = 2,
+    STATS = pca_fit$center,
+    FUN = "+"
+  )
+
+  list(
+    pca = pca_fit,
+    reconstruction = reconstruction
+  )
+}
+
+architecture_tbl <- tibble(
+  layer = c(
+    "Input",
+    "Hidden",
+    "Code",
+    "Hidden",
+    "Output"
+  ),
+  units = c("p", "h", "q", "h", "p"),
+  x = seq_along(layer),
+  y = 1
+)
+
+make_architecture_plot <- function() {
+  edge_tbl <- tibble(
+    x = architecture_tbl$x[-nrow(architecture_tbl)],
+    xend = architecture_tbl$x[-1],
+    y = 1,
+    yend = 1
+  )
+
+  ggplot() +
+    geom_segment(
+      data = edge_tbl,
+      aes(x = x, xend = xend, y = y, yend = yend),
+      arrow = arrow(length = unit(0.18, "cm")),
+      linewidth = 0.5
+    ) +
+    geom_point(
+      data = architecture_tbl,
+      aes(x = x, y = y, size = layer == "Code"),
+      shape = 21,
+      fill = "white",
+      stroke = 1.1
+    ) +
+    geom_text(
+      data = architecture_tbl,
+      aes(x = x, y = y + 0.22, label = layer),
+      size = 4
+    ) +
+    geom_text(
+      data = architecture_tbl,
+      aes(x = x, y = y - 0.22, label = units),
+      size = 5
+    ) +
+    scale_size_manual(values = c(`TRUE` = 12, `FALSE` = 9), guide = "none") +
+    coord_cartesian(xlim = c(0.6, 5.4), ylim = c(0.55, 1.45)) +
+    theme_void()
+}
+
+make_denoising_plot <- function() {
+  base_curve <- curve_data(n = 120, seed = 99, noise_sd = 0)
+  corrupted <- base_curve |>
+    mutate(
+      noisy_x1 = x1 + rnorm(n(), sd = 0.25),
+      noisy_x2 = x2 + rnorm(n(), sd = 0.25)
+    ) |>
+    slice(seq(1, n(), by = 8))
+
+  ggplot() +
+    geom_path(
+      data = base_curve,
+      aes(x = x1, y = x2),
+      linewidth = 1
+    ) +
+    geom_segment(
+      data = corrupted,
+      aes(
+        x = noisy_x1,
+        y = noisy_x2,
+        xend = x1,
+        yend = x2
+      ),
+      arrow = arrow(length = unit(0.16, "cm")),
+      alpha = 0.7
+    ) +
+    geom_point(
+      data = corrupted,
+      aes(x = noisy_x1, y = noisy_x2),
+      size = 1.7,
+      alpha = 0.65
+    ) +
+    labs(
+      x = "Original variable 1",
+      y = "Original variable 2"
+    ) +
+    plot_theme
+}
+```
+
+## Context
+
+We have already looked at several ways to represent multivariate observations in fewer dimensions.
+
+$$
+\begin{array}{lll}
+\text{PCA}
+&:&
+\text{linear component scores},
+\$$3pt]
+\text{MDS}
+&:&
+\text{coordinates chosen to represent dissimilarities},
+\$$3pt]
+\text{ISOMAP}
+&:&
+\text{coordinates chosen to represent graph distances},
+\$$3pt]
+\text{SOM}
+&:&
+\text{assignment to a position on a prototype grid}.
+\end{array}
+$$
+
+Autoencoders approach dimension reduction from a different angle.
+
+Instead of beginning with a distance matrix or a variance criterion, they begin with a reconstruction task.
+
+### The question
+
+Can we learn a lower-dimensional representation that still contains enough information to reconstruct the original observation?
+
+$$
+\text{observation}
+\longrightarrow
+\text{low-dimensional representation}
+\longrightarrow
+\text{reconstruction}
+$$
+
+This makes autoencoders useful for dimension reduction, but also makes them different from methods that explicitly preserve distances, ranks or variance.
+
+## Encoder, code and decoder
+
+For an observation
+
+$$
+\mathbf x_i\in\mathbb R^p,
+$$
+
+an autoencoder learns two functions.
+
+The **encoder** maps the observation into a code or latent representation:
+
+$$
+\mathbf z_i = f_{\boldsymbol\theta}(\mathbf x_i).
+$$
+
+The **decoder** maps the code back into the original data space:
+
+$$
+\widehat{\mathbf x}_i
+=
+g_{\boldsymbol\phi}(\mathbf z_i).
+$$
+
+Putting the two functions together,
+
+$$
+\widehat{\mathbf x}_i
+=
+g_{\boldsymbol\phi}
+\left(
+  f_{\boldsymbol\theta}(\mathbf x_i)
+\right).
+$$
+
+### Basic architecture
+
+```{r}
+#| label: fig-basic-autoencoder-architecture
+#| echo: false
+#| fig-width: 8
+#| fig-height: 3
+#| out-width: "75%"
+#| fig-cap: "An autoencoder maps an observation through an encoder, a low-dimensional code and a decoder."
+
+make_architecture_plot()
+```
+
+The middle layer is often called the **bottleneck**.
+
+A typical architecture might be written as
+
+$$
+p
+\longrightarrow
+h
+\longrightarrow
+q
+\longrightarrow
+h
+\longrightarrow
+p.
+$$
+
+For example, for MNIST images,
+
+$$
+784
+\longrightarrow
+256
+\longrightarrow
+3
+\longrightarrow
+256
+\longrightarrow
+784.
+$$
+
+The architecture is often drawn symmetrically, but symmetry is not required.
+
+## Why this is dimension reduction
+
+If
+
+$$
+\mathbf x_i\in\mathbb R^p
+\qquad\text{and}\qquad
+\mathbf z_i\in\mathbb R^q,
+$$
+
+with
+
+$$
+q<p,
+$$
+
+then the observation is being represented using fewer coordinates than the original data.
+
+This is called an **undercomplete autoencoder**.
+
+### Two spaces
+
+It is important to keep two spaces separate.
+
+| Space | Objects |
+|---|---|
+| Original data space | $\mathbf x_i$ and $\widehat{\mathbf x}_i$ |
+| Latent space | $\mathbf z_i$ |
+
+The encoder moves from the data space to the latent space.
+
+The decoder moves from the latent space back to the data space.
+
+## Reconstruction loss
+
+The autoencoder is trained to make reconstructions close to the original observations.
+
+For continuous observations, a common loss is squared reconstruction error.
+
+For one observation,
+
+$$
+\ell_i
+=
+\|\mathbf x_i-\widehat{\mathbf x}_i\|^2.
+$$
+
+For the full dataset,
+
+$$
+L(\boldsymbol\theta,\boldsymbol\phi)
+=
+\frac1n
+\sum_{i=1}^n
+\left\|
+\mathbf x_i
+-
+g_{\boldsymbol\phi}
+\left(
+  f_{\boldsymbol\theta}(\mathbf x_i)
+\right)
+\right\|^2.
+$$
+
+The parameters $\boldsymbol\theta$ and $\boldsymbol\phi$ are chosen to reduce this reconstruction loss.
+
+### Input and target
+
+There is no external response variable.
+
+The input observation supplies its own training target:
+
+$$
+\text{input}=\mathbf x_i,
+\qquad
+\text{target}=\mathbf x_i.
+$$
+
+For this reason, autoencoders are usually treated as unsupervised methods, although the training task is sometimes described as self-supervised.
+
+## Why reconstruction alone is not enough
+
+A very flexible network may learn to copy the input:
+
+$$
+g(f(\mathbf x_i))\approx \mathbf x_i.
+$$
+
+That can give low reconstruction error without giving a useful representation.
+
+So the key question is not just whether the network reconstructs well.
+
+The key question is whether the reconstruction task forces the network to learn meaningful structure.
+
+### Two ways to prevent trivial copying
+
+There are two broad strategies.
+
+1. **Restrict the architecture.**
+
+   Use a bottleneck with $q<p$.
+
+2. **Regularise the learnt mapping.**
+
+   Add restrictions that discourage copying even when the code is not very small.
+
+Examples include denoising, sparsity and penalising sensitivity to small perturbations.
+
+### Important qualification
+
+A narrow bottleneck does not automatically make the latent coordinates simple or interpretable.
+
+The encoder and decoder can still be complicated functions.
+
+The bottleneck restricts information flow, but it does not guarantee that the latent representation preserves distances, clusters or any particular scientific structure.
+
+## A minimal neural-network layer
+
+A neural-network layer has the form
+
+$$
+\mathbf h
+=
+\sigma(\mathbf W\mathbf x+\mathbf b),
+$$
+
+where:
+
+- $\mathbf W$ contains weights;
+- $\mathbf b$ contains bias terms;
+- $\sigma$ is an activation function.
+
+If $\sigma$ is nonlinear, stacking layers gives a flexible nonlinear function.
+
+For example, an encoder could be written as
+
+$$
+\mathbf z
+=
+\sigma_2
+\left[
+  \mathbf W_2
+  \sigma_1(\mathbf W_1\mathbf x+\mathbf b_1)
+  +
+  \mathbf b_2
+\right].
+$$
+
+The decoder applies additional layers to map $\mathbf z$ back to the original data space.
+
+### Common activation functions
+
+| Activation | Typical role |
+|---|---|
+| Linear | Useful for unrestricted continuous output |
+| ReLU | Common in hidden layers |
+| Sigmoid | Useful for outputs constrained to $[0,1]$ |
+
+Without nonlinear activation functions, a stack of linear layers is still just a linear transformation.
+
+## How the network learns
+
+Training usually follows the same basic loop.
+
+$$
+\boxed{
+\text{forward pass}
+\longrightarrow
+\text{loss}
+\longrightarrow
+\text{gradients}
+\longrightarrow
+\text{parameter update}
+}
+$$
+
+In words:
+
+1. Pass a batch of observations through the encoder and decoder.
+2. Calculate the reconstruction loss.
+3. Use backpropagation to calculate how the loss changes with each parameter.
+4. Use an optimiser, such as Adam, to update the parameters.
+5. Repeat for several epochs.
+
+The aim here is not to derive backpropagation, but to understand what the optimisation is trying to achieve.
+
+## Training, validation and test data
+
+The data are usually divided into three roles.
+
+| Data | Role |
+|---|---|
+| Training data | Used to estimate the network weights |
+| Validation data | Used to monitor performance during training |
+| Test data | Used for final assessment |
+
+A **batch** is a subset of observations used for one parameter update.
+
+An **epoch** is one pass through the training data.
+
+Validation loss is useful because a flexible autoencoder can overfit.
+
+$$
+\text{low training loss}
+\not\Rightarrow
+\text{good reconstruction of new observations}.
+$$
+
+### Early stopping
+
+One simple safeguard is early stopping.
+
+The model is trained until validation loss stops improving.
+
+This avoids continuing to reduce training loss after the model has stopped improving on held-out data.
+
+## Linear autoencoders and PCA
+
+The connection with PCA is useful because PCA is already familiar.
+
+Suppose the data are centred and the encoder and decoder are linear.
+
+Let
+
+$$
+\mathbf z_i
+=
+\mathbf W_E\mathbf x_i
+$$
+
+and
+
+$$
+\widehat{\mathbf x}_i
+=
+\mathbf W_D\mathbf z_i
+=
+\mathbf W_D\mathbf W_E\mathbf x_i.
+$$
+
+The autoencoder minimises
+
+$$
+\sum_{i=1}^n
+\left\|
+\mathbf x_i
+-
+\mathbf W_D\mathbf W_E\mathbf x_i
+\right\|^2.
+$$
+
+Since $\mathbf W_D\mathbf W_E$ has rank at most $q$, the model is looking for a rank-$q$ reconstruction.
+
+### PCA connection
+
+A linear undercomplete autoencoder trained with squared reconstruction error learns the same optimal reconstruction subspace as PCA.
+
+So PCA can be seen as a special linear reconstruction method.
+
+A nonlinear autoencoder replaces the linear encoder and decoder with flexible nonlinear functions.
+
+$$
+\boxed{
+\text{linear autoencoder}
+\approx
+\text{PCA reconstruction subspace}
+}
+$$
+
+$$
+\boxed{
+\text{nonlinear autoencoder}
+=
+\text{learnt nonlinear reconstruction}
+}
+$$
+
+### What this does not mean
+
+The latent coordinates need not be exactly the PCA scores.
+
+If $\mathbf A$ is an invertible $q\times q$ matrix, then
+
+$$
+\mathbf z_i^*=
+\mathbf A\mathbf z_i
+$$
+
+can be reversed by changing the decoder.
+
+For example, the decoder weights can be transformed using $\mathbf A^{-1}$.
+
+The reconstruction can remain the same even though the latent axes have been rotated or rescaled.
+
+Thus:
+
+- PCA gives ordered orthogonal axes;
+- an unconstrained linear autoencoder gives the same principal subspace;
+- the autoencoder code may have a different orientation and scale.
+
+## A curved one-dimensional example
+
+PCA is linear.
+
+This means that a one-dimensional PCA reconstruction lies on a straight line.
+
+But many datasets have nonlinear structure.
+
+```{r}
+#| label: fig-curved-observations
+#| echo: false
+#| fig-width: 6.5
+#| fig-height: 4.5
+#| out-width: "65%"
+#| fig-cap: "A simple dataset concentrated near a curved one-dimensional structure."
+
+curve_tbl <- curve_data()
+
+curve_tbl |>
+  ggplot(aes(x = x1, y = x2)) +
+  geom_point(alpha = 0.65, size = 1.4) +
+  labs(
+    x = "Original variable 1",
+    y = "Original variable 2"
+  ) +
+  plot_theme
+```
+
+The observations are recorded in two variables, but most variation follows a curved one-dimensional path.
+
+## PCA reconstruction of the curve
+
+With one component, PCA must reconstruct the data onto a straight line.
+
+```{r}
+#| label: fig-pca-curve-reconstruction
+#| echo: false
+#| fig-width: 6.5
+#| fig-height: 4.5
+#| out-width: "65%"
+#| fig-cap: "One-dimensional PCA reconstruction is restricted to a straight line."
+
+curve_x <- as.matrix(curve_tbl[, c("x1", "x2")])
+curve_pca <- reconstruct_pca(curve_x, k = 1)
+
+pca_recon_tbl <- bind_cols(
+  curve_tbl,
+  tibble(
+    recon_x1 = curve_pca$reconstruction[, 1],
+    recon_x2 = curve_pca$reconstruction[, 2]
+  )
+)
+
+pca_recon_tbl |>
+  ggplot(aes(x = x1, y = x2)) +
+  geom_segment(
+    aes(xend = recon_x1, yend = recon_x2),
+    alpha = 0.15
+  ) +
+  geom_point(alpha = 0.55, size = 1.2) +
+  geom_point(
+    aes(x = recon_x1, y = recon_x2),
+    size = 0.7,
+    alpha = 0.7
+  ) +
+  labs(
+    x = "Original variable 1",
+    y = "Original variable 2"
+  ) +
+  plot_theme
+```
+
+This is the best one-dimensional linear reconstruction under squared error.
+
+But it cannot bend with the data.
+
+## Nonlinear reconstruction idea
+
+A nonlinear autoencoder with a one-dimensional code can learn
+
+$$
+\mathbb R^2
+\longrightarrow
+\mathbb R
+\longrightarrow
+\mathbb R^2.
+$$
+
+The decoder maps a one-dimensional latent coordinate back into the original two-dimensional space.
+
+As the latent coordinate varies, the decoder can trace out a curved path.
+
+```{r}
+#| label: fig-autoencoder-curve-idea
+#| echo: false
+#| fig-width: 6.5
+#| fig-height: 4.5
+#| out-width: "65%"
+#| fig-cap: "A nonlinear decoder can represent a curved reconstruction path in the original data space."
+
+curve_line <- curve_tbl |>
+  arrange(t) |>
+  transmute(x1 = curve_x1, x2 = curve_x2)
+
+curve_tbl |>
+  ggplot(aes(x = x1, y = x2)) +
+  geom_point(alpha = 0.45, size = 1.2) +
+  geom_path(
+    data = curve_line,
+    aes(x = x1, y = x2),
+    linewidth = 1
+  ) +
+  labs(
+    x = "Original variable 1",
+    y = "Original variable 2"
+  ) +
+  plot_theme
+```
+
+The key point is not that the curve above has been fitted by an autoencoder.
+
+The point is geometric.
+
+A nonlinear decoder is not restricted to straight reconstruction lines or planes.
+
+## MNIST example
+
+We now consider handwritten digit images.
+
+Each image has size
+
+$$
+28\times 28.
+$$
+
+After flattening the image, each observation is a vector in
+
+$$
+\mathbb R^{784}.
+$$
+
+The labels are not used to train the autoencoder.
+
+They are useful afterwards, because they help us interpret the learnt representation.
+
+### Data preparation
+
+The usual preparation is:
+
+1. load the MNIST images;
+2. flatten each image into a 784-dimensional vector;
+3. scale pixel intensities to lie between 0 and 1;
+4. split data into training, validation and test sets.
+
+```{r}
+#| label: mnist-preparation-template
+#| eval: false
+
+mnist <- keras3::dataset_mnist()
+
+x_train <- mnist$train$x
+x_test <- mnist$test$x
+
+y_train <- mnist$train$y
+y_test <- mnist$test$y
+
+x_train <- keras3::array_reshape(
+  x_train,
+  c(nrow(x_train), 784)
+)
+
+x_test <- keras3::array_reshape(
+  x_test,
+  c(nrow(x_test), 784)
+)
+
+x_train <- x_train / 255
+x_test <- x_test / 255
+```
+
+## PCA benchmark on MNIST
+
+PCA gives a familiar baseline.
+
+Questions to ask:
+
+- How much variance is explained by the first few components?
+- Which digits separate clearly in the first two or three components?
+- Which digits overlap?
+- How well can images be reconstructed using $k$ components?
+
+```{r}
+#| label: pca-mnist-template
+#| eval: false
+
+pca <- prcomp(x_train)
+
+cumulative_variance <-
+  cumsum(pca$sdev^2) / sum(pca$sdev^2)
+
+plot(
+  cumulative_variance,
+  type = "l",
+  xlab = "Number of principal components",
+  ylab = "Cumulative proportion of variance explained"
+)
+```
+
+This reminds us that PCA can be viewed as a reconstruction method.
+
+With $k$ components, PCA reconstructs each observation using a $k$-dimensional linear subspace.
+
+## Autoencoder architecture for MNIST
+
+A simple architecture is
+
+$$
+784
+\longrightarrow
+256
+\longrightarrow
+q
+\longrightarrow
+256
+\longrightarrow
+784.
+$$
+
+The bottleneck dimension $q$ controls the size of the latent representation.
+
+For a visualisation, one might use $q=2$ or $q=3$.
+
+For a reconstruction task, one might compare several values of $q$.
+
+```{r}
+#| label: mnist-autoencoder-template
+#| eval: false
+
+model <- keras_model_sequential(
+  input_shape = c(ncol(x_train))
+) |>
+  layer_dense(units = 256, activation = "relu") |>
+  layer_dense(
+    units = q,
+    activation = "relu",
+    name = "bottleneck"
+  ) |>
+  layer_dense(units = 256, activation = "relu") |>
+  layer_dense(units = ncol(x_train))
+
+model |>
+  compile(
+    loss = "mean_squared_error",
+    optimizer = "adam"
+  )
+```
+
+### Fitting the model
+
+The target is the same image supplied as input.
+
+$$
+\mathbf x_i
+\longrightarrow
+\mathbf z_i
+\longrightarrow
+\widehat{\mathbf x}_i.
+$$
+
+```{r}
+#| label: mnist-autoencoder-fit-template
+#| eval: false
+
+history <- model |>
+  fit(
+    x = x_train,
+    y = x_train,
+    epochs = 25,
+    batch_size = 128,
+    validation_split = 0.2,
+    callbacks = list(
+      callback_early_stopping(
+        monitor = "val_loss",
+        patience = 3,
+        restore_best_weights = TRUE
+      )
+    )
+  )
+```
+
+The training output should be interpreted using both training loss and validation loss.
+
+The final assessment should use test-set reconstruction error.
+
+## Extracting the latent representation
+
+After fitting, the encoder can be extracted from the full autoencoder.
+
+```{r}
+#| label: mnist-encoder-template
+#| eval: false
+
+encoder <- keras_model(
+  inputs = model$inputs,
+  outputs = get_layer(model, "bottleneck")$output
+)
+
+latent <- encoder |>
+  predict(x_test)
+```
+
+If $q=2$, the latent coordinates can be plotted directly.
+
+If $q=3$, they can be plotted in three dimensions.
+
+Digit labels can be used to colour the points, but they were not used during training.
+
+### Why can digit groups appear?
+
+The autoencoder is not told the digit labels.
+
+However, digit identity affects the pixel patterns needed for reconstruction.
+
+So some digit structure may appear in the latent representation because it helps to reconstruct the images.
+
+But this is not guaranteed.
+
+The loss function asks for good reconstruction, not class separation.
+
+## Reconstruction comparison
+
+A useful display uses the same test images in three rows.
+
+1. Original image.
+2. PCA reconstruction.
+3. Autoencoder reconstruction.
+
+Questions to ask:
+
+- Which reconstruction is sharper?
+- Which digit features are retained?
+- Which digits are confused?
+- Does lower reconstruction error imply better class separation?
+
+### Reconstruction error
+
+For each test observation,
+
+$$
+\ell_i
+=
+\|\mathbf x_i-\widehat{\mathbf x}_i\|^2.
+$$
+
+The test reconstruction MSE is the average over test observations.
+
+$$
+\text{test MSE}
+=
+\frac1{n_{\text{test}}}
+\sum_{i=1}^{n_{\text{test}}}
+\|\mathbf x_i-\widehat{\mathbf x}_i\|^2.
+$$
+
+## Choosing the latent dimension
+
+There is no direct autoencoder equivalent of the PCA proportion-of-variance-explained curve.
+
+A practical approach is to fit several bottleneck dimensions and compare reconstruction error.
+
+$$
+q
+\quad\text{against}\quad
+\text{test reconstruction MSE}.
+$$
+
+```{r}
+#| label: fig-latent-dimension-reconstruction-illustration
+#| echo: false
+#| fig-width: 7
+#| fig-height: 4.5
+#| out-width: "70%"
+#| fig-cap: "Illustrative reconstruction-error curves. Actual values depend on the data, architecture and training procedure."
+
+illustrative_df <- tibble(
+  q = rep(1:10, 2),
+  method = rep(c("PCA", "Autoencoder"), each = 10),
+  mse = c(
+    0.17, 0.13, 0.105, 0.087, 0.075,
+    0.066, 0.059, 0.053, 0.048, 0.044,
+    0.15, 0.105, 0.080, 0.064, 0.054,
+    0.047, 0.042, 0.039, 0.036, 0.034
+  )
+)
+
+illustrative_df |>
+  ggplot(aes(x = q, y = mse, linetype = method)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = 1:10) +
+  labs(
+    x = "Reduced dimension",
+    y = "Test reconstruction MSE",
+    linetype = "Method"
+  ) +
+  plot_theme
+```
+
+As $q$ increases, reconstruction error usually decreases.
+
+But increasing $q$ also weakens the compression.
+
+The choice of $q$ is therefore a trade-off between compression, reconstruction accuracy and interpretability.
+
+## Interpreting the latent space
+
+The latent space is learnt through reconstruction.
+
+It is not automatically a faithful map of the original distances.
+
+A good slide to remember is:
+
+$$
+\boxed{
+\text{reconstruction objective}
+\neq
+\text{distance-preservation objective}
+}
+$$
+
+Low reconstruction error does not guarantee that:
+
+- Euclidean distances in latent space are meaningful;
+- nearest neighbours are preserved;
+- clusters are separated;
+- axes are ordered by importance;
+- axes are uniquely identified;
+- two training runs have the same orientation.
+
+### What the encoder gives us
+
+A major practical advantage is that the encoder is a fitted function:
+
+$$
+f_{\boldsymbol\theta}:
+\mathbb R^p\to\mathbb R^q.
+$$
+
+This gives a direct representation for a new observation.
+
+Many embedding methods, such as classical MDS or ordinary ISOMAP, do not naturally provide such a direct encoder.
+
+### What the decoder gives us
+
+The decoder is also a fitted function:
+
+$$
+g_{\boldsymbol\phi}:
+\mathbb R^q\to\mathbb R^p.
+$$
+
+This allows us to map latent coordinates back into the original data space.
+
+For images, this means that we can inspect what reconstructed image corresponds to a given latent coordinate.
+
+## Denoising autoencoders
+
+A denoising autoencoder is trained using corrupted inputs.
+
+Let
+
+$$
+\widetilde{\mathbf x}
+\sim
+C(\widetilde{\mathbf x}\mid\mathbf x)
+$$
+
+be a corrupted version of $\mathbf x$.
+
+The network receives $\widetilde{\mathbf x}$, but is trained to reconstruct $\mathbf x$.
+
+$$
+\widetilde{\mathbf x}
+\longrightarrow
+f(\widetilde{\mathbf x})
+\longrightarrow
+\widehat{\mathbf x}
+\approx
+\mathbf x.
+$$
+
+So:
+
+$$
+\text{input}=\widetilde{\mathbf x},
+\qquad
+\text{target}=\mathbf x.
+$$
+
+### Denoising loss
+
+For squared error,
+
+$$
+L
+=
+\frac1n
+\sum_{i=1}^n
+\left\|
+\mathbf x_i
+-
+g
+\left(
+  f(\widetilde{\mathbf x}_i)
+\right)
+\right\|^2.
+$$
+
+The model cannot solve the task by simply copying its input.
+
+It must learn regularities that allow it to infer plausible clean observations.
+
+## Geometric interpretation of denoising
+
+If observations concentrate near a low-dimensional structure, corruption can move them away from that structure.
+
+A denoising autoencoder learns to map corrupted observations back towards plausible observations.
+
+```{r}
+#| label: fig-denoising-manifold-idea
+#| echo: false
+#| fig-width: 6.5
+#| fig-height: 4.5
+#| out-width: "65%"
+#| fig-cap: "Denoising can be interpreted as moving corrupted observations back towards the learnt data structure."
+
+make_denoising_plot()
+```
+
+This links autoencoders back to manifold learning.
+
+ISOMAP uses a neighbourhood graph and shortest-path distances to infer manifold geometry.
+
+A denoising autoencoder learns a parametric mapping that removes variation that looks like corruption.
+
+## Other regularised autoencoders
+
+### Sparse autoencoder
+
+A sparse autoencoder adds a penalty that encourages most latent activations to be near zero.
+
+This allows the code to be larger while encouraging each observation to use only a small number of active features.
+
+### Contractive autoencoder
+
+A contractive autoencoder penalises excessive sensitivity of the encoder to small changes in the input.
+
+Informally, nearby observations should often have similar codes unless the change corresponds to real variation in the data.
+
+The formal penalty uses derivatives of the encoder.
+
+### Variational autoencoder
+
+A variational autoencoder is a probabilistic extension.
+
+It learns a structured latent distribution and can be used for generating new observations.
+
+We will not cover the variational autoencoder objective here.
+
+## Practical decisions
+
+### Scaling and loss
+
+Squared reconstruction error is scale-dependent.
+
+Variables on larger scales can dominate the loss.
+
+Therefore, continuous variables are often standardised before training.
+
+For MNIST, pixel intensities are scaled to lie in $[0,1]$.
+
+### Match the loss to the data
+
+| Data type | Common output choice | Possible loss |
+|---|---|---|
+| Continuous unrestricted | Linear | Squared error |
+| Binary | Sigmoid | Binary cross-entropy |
+| Values in $[0,1]$ | Linear or sigmoid | Depends on modelling choice |
+
+Autoencoders do not have to use squared error.
+
+The output layer and reconstruction loss should reflect the kind of data being reconstructed.
+
+### Capacity and computation
+
+Representation quality depends on:
+
+- bottleneck dimension;
+- number of hidden layers;
+- width of hidden layers;
+- activation functions;
+- regularisation;
+- training duration;
+- random initialisation.
+
+Autoencoders are much more flexible than PCA, but also more computationally demanding and less uniquely defined.
+
+## Comparison with previous methods
+
+| Method | Representation | Main objective | New observations | Reconstruction |
+|---|---|---|---|---|
+| PCA | Linear scores | Linear reconstruction or variance | Direct linear map | Direct |
+| MDS | Coordinates | Represent dissimilarities | Usually indirect | No natural decoder |
+| ISOMAP | Coordinates | Represent graph distances | Usually indirect | No natural decoder |
+| SOM | Grid positions | Learn organised prototypes | Assign nearest prototype | Prototype approximation |
+| Autoencoder | Learnt code | Reconstruction | Direct encoder | Direct decoder |
+
+The main contrast is:
+
+$$
+\boxed{
+\text{ISOMAP preserves a chosen geometry}
+}
+$$
+
+while
+
+$$
+\boxed{
+\text{autoencoders preserve information needed for reconstruction}.
+}
+$$
+
+Those are related ideas, but they are not the same objective.
+
+## Key ideas
+
+1. An autoencoder learns an encoder and a decoder.
+2. The code is a reduced representation when its dimension is smaller than the input dimension.
+3. The model is trained by minimising reconstruction loss.
+4. Reconstruction alone does not guarantee a useful representation.
+5. Undercomplete and regularised autoencoders discourage trivial copying in different ways.
+6. A linear undercomplete autoencoder trained by squared reconstruction error learns the PCA principal subspace.
+7. Nonlinear autoencoders can learn curved reconstruction structures.
+8. The latent coordinates are not ordered or uniquely identified like PCA components.
+9. Good reconstruction does not guarantee preservation of distances, neighbours or clusters.
+10. Denoising autoencoders reconstruct clean observations from corrupted inputs.
+11. Autoencoders give a direct encoder for new observations.
+12. Autoencoders also give a decoder back to the original data space.
+
+## Conceptual checks
+
+1. What are the roles of the encoder, code and decoder?
+2. Why can an autoencoder be treated as an unsupervised method?
+3. What is meant by reconstruction loss?
+4. Why might a very flexible autoencoder learn an unhelpful identity mapping?
+5. How does an undercomplete autoencoder restrict the model?
+6. In what sense is a linear autoencoder related to PCA?
+7. Why need the latent coordinates of a linear autoencoder not equal the PCA scores?
+8. Why does nonlinear activation matter?
+9. Does lower reconstruction error imply better preservation of pairwise distances?
+10. Why can digit groups appear in an MNIST latent space even if labels were not used in training?
+11. Why should both training and validation loss be examined?
+12. Why can latent representations differ across training runs?
+13. What is the input and what is the target in a denoising autoencoder?
+14. Why does denoising discourage trivial copying?
+15. What advantage does an autoencoder have over ISOMAP when a new observation arrives?
+16. Why might clustering latent coordinates be misleading?
+
+## References
+
+Goodfellow, I., Bengio, Y. and Courville, A. (2016). *Deep Learning*. MIT Press. Chapter 14: Autoencoders.
+
+Hastie, T., Tibshirani, R. and Friedman, J. (2009). *The Elements of Statistical Learning*. Springer. Chapters 11 and 14 provide useful background on neural networks and unsupervised learning, although autoencoders are not a central topic there.

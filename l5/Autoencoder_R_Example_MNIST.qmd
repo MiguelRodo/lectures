@@ -1,0 +1,620 @@
+
+title: "Autoencoder Tutorial"
+author: "Juwa"
+date: "06/09/2020"
+format:
+  pdf:
+    embed-resources: true
+---
+
+# Setup
+
+## One-time installation
+
+This example uses the R package `keras3`, together with Keras and TensorFlow
+installed in a Python virtual environment called `r-keras`.
+
+The following installation only needs to be performed once.
+Run the chunk interactively in a fresh R session.
+
+```{r install-packages, eval=FALSE}
+pkg_vec <- c("ggplot2", "keras3", "reticulate", "scatterplot3d", "dplyr")
+for (x in pkg_vec) {
+  if (!requireNamespace(x, quietly = TRUE)) {
+    install.packages(x)
+  }
+}
+
+keras3::install_keras(
+  envname = "r-keras",
+  backend = "tensorflow",
+  gpu = FALSE
+)
+```
+
+After installation, restart the R session before running the remainder of the
+document.
+
+## Regular setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+if (!dir.exists("_tmp/l5")) {
+  dir.create("_tmp/l5", recursive = TRUE)
+}
+
+library(reticulate)
+
+# use_virtualenv(
+#   "r-keras",
+#   required = TRUE
+# )
+
+library(ggplot2)
+library(keras3)
+library(scatterplot3d)
+library(dplyr)
+
+use_backend("tensorflow")
+set_random_seed(5077)
+```
+
+# PCA versus an autoencoder
+
+This example compares PCA and an autoencoder for dimensionality reduction.
+
+## Data
+
+Read in the MNIST dataset:
+
+```{r read-mnist}
+mnist <- dataset_mnist()
+
+x_train <- mnist$train$x
+y_train <- mnist$train$y
+x_test <- mnist$test$x
+y_test <- mnist$test$y
+
+# Flatten the 28 x 28 images into vectors of length 784.
+x_train <- array_reshape(x_train, c(nrow(x_train), 784))
+x_test <- array_reshape(x_test, c(nrow(x_test), 784))
+```
+
+The pixel values range from 0 to 255.
+We rescale them to lie between 0 and 1.
+
+```{r standardise}
+x_train <- x_train / 255
+x_test <- x_test / 255
+
+# Use a subset for plotting so that the figures remain readable.
+plot_index <- sample(seq_len(nrow(x_train)), 5000)
+```
+
+# PCA
+
+```{r pca}
+pca <- prcomp(x_train)
+```
+
+Plot cumulative variance explained.
+
+```{r cumulative-variance}
+cumulative_variance <- cumsum(pca$sdev^2) / sum(pca$sdev^2)
+
+variance_df <- data.frame(
+  component = seq_along(cumulative_variance),
+  cumulative_variance = cumulative_variance
+)
+head(variance_df) |>
+  dplyr::mutate(cumulative_variance = signif(cumulative_variance, 2))
+```
+
+```{r}
+p <- ggplot(variance_df, aes(x = component, y = cumulative_variance)) +
+  geom_line() +
+  geom_hline(yintercept = 0.90, linetype = "dashed") +
+  labs(
+    x = "Number of principal components",
+    y = "Cumulative proportion of variance explained"
+  ) +
+  theme_minimal()
+path_p <- "_tmp/l5/pca_scree.png"
+ggsave(
+  filename = path_p,
+  plot = p,
+  units = "cm",
+  height = 10,
+  width = 10
+)
+```
+
+![](`r path_p`)
+
+```{r number-components-90, include=FALSE}
+components_90 <- which(cumulative_variance >= 0.90)[1]
+components_90
+```
+
+This suggests that the first `r components_90` components account for at least 90% of the variance in the data.
+The first two components are visualised in a scatter plot.
+We note that they only explain 17% of the total variation.
+
+```{r pca-2d}
+pca_2d <- data.frame(
+  PC1 = pca$x[plot_index, 1],
+  PC2 = pca$x[plot_index, 2],
+  digit = factor(y_train[plot_index])
+)
+
+p <- ggplot(pca_2d, aes(x = PC1, y = PC2, colour = digit)) +
+  geom_point(alpha = 0.45, size = 0.7) +
+  labs(colour = "Digit") +
+  theme_minimal()
+path_p <- "_tmp/l5/pca_scatter.png"
+ggsave(
+  filename = path_p,
+  plot = p,
+  units = "cm",
+  height = 10,
+  width = 10
+)
+```
+
+![](`r path_p`)
+
+We can also do a 3D plot, which explains 23% of the variation instead of just 17%:
+
+```{r pca-3d}
+path_p <- "_tmp/l5/pca_scatter_3d.png"
+
+png(
+  filename = path_p,
+  units = "cm",
+  height = 10,
+  width = 10,
+  res = 300
+)
+
+s3d <- scatterplot3d(
+  x = pca$x[plot_index, 1],
+  y = pca$x[plot_index, 2],
+  z = pca$x[plot_index, 3],
+  color = as.integer(factor(y_train[plot_index])),
+  pch = 16,
+  cex.symbols = 0.35,
+  xlab = "PC1",
+  ylab = "PC2",
+  zlab = "PC3"
+)
+
+dev.off()
+```
+
+![](`r path_p`)
+
+# Autoencoder
+
+The same variables will now be condensed into two and three dimensions using an autoencoder.
+The autoencoder is constructed using the `keras3` package. As with any neural network, there is considerable flexibility in how autoencoders are constructed, including the number of hidden layers and the number of units in each layer.
+Autoencoders are often symmetric, with the middle layer forming the bottleneck.
+
+## Set the model
+
+```{r autoencoder-2d-model}
+model <-
+  keras_model_sequential(
+    input_shape = c(ncol(x_train))
+  ) |>
+  layer_dense(
+    units = 256,
+    activation = "relu"
+  ) |>
+  layer_dense(
+    units = 2,
+    activation = "relu",
+    name = "bottleneck"
+  ) |>
+  layer_dense(
+    units = 256,
+    activation = "relu"
+  ) |>
+  layer_dense(
+    units = ncol(x_train)
+  )
+```
+
+View the model.
+
+```{r autoencoder-2d-summary}
+summary(model)
+```
+
+Compile the model.
+
+```{r autoencoder-2d-compile}
+model |>
+  compile(
+    loss = "mean_squared_error",
+    optimizer = "adam"
+  )
+```
+
+## Fit the model
+
+```{r autoencoder-2d-fit}
+fit1 <- model |>
+  fit(
+    x = x_train,
+    y = x_train,
+    epochs = 25,
+    batch_size = 128,
+    validation_split = 0.2,
+    verbose = 0
+  )
+```
+
+## Assess and interpret the model
+
+```{r autoencoder-2d-evaluate}
+mse_ae2_train <- model |>
+  evaluate(x_train, x_train, verbose = 0)
+mse_ae2_test <- model |>
+  evaluate(x_test, x_test, verbose = 0)
+
+mse_ae2_train
+mse_ae2_test
+
+```
+
+```{r}
+path_p <- "_tmp/l5/autoencoder_fit.png"
+
+png(
+  filename = path_p,
+  units = "cm",
+  height = 10,
+  width = 10,
+  res = 300
+)
+plot(fit1)
+dev.off()
+```
+
+### Extract the bottleneck layer
+
+To visualise the latent representation, we force the autoencoder to learn the MNIST features using a two-dimensional bottleneck.
+We then construct an encoder whose output is the bottleneck layer and plot its two coordinates.
+
+```{r autoencoder-2d-plot}
+encoder2 <- keras_model(
+  inputs = model$inputs,
+  outputs = get_layer(model, "bottleneck")$output
+)
+
+latent2 <- encoder2 |>
+  predict(x_train, verbose = 0)
+
+latent2_df <- data.frame(
+  latent1 = latent2[plot_index, 1],
+  latent2 = latent2[plot_index, 2],
+  digit = factor(y_train[plot_index])
+)
+```
+
+```{r}
+p <- ggplot(latent2_df, aes(x = latent1, y = latent2, colour = digit)) +
+  geom_point(alpha = 0.45, size = 0.7) +
+  labs(
+    x = "Latent coordinate 1",
+    y = "Latent coordinate 2",
+    colour = "Digit"
+  ) +
+  theme_minimal()
+
+path_p <- "_tmp/l5/autoencoder_latent2.png"
+ggsave(
+  filename = path_p,
+  plot = p,
+  units = "cm",
+  height = 10,
+  width = 10
+)
+```
+
+![](`r path_p`)
+
+```{r}
+p <- ggplot(pca_2d, aes(x = PC1, y = PC2, colour = digit)) +
+  geom_point(alpha = 0.45, size = 0.7) +
+  labs(colour = "Digit") +
+  theme_minimal()
+path_p <- "_tmp/l5/pca.png"
+ggsave(
+  filename = path_p,
+  plot = p,
+  units = "cm",
+  height = 10,
+  width = 10
+)
+```
+
+![](`r path_p`)
+
+## Evaluate the performance of the model
+
+The autoencoder can learn nonlinear structure that PCA cannot.
+However, the autoencoder does not necessarily retain all of the original information in two dimensions, and reconstruction accuracy does not guarantee perfect separation of the digits.
+
+To view the data in three dimensions, the model is fitted again with three units in the bottleneck layer.
+
+```{r autoencoder-3d-model}
+model3 <- keras_model_sequential(input_shape = c(ncol(x_train))) |>
+  layer_dense(units = 256, activation = "relu") |>
+  layer_dense(units = 3, activation = "relu", name = "bottleneck") |>
+  layer_dense(units = 256, activation = "relu") |>
+  layer_dense(units = ncol(x_train))
+```
+
+```{r autoencoder-3d-summary}
+summary(model3)
+```
+
+Compile the model.
+
+```{r autoencoder-2d-compile-3}
+model3 |>
+  compile(
+    loss = "mean_squared_error",
+    optimizer = "adam"
+  )
+```
+
+```{r autoencoder-3d-fit}
+fit3 <- model3 |>
+  fit(
+    x = x_train,
+    y = x_train,
+    epochs = 25,
+    batch_size = 128,
+    validation_split = 0.2,
+    verbose = 0
+  )
+```
+
+```{r autoencoder-3d-evaluate}
+model3 |>
+  evaluate(x_test, x_test, verbose = 0)
+```
+
+```{r autoencoder-3d-extract}
+encoder3 <- keras_model(
+  inputs = model3$inputs,
+  outputs = get_layer(model3, "bottleneck")$output
+)
+
+latent3 <- encoder3 |>
+  predict(x_train, verbose = 0)
+```
+
+```{r autoencoder-3d-plot}
+path_p <- "_tmp/l5/autoencoder_latent3.png"
+png(
+  filename = path_p,
+  units = "cm",
+  height = 10,
+  width = 10,
+  res = 300
+)
+
+scatterplot3d(
+  x = latent3[plot_index, 1],
+  y = latent3[plot_index, 2],
+  z = latent3[plot_index, 3],
+  color = as.integer(factor(y_train[plot_index])),
+  pch = 16,
+  cex.symbols = 0.35,
+  xlab = "Latent coordinate 1",
+  ylab = "Latent coordinate 2",
+  zlab = "Latent coordinate 3"
+)
+dev.off()
+```
+
+![](`r path_p`)
+
+```{r}
+path_p <- "_tmp/l5/pca_latent3.png"
+png(
+  filename = path_p,
+  units = "cm",
+  height = 10,
+  width = 10,
+  res = 300
+)
+scatterplot3d(
+  x = pca$x[plot_index, 1],
+  y = pca$x[plot_index, 2],
+  z = pca$x[plot_index, 3],
+  color = as.integer(factor(y_train[plot_index])),
+  pch = 16,
+  cex.symbols = 0.35,
+  xlab = "PC1",
+  ylab = "PC2",
+  zlab = "PC3"
+)
+dev.off()
+```
+
+![](`r path_p`)
+
+# Plot the reduced dataset
+
+There is a clear difference between the autoencoder and PCA plots, and the autoencoder may do somewhat better at differentiating between some digits.
+
+# Comparison of reconstruction error
+
+To compare PCA and the autoencoder, we calculate the mean squared error between the reconstructed observations and the original observations. Both methods are evaluated on the test data.
+
+Reconstruction of the original data by the autoencoder is already part of the fitting process, because reconstruction error is the quantity minimised during training. We compare PCA and autoencoder reconstructions for several reduced dimensions.
+
+# PCA reconstruction
+
+```{r reconstruction-comparison}
+pca_reconstruction <- function(pca, x, k) {
+  x_centred <- sweep(x, 2, pca$center, FUN = "-")
+  scores <- x_centred %*% pca$rotation[, seq_len(k), drop = FALSE]
+
+  reconstruction <-
+    scores %*% t(pca$rotation[, seq_len(k), drop = FALSE])
+  reconstruction <- sweep(reconstruction, 2, pca$center, FUN = "+")
+
+  list(
+    x = reconstruction,
+    mse = mean((reconstruction - x)^2)
+  )
+}
+
+pca_mse <- vapply(
+  1:10,
+  function(k) pca_reconstruction(pca, x_test, k)$mse,
+  numeric(1)
+)
+
+```
+
+```{r}
+set.seed(5077)
+
+train_index_ae <- sample(
+  seq_len(nrow(x_train)),
+  size = 15000
+)
+
+x_train_ae <- x_train[train_index_ae, , drop = FALSE]
+
+ae_mse <- rep(NA_real_, 7)
+
+for (k in 1:7) {
+  print(paste0("k: ", k))
+  clear_session(free_memory = TRUE)
+  set_random_seed(5077 + k)
+
+  model_k <- keras_model_sequential(
+    input_shape = c(ncol(x_train_ae))
+  ) |>
+    layer_dense(
+      units = 256,
+      activation = "relu"
+    ) |>
+    layer_dense(
+      units = k,
+      activation = "relu",
+      name = "bottleneck"
+    ) |>
+    layer_dense(
+      units = 256,
+      activation = "relu"
+    ) |>
+    layer_dense(
+      units = ncol(x_train_ae)
+    )
+
+  model_k |>
+    compile(
+      loss = "mean_squared_error",
+      optimizer = "adam"
+    )
+
+  history_k <- model_k |>
+    fit(
+      x = x_train_ae,
+      y = x_train_ae,
+      epochs = 15,
+      batch_size = 256,
+      validation_split = 0.1,
+      callbacks = list(
+        callback_early_stopping(
+          monitor = "val_loss",
+          patience = 2,
+          restore_best_weights = TRUE
+        )
+      ),
+      verbose = 0
+    )
+
+  ae_mse[k] <- as.numeric(
+    model_k |>
+      evaluate(
+        x_test,
+        x_test,
+        batch_size = 256,
+        verbose = 0
+      )
+  )
+
+  saveRDS(
+    ae_mse,
+    "_tmp/l5/ae_mse.rds"
+  )
+
+  rm(model_k, history_k)
+  gc()
+}
+```
+
+```{r}
+comparison_df <- rbind(
+  data.frame(
+    k = 1:10,
+    mse = pca_mse,
+    method = "PCA"
+  ),
+  data.frame(
+    k = 1:7,
+    mse = ae_mse,
+    method = "Autoencoder"
+  )
+)
+
+p <- ggplot(comparison_df, aes(x = k, y = mse, colour = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = 1:10) +
+  labs(
+    x = "Reduced dimension",
+    y = "Test reconstruction MSE",
+    colour = "Method"
+  ) +
+  theme_minimal()
+path_p <- "_tmp/l5/reconstruction_error.png"
+ggsave(
+  filename = path_p,
+  plot = p,
+  units = "cm",
+  height = 10,
+  width = 10
+  
+)
+```
+
+![](`r path_p`)
+
+# Differences between PCA and autoencoders
+
+- PCA orders its components according to explained variance. There is no equally direct rule for choosing the size of an autoencoder bottleneck.
+- PCA gives the best linear rank-$k$ reconstruction under squared error. An autoencoder may reconstruct the data better when nonlinear structure is present.
+- Autoencoders can reduce the data to two or three dimensions, but they do not generally retain all of the original information in those dimensions.
+- Autoencoders require more computation than PCA and can depend on the architecture, random initialisation and optimisation procedure.
+- Autoencoders can be trained in batches, which can help when the full dataset cannot be processed at once.
+- A visually clear latent representation is not guaranteed, because the model is trained to reconstruct the observations rather than to separate the digit labels.
+
+Based on a post by Daniel Oehm titled *PCA vs Autoencoders for Dimensionality Reduction*.
+
+
+
