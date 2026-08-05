@@ -37,6 +37,7 @@ l6/*_files/*
 l6/*_cache/*
 l6/*.html
 l6/*.tex
+l5/*.png
 l0/*.rmarkdown
 l1/*.rmarkdown
 l2/*.rmarkdown
@@ -58,6 +59,7 @@ l3/*.aux
 l4/*.aux
 l5/*.aux
 l6/*.aux
+.vdoc.*
 
 # Start of projr section: do not edit by hand (update with projr_ignore_auto())
 _raw_data/**
@@ -66,5 +68,8 @@ _content/**
 docs/**
 _tmp/**
 _output/**
+Rplots.pdf
 # End of projr section
 
+l5/_tmp/l5/*.png
+*.rds

@@ -27,5 +27,6 @@
 ^BUILDLOG\.md$
 ^CHANGELOG\.md$
 ^manifest\.csv$
+^Rplots\.pdf$
 # End of projr section
 

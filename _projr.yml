@@ -23,5 +23,5 @@ build:
     latest-2026-sta5077z:
       content: raw-content
 dev:
-  scripts: l4/SlidesL4SOM.qmd
+  scripts: l5/SlidesL5Autoencoders.qmd
 

@@ -169,21 +169,10 @@ We have already looked at several ways to represent multivariate observations in
 
 $$
 \begin{array}{lll}
-\text{PCA}
-&:&
-\text{linear component scores},
-\$$3pt]
-\text{MDS}
-&:&
-\text{coordinates chosen to represent dissimilarities},
-\$$3pt]
-\text{ISOMAP}
-&:&
-\text{coordinates chosen to represent graph distances},
-\$$3pt]
-\text{SOM}
-&:&
-\text{assignment to a position on a prototype grid}.
+\text{PCA} &:& \text{linear component scores},\\[3pt]
+\text{MDS} &:& \text{coordinates chosen to represent dissimilarities},\\[3pt]
+\text{ISOMAP} &:& \text{coordinates chosen to represent graph distances},\\[3pt]
+\text{SOM} &:& \text{assignment to a position on a prototype grid}.
 \end{array}
 $$
 
