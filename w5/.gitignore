@@ -1,0 +1,6 @@
+*.typ
+*.pdf
+*.html
+*.toml
+.quarto/*
+.quarto/**/*
