@@ -28,7 +28,7 @@ This guide provides you with:
 2. sources for content; and
 3. where to find the most relevant practice material.
 
-This release covers the first two weeks of the regression section.
+This release covers the first three weeks of the regression section.
 Later weeks
 will be added to the rendered document as they are taught.
 The main regression
@@ -64,9 +64,8 @@ All resources for the regression module are relative to `Module 1: Regression`.
 
 - Notes:
   - Main: `Notes/NotesReg.pdf`.
-  - Collected proofs and lecture videos (non-exhaustive): `Proofs/`
-    - `Notes/slides` sub-folder contains the proofs written out, and `Videos`
-      sub-folder contains the recorded overviews.
+  - Collected proofs and proof-specific slides: `Proofs/Notes/slides`.
+  - Pre-recorded proof videos: `Proofs/Videos`.
   - Linear model (W2) notes: `2. General linear models/Notes/NotesRegW2GLM.pdf`.
 - Slides and matching Q&A documents: the `Slides` folder under the relevant
   week's tab.
@@ -75,12 +74,17 @@ All resources for the regression module are relative to `Module 1: Regression`.
 - Practicals: `Practice material/Practicals`.
 - Lecture recordings: `Lecture Videos/2026 Lecture Videos`.
 
+A few Week 3 proof videos are still under
+`3. Confidence Intervals and Hypothesis testing/Proof videos`.
+These will be moved to `Proofs/Videos` as well.
+
 ## Weekly overview
 
 | Week | Main theme | Main objective |
 |---|---|---|
 | 1 | Introduction, prerequisites and the multivariate normal distribution | Understand what regression is for and master the probability and linear-algebra results used in later regression derivations. |
 | 2 | The general linear model | Formulate the model in matrix form, estimate its parameters, and derive the principal sampling distributions. |
+| 3 | Confidence intervals and hypothesis tests | Use the sampling distributions from Week 2 to quantify uncertainty and test hypotheses about regression effects. |
 
 # Proofs and derivations
 
@@ -107,7 +111,7 @@ In `SlidesRegW1S3MVN.pdf`:
 
 ## Week 2
 
-In `NotesRegW2LM.pdf`:
+In `2. General linear models/Notes/NotesRegW2GLM.pdf`:
 
 - derivation of the least-squares estimator
 
@@ -116,7 +120,8 @@ In `NotesRegW2LM.pdf`:
   =(\mathbf X^T\mathbf X)^{-1}\mathbf X^T\mathbf Y.
   $$
 
-In `NotesRegProofs.pdf`:
+In `Proofs/Notes/slides/NotesRegProofs.pdf` and the accompanying
+proof-specific slides in `Proofs/Notes/slides`:
 
 - why the least-squares estimator is also the maximum-likelihood estimator under normally distributed errors;
 - derivation of the distribution of $\hat{\boldsymbol\beta}$;
@@ -126,25 +131,30 @@ In `NotesRegProofs.pdf`:
 - derivation of
 
   $$
-  \frac{(n-k)s^2}{\sigma^2}\sim\chi^2_{n-k}.
+  \frac{(n-k)s^2}{\sigma^2}\sim\chi^2_{n-k};
   $$
-- An alternative formulation for $s^2$
+
+- a useful alternative expression for $s^2$.
 
 ## Week 3
 
-In `NotesRegProofs.pdf`:
+In `Proofs/Notes/slides/NotesRegProofs.pdf`:
 
-- Independence of a linear form and a quadratic form of a MVN random vector
-- Independence of the estimators for the regression coefficients and the residual variance.
+- independence of a linear form and a quadratic form of a multivariate normal
+  random vector, under the stated conditions;
+- independence of $\hat{\boldsymbol\beta}$ and $s^2$.
 
-In `SlidesRegW3S1ConfintV2.pdf`:
+In `SlidesRegW3S1ConfInt.pdf`:
 
-- Derivation of the $t$ statistic for a single linear combination of coefficients.
+- derivation of the $t$-distributed pivot used for inference about a single
+  linear combination $\boldsymbol\ell^T\boldsymbol\beta$.
 
 In `SlidesRegW3S2HypTestV2.pdf`:
 
-- Derivation of the $t$-distributed test statistic a single linear combination of coefficients;
-- Derivation of the $F$-distributed test statistic for multiple linear combinations of coefficients.
+- derivation of the $t$ statistic for testing a single linear combination of
+  coefficients;
+- derivation of the $F$ statistic for testing several linear combinations
+  simultaneously.
 
 # Week 1: Introduction and multivariate normal foundations
 
@@ -359,7 +369,7 @@ mean effect under the model.
 ## Content
 
 1. `2. General linear models/Notes/NotesRegW2GLM.pdf`, which expands the material from `SlidesRegW2S1LM.pdf` from simple linear regression through the projection-matrix results.
-2. `2. General linear models/Notes/NotesRegProofs.pdf` for the proofs collected separately from the main notes. Where a proof is included there, favour that version in tests and exams.
+2. `Proofs/Notes/slides/NotesRegProofs.pdf` and the proof-specific slides in `Proofs/Notes/slides` for the proofs collected separately from the main notes. Where a proof is included there, favour that version in tests and exams.
 3. Relevant parts of `NotesReg.pdf`, as a broader reference.
 4. `SlidesRegW2S1LM.pdf`.
 
@@ -373,119 +383,197 @@ mean effect under the model.
 
 # Week 3: Confidence intervals and hypothesis tests
 
-## Content
+## What you need to know
 
-### Foundations for inference
+### Why we need inference
 
-- Sampling variability and standard errors.
-- Distribution of
-  $\boldsymbol{\ell}'\hat{\boldsymbol{\beta}}$.
-- Independence of $\hat{\boldsymbol{\beta}}$ and $s^2$.
-- Why estimating $\sigma^2$ changes a normal pivot into a $t$ pivot.
-- Degrees of freedom.
-- Nominal versus empirical coverage.
-- Conditions required for exact or approximately valid inference.
+The estimates from Week 2 vary from sample to sample.
+You should understand the distinction between:
+
+- a point estimate, which gives one estimated value;
+- a confidence interval, which describes the values compatible with the data
+  and model at a stated confidence level;
+- a hypothesis test, which asks whether the data provide enough evidence to
+  reject a specified null hypothesis.
+
+For inference about the regression coefficients, write
+
+$$
+\mathbf C=(\mathbf X^T\mathbf X)^{-1}.
+$$
+
+You should know that
+
+$$
+\boldsymbol\ell^T\hat{\boldsymbol\beta}
+\sim
+N\left(
+  \boldsymbol\ell^T\boldsymbol\beta,
+  \sigma^2\boldsymbol\ell^T\mathbf C\boldsymbol\ell
+\right)
+$$
+
+for any fixed vector $\boldsymbol\ell$ of the appropriate length.
+You should also know why replacing the unknown $\sigma^2$ by $s^2$ means that
+we use a $t$ rather than a normal distribution for exact finite-sample
+inference under the normal-error model.
+
+The key result is
+
+$$
+\frac{
+  \boldsymbol\ell^T\hat{\boldsymbol\beta}
+  -\boldsymbol\ell^T\boldsymbol\beta
+}{
+  s\sqrt{\boldsymbol\ell^T\mathbf C\boldsymbol\ell}
+}
+\sim t_{n-k}.
+$$
+
+This uses the Week 2 chi-squared result for $s^2$ together with the independence
+of $\hat{\boldsymbol\beta}$ and $s^2$.
 
 ### Confidence intervals
 
-- General confidence interval for
-  $\boldsymbol{\ell}'\boldsymbol{\beta}$.
-- Special cases:
-  - an individual regression coefficient;
-  - a difference between coefficients;
-  - an arbitrary contrast;
-  - a conditional mean response
-    $\mathbf{x}_f'\boldsymbol{\beta}$.
-- Calculation, interpretation and reporting.
-- Interval width and its relationship to:
-  - confidence level;
-  - sample size and residual degrees of freedom;
-  - $s^2$;
-  - the design matrix;
-  - the location of $\mathbf{x}_f$.
-- Why a confidence interval is not a probability statement about a fixed
-  parameter after the data have been observed.
+You should be able to construct and interpret the $100(1-\alpha)\%$ confidence
+interval
+
+$$
+\boldsymbol\ell^T\hat{\boldsymbol\beta}
+\pm
+t_{n-k}^{1-\alpha/2}
+s\sqrt{\boldsymbol\ell^T\mathbf C\boldsymbol\ell}.
+$$
+
+Important special cases include:
+
+- an individual regression coefficient;
+- a difference or other linear combination of coefficients;
+- the conditional mean response at specified explanatory-variable values,
+  obtained by setting $\boldsymbol\ell$ equal to the relevant design row.
+
+You should be able to move between a substantive comparison and the required
+$\boldsymbol\ell$ vector.
+You should also be able to calculate a confidence interval from R output or
+from the quantities in the formula above.
+
+For interpretation and reporting, you should understand:
+
+- what it means for zero to lie inside or outside a coefficient confidence
+  interval;
+- what it means for a confidence interval to contain, or not contain, negligible or practically important values;
+- that the interval concerns the uncertainty in the estimated mean response or
+  regression effect, not the spread of individual future observations.
+
+### Nominal and empirical coverage
+
+You should understand the difference between nominal and empirical coverage.
+In particular, you should be able to explain why simply inserting $s$ into a
+normal-based interval gives intervals that are too narrow in small samples,
+and why the $t$ interval corrects for the extra uncertainty from estimating
+$\sigma^2$.
 
 ### Hypothesis tests for one linear combination
 
-- Null and alternative hypotheses for
-  $\boldsymbol{\ell}'\boldsymbol{\beta}$.
-- One-sided and two-sided alternatives.
-- Derivation and calculation of the $t$ statistic.
-- Critical-value and p-value approaches.
-- General p-value formulae for one-sided and two-sided tests.
-- Relationship between a two-sided test and a confidence interval.
+For a null hypothesis of the form
+
+$$
+H_0:\boldsymbol\ell^T\boldsymbol\beta=c,
+$$
+
+you should be able to use
+
+$$
+t=
+\frac{
+  \boldsymbol\ell^T\hat{\boldsymbol\beta}-c
+}{
+  s\sqrt{\boldsymbol\ell^T\mathbf C\boldsymbol\ell}
+}
+\sim t_{n-k}
+$$
+
+under $H_0$.
+
+You should be able to:
+
+- state the null and alternative hypotheses;
+- calculate the test statistic and its degrees of freedom;
+- calculate or obtain the p-value for a one-sided or two-sided test;
+- make the test decision at a stated significance level;
+- relate a two-sided test to the corresponding confidence interval.
+
+An individual coefficient test is a special case obtained by choosing
+$\boldsymbol\ell$ to select that coefficient.
+You should also be able to test comparisons such as the difference between two
+regression coefficients.
 
 ### Hypothesis tests for several linear combinations
 
-- Hypotheses of the form
-  $\mathbf{L}\boldsymbol{\beta}=\mathbf{c}$.
-- Derivation and calculation of the $F$ statistic.
-- Special cases:
-  - several specified coefficients;
-  - all slope coefficients;
-  - all coefficients, including the intercept;
-  - arbitrary simultaneous contrasts.
-- Why separate $t$ tests do not replace a joint test.
+Some questions involve several restrictions at once. Write these as
 
-### Interpretation
+$$
+H_0:\mathbf L\boldsymbol\beta=\mathbf c,
+$$
 
-- Statistical significance versus effect size and practical importance.
-- What a large p-value does and does not imply.
-- Distinguishing:
-  - a precise estimate near zero;
-  - an imprecise estimate compatible with important effects;
-  - a statistically significant but negligible effect;
-  - a large and practically important effect.
-- The role of confidence intervals in communicating magnitude and precision.
+where $\mathbf L$ has $q$ linearly independent rows.
+You should know the test statistic
 
-## Competencies
+$$
+F=
+\frac{
+  (\mathbf L\hat{\boldsymbol\beta}-\mathbf c)^T
+  (\mathbf L\mathbf C\mathbf L^T)^{-1}
+  (\mathbf L\hat{\boldsymbol\beta}-\mathbf c)
+}{q s^2}
+\sim F_{q,n-k}
+$$
 
-By the end of Week 3, you should be able to:
+under $H_0$.
 
-- derive and calculate a confidence interval for any specified
-  $\boldsymbol{\ell}'\boldsymbol{\beta}$;
-- construct $\boldsymbol{\ell}$ from a substantive comparison or fitted-value
-  question;
-- state and test one-sided and two-sided hypotheses;
-- calculate a test statistic, degrees of freedom and p-value;
-- construct $\mathbf{L}$ for a set of simultaneous restrictions;
-- derive and apply the general $F$ test;
-- explain nominal and empirical coverage and investigate coverage by
-  simulation;
-- use the $t$ rather than normal distribution when appropriate;
-- interpret confidence intervals and p-values without confusing lack of
-  evidence with evidence of no effect;
-- report the estimated effect, uncertainty and test result in context.
+You should be able to construct $\mathbf L$ for the stated hypothesis and use
+the resulting $F$ statistic. This includes tests that several specified
+coefficients are zero, including the usual test that all slope coefficients
+are zero.
+Separate $t$ tests do not answer the same joint question.
 
-## Sources
+### Interpretation and reporting
 
-- [Confidence-interval slides](../w3/SlidesRegW3S1ConfInt.qmd)
-- [Additional proofs](../w3/SlidesRegW3S1AdditionalProofs.qmd)
-- [Hypothesis-testing slides](../w3/SlidesRegW3S2HypTest.qmd)
-- [Confidence-interval Q&A](../w3/QARegW3S1ConfInt.qmd)
-- [Hypothesis-testing Q&A](../w3/QARegW3S2HypTest.qmd)
+You should understand that:
 
-The material on independence under affine transformations in
-[this additional document](../w3/ExtraRegW3S1IndependenceUnderAffineTransformation.qmd)
-is enrichment unless stated otherwise.
+- a small p-value is evidence against the null hypothesis, under the model;
+- a p-value is not the probability that the null hypothesis is true;
+- a large p-value does not establish that the effect is zero;
+- the estimated effect and its uncertainty matter as well as statistical
+  significance;
+- statistical significance does not by itself imply a practically important
+  effect.
 
-## Practice and assessment emphasis
+When reporting a regression effect, state the effect in context and give its
+uncertainty. For a multiple regression coefficient, make clear that the
+comparison holds the other explanatory variables fixed.
 
-- [Question bank: Week three](../question_bank/QuestionBankRegQuestions.qmd)
-  - individual coefficients and contrasts;
-  - p-values and confidence intervals;
-  - nominal and empirical coverage;
-  - $t$ versus normal intervals;
-  - critique of regression interpretations.
-- [Previous Week 4 practical](../_reference/eval/2025/PracRegW4Questions.qmd)
-  - first-principles confidence intervals and p-values;
-  - simultaneous tests;
-  - simulation of coverage;
-  - logical conditions and control flow in R.
-- [Previous regression test](../_reference/eval/2025/TestRegQuestions.qmd)
-  - derivation of the $t$ statistic;
-  - confidence intervals and tests for individual and combined effects.
+## Content
+
+1. `SlidesRegW3S1ConfInt.pdf`.
+2. `SlidesRegW3S2HypTestV2.pdf`.
+3. `Proofs/Notes/slides/NotesRegProofs.pdf`, especially the results on independence of a linear form and a quadratic form. You do not not need to be able to show the independence of $\hat{\boldsymbol\beta}$ and $s^2$.
+4. The proof-specific slides in `Proofs/Notes/slides` where relevant.
+5. Relevant parts of `NotesReg.pdf`, as a broader reference.
+
+Until the remaining Week 3 proof videos are moved, find them under
+`3. Confidence Intervals and Hypothesis testing/Proof videos`.
+After the move, they will be in `Proofs/Videos` with the other proof videos.
+
+## Practice material
+
+- `QARegW3S1ConfInt.pdf`
+- `QARegW3S2HypTest.pdf`
+- `TutReg3Inference.pdf`
+- `QuestionBankRegQuestions.pdf`, especially all the `Week 3` sections.
+  - The tutorial for this week is light, and so the question bank will be 
+    particularly important for practice.
+- Week 3 practical: to be added.
 
 <!--
 ===============================================================================
@@ -498,8 +586,6 @@ having to reconstruct it.
 
 
 # Future proofs and derivations
-
-
 
 ## Week 4
 
@@ -528,10 +614,7 @@ having to reconstruct it.
   - Why the loading vectors are eigenvectors of the covariance matrix.
   - Why component variances equal the corresponding eigenvalues.
 
-
 # Future weekly content
-
-
 
 # Week 4: ANOVA and model checking
 
