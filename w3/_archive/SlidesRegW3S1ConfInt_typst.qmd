@@ -1,0 +1,616 @@
+---
+title: "Regression Week III: Inference"
+subtitle: "Confidence Intervals"
+author:
+  - name: "Miguel Rodo (with credit to Yovna Junglee)"
+    affiliations: "Department of Statistical Sciences, University of Cape Town"
+date: today
+format:
+  touying-typst:
+    keep-typ: true
+    fig-format: png
+    aspect-ratio: 16-9
+    include-in-header:
+      - text: |
+          #let sta-navy = rgb("#003366")
+          #let sta-peach = rgb("#FFD8B4")
+          #let sta-blue = rgb("#647C9C")
+          #let sta-code-bg = rgb("#F1F3F5")
+
+          // Global slide text. The Touying theme still controls titles,
+          // but this makes body text closer to the beamer-sized original.
+          #set text(
+            size: 22pt,
+            lang: "en",
+            region: "GB",
+          )
+          #set par(justify: false, leading: 0.58em)
+          #set list(
+            marker: text(fill: sta-blue)[▶],
+            indent: 0.95em,
+            body-indent: 0.42em,
+          )
+
+          // Keep code readable without letting it dominate a slide.
+          #show raw.where(block: true): it => block(
+            width: 100%,
+            fill: sta-code-bg,
+            inset: (x: 7pt, y: 5pt),
+            radius: 2pt,
+            breakable: false,
+          )[
+            #set text(size: 13pt)
+            #it
+          ]
+
+          #show table: set text(size: 16pt)
+theme: simple
+accent: "#003366"
+accent2: "#FFD8B4"
+jet: "#222222"
+lang: en
+region: GB
+execute:
+  warning: false
+  message: false
+---
+
+<!-- Requires: quarto add kazuyanagimoto/quarto-touying-typst -->
+
+```{r}
+#| include: false
+library(tibble)
+library(ggplot2)
+
+theme_cowplot_bg <- function(font_size = 14) {
+  cowplot::theme_cowplot(font_size = font_size) +
+    theme(
+      plot.background = element_rect(fill = "white"),
+      panel.background = element_rect(fill = "white")
+    )
+}
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = "#>",
+  fig.align = "center"
+)
+```
+
+## Where are we?
+
+- Described the general linear model.
+- Derived estimators and their distributions.
+  - $\hat{\mathbf{\beta}} = (\mathbf{X}'\mathbf{X})^{-1}\mathbf{X}'\mathbf{Y}$.
+  - $\hat{\mathbf{\beta}} \sim \mathcal{N}\left(\mathbf{\beta}, \sigma^2(\mathbf{X}'\mathbf{X})^{-1}\right)$.
+- Derived the unbiased estimator
+
+$$
+s^2 = \frac{1}{n-k}\sum_{i=1}^n (y_i - \hat{y}_i)^2.
+$$
+
+- Also,
+
+$$
+\frac{(n-k)s^2}{\sigma^2} \sim \chi^2_{n-k}.
+$$
+
+## We therefore have estimates.
+
+::: {.center}
+
+### What is the problem?
+
+:::
+
+
+## Problem: uncertainty in estimation
+
+- We have point estimates for the coefficients and $\sigma^2$.
+- They are still estimates. To make well-informed decisions, we need to quantify the uncertainty in these estimates.
+- There are two questions about uncertainty we can answer:
+  - What are plausible values for the regression coefficients?
+    - Tool: confidence intervals.
+  - Are our data compatible with there being no effect of the explanatory variable(s)?
+    - Tool: hypothesis tests.
+
+## Note re running code
+
+- Run this first if you want to run the code in the slides.
+
+```{r}
+#| eval: false
+library(tibble)
+library(ggplot2)
+theme_cowplot_bg <- function(font_size = 14) {
+  cowplot::theme_cowplot(font_size = font_size) +
+    theme(
+      plot.background = element_rect(fill = "white"),
+      panel.background = element_rect(fill = "white")
+    )
+}
+```
+
+## Example: advertising data
+
+- Consider our simulated advertising data, where we want to know the effect of radio and TV advertising on revenue.
+
+```{r}
+set.seed(201)
+spend_vec_radio <- runif(1e2, 0, 3)
+spend_vec_tv <- spend_vec_radio *
+  1.2 + runif(1e2, 0, 3)
+revenue_vec <- spend_vec_tv * 2 +
+  rnorm(1e2, mean = 10, sd = 2)
+ad_tbl <- tibble::tibble(
+  spend_radio = spend_vec_radio,
+  spend_tv = spend_vec_tv,
+  revenue = revenue_vec
+)
+```
+
+## Example: advertising data
+
+```{r}
+head(ad_tbl)
+```
+
+## Confidence intervals for individual coefficients
+
+```{r}
+fit <- lm(
+  revenue ~ spend_tv + spend_radio,
+  data = ad_tbl
+)
+confint_tbl <- fit |>
+  confint() |>
+  tibble::as_tibble(rownames = "Variable") |>
+  dplyr::mutate(Estimate = coef(fit))
+confint_tbl[["Variable"]] <-
+  c("Intercept", "TV", "Radio")
+```
+
+## Confidence intervals for individual coefficients
+
+```{r}
+#| echo: false
+confint_tbl |>
+  dplyr::mutate(
+    dplyr::across(
+      where(is.numeric),
+      function(x) signif(x, 3)
+    )
+  ) |>
+  dplyr::select(Variable, Estimate, `2.5 %`, `97.5 %`)
+```
+
+## Visualising confidence intervals
+
+```{r}
+#| echo: false
+#| fig-width: 8.8
+#| fig-height: 4.8
+#| out-width: "78%"
+p <- ggplot(
+  confint_tbl, aes(x = Variable)
+) +
+  theme_cowplot_bg(15) +
+  geom_hline(yintercept = 0, linetype = "dashed", col = "gray10") +
+  cowplot::background_grid(major = "y") +
+  geom_errorbar(
+    aes(ymin = `2.5 %`, ymax = `97.5 %`),
+    width = 0.18, alpha = 0.8, col = "dodgerblue"
+  ) +
+  geom_point(aes(y = Estimate), col = "dodgerblue", size = 2) +
+  labs(x = "Variable", y = "Estimate")
+p
+```
+
+## Confidence intervals for mean responses
+
+- Now obtain a confidence interval for the mean response at a fixed value of radio spend, across a range of TV spend values.
+
+```{r}
+tv_spend <- seq(
+  min(ad_tbl$spend_tv),
+  max(ad_tbl$spend_tv),
+  length.out = 1e3
+)
+confint_fitted <- predict(
+  fit,
+  newdata = data.frame(
+    spend_radio = mean(ad_tbl$spend_radio),
+    spend_tv = tv_spend
+  ),
+  interval = "confidence"
+)
+```
+
+## Confidence intervals for mean responses
+
+```{r}
+head(cbind(tv_spend, confint_fitted) |> signif(4))
+```
+
+## Visualising confidence intervals for mean responses
+
+```{r}
+#| echo: false
+#| fig-width: 8.8
+#| fig-height: 4.8
+#| out-width: "78%"
+p <- ggplot(
+  data.frame(tv = tv_spend, confint_fitted),
+  aes(x = tv, y = fit)
+) +
+  theme_cowplot_bg(15) +
+  cowplot::background_grid(major = "xy") +
+  geom_ribbon(
+    aes(ymin = lwr, ymax = upr),
+    fill = "dodgerblue", alpha = 0.3
+  ) +
+  geom_line(col = "dodgerblue", linewidth = 0.7) +
+  geom_point(
+    data = ad_tbl,
+    aes(x = spend_tv, y = revenue),
+    col = "orange", alpha = 0.6, size = 0.85
+  ) +
+  labs(x = "TV spend", y = "Revenue")
+p
+```
+
+## Linear combinations of coefficients
+
+- Quantities of interest are often linear combinations of the regression coefficients.
+- Suppose $\mathbf{\beta} = (\beta_0, \beta_1, \beta_2)'$ is the vector of regression coefficients.
+- Two examples:
+  - $\beta_1 = \begin{pmatrix} 0 & 1 & 0 \end{pmatrix}\mathbf{\beta}$.
+  - For $\mathbf{x}_{[i]}' = \begin{pmatrix} 1 & x_{i1} & x_{i2} \end{pmatrix}$,
+
+$$
+E(Y_i \mid \mathbf{X})
+= \begin{pmatrix} 1 & x_{i1} & x_{i2} \end{pmatrix}\mathbf{\beta}
+= \mathbf{x}_{[i]}'\mathbf{\beta}.
+$$
+
+## We already know their distribution, right?
+
+- In general, we express such combinations as $\ell'\mathbf{\beta}$, for $\ell$ a column vector with the same number of elements as $\mathbf{\beta}$.
+- Since $\hat{\mathbf{\beta}}$ is normally distributed, any linear combination of $\hat{\mathbf{\beta}}$ is also normally distributed.
+
+$$
+\ell'\hat{\mathbf{\beta}}
+\sim
+\mathcal{N}\left(\ell'\mathbf{\beta},
+\sigma^2\ell'(\mathbf{X}'\mathbf{X})^{-1}\ell\right).
+$$
+
+## If $\sigma^2$ were known
+
+- If $\sigma^2$ were known, we could use
+
+$$
+\ell' \hat{\mathbf{\beta}} \pm
+z_{1-\alpha/2}
+\sqrt{\sigma^2\ell'(\mathbf{X}'\mathbf{X})^{-1}\ell}.
+$$
+
+- But we do not know $\sigma^2$.
+- Simply plugging in $s^2$ and continuing to use the normal critical value gives intervals that are too narrow.
+
+## Simulation: coverage of confidence interval
+
+```{r}
+#| echo: false
+X_full <- model.matrix(fit)
+C_full <- solve(crossprod(X_full))
+var_beta_tv_known <- 4 * C_full["spend_tv", "spend_tv"]
+ci_beta_tv_known <- coef(fit)[["spend_tv"]] +
+  c(-1, 1) * qnorm(0.975) * sqrt(var_beta_tv_known)
+```
+
+- In the advertising data-generating process, $\beta_{\mathrm{TV}}=2$ and $\sigma^2=4$.
+- Given the design matrix,
+
+$$
+\hat{\beta}_{\mathrm{TV}}
+\sim
+\mathcal{N}\left(2, `r signif(var_beta_tv_known, 3)`\right).
+$$
+
+- If $\sigma^2$ were known, the 95% interval would be
+
+$$
+\hat{\beta}_{\mathrm{TV}} \pm 1.96\sqrt{`r signif(var_beta_tv_known, 3)`}
+= \left(`r signif(ci_beta_tv_known[1], 4)`, `r signif(ci_beta_tv_known[2], 4)`\right).
+$$
+
+## Simulation: coverage of confidence interval
+
+- If our confidence intervals are valid, they should contain the true value of $\beta_{\mathrm{TV}}$ 95% of the time over repeated samples.
+- But if we estimate $\sigma^2$ from the data and just plug that estimate into the normal-based interval, we get coverage below 95%.
+
+```{r}
+## use only first 10 rows to exaggerate the effect
+ad_tbl_few_x <- ad_tbl[1:10, 1:2]
+## get design matrix contribution to se of beta_tv
+design_matrix <- matrix(
+  c(rep(1, 10), ad_tbl_few_x |> unlist()),
+  ncol = 3
+)
+C_mat <- solve(t(design_matrix) %*% design_matrix)
+C_mat_33 <- C_mat[3, 3]
+```
+
+## Simulation: coverage of confidence interval
+
+- Now simulate the coverage of the confidence interval for $\beta_{\mathrm{TV}}$.
+
+```{r}
+#| echo: false
+path_beta_z <- file.path(
+  "_tmp", "w3", "SlidesRegW3S1ConfInt", "beta_tv_contained_z.rds"
+)
+dir.create(dirname(path_beta_z), recursive = TRUE, showWarnings = FALSE)
+if (!file.exists(path_beta_z)) {
+  set.seed(3)
+  beta_tv_contained_z <- replicate(1e4, {
+    sim_tbl <- ad_tbl_few_x |>
+      dplyr::mutate(
+        revenue = spend_tv * 2 + rnorm(10, mean = 10, sd = 2)
+      )
+    fit <- lm(revenue ~ spend_radio + spend_tv, data = sim_tbl)
+    confint_vec <- coef(fit)[["spend_tv"]] +
+      c(-1, 1) * qnorm(0.975) * summary(fit)$sigma * sqrt(C_mat_33)
+    2 > confint_vec[1] & 2 < confint_vec[2]
+  })
+  saveRDS(beta_tv_contained_z, path_beta_z)
+} else {
+  beta_tv_contained_z <- readRDS(path_beta_z)
+}
+```
+
+```{r}
+#| eval: false
+#| echo: true
+set.seed(3)
+beta_tv_contained_z <- replicate(1e4, {
+  sim_tbl <- ad_tbl_few_x |>
+    dplyr::mutate(
+      revenue = spend_tv * 2 + rnorm(10, mean = 10, sd = 2)
+    )
+  fit <- lm(revenue ~ spend_radio + spend_tv, data = sim_tbl)
+  confint_vec <- coef(fit)[["spend_tv"]] +
+    c(-1, 1) * qnorm(0.975) * summary(fit)$sigma * sqrt(C_mat_33)
+  2 > confint_vec[1] & 2 < confint_vec[2]
+})
+```
+
+## Simulation: coverage of confidence interval
+
+We find that the coverage is...
+
+```{r}
+signif(mean(beta_tv_contained_z) * 1e2, 4)
+```
+
+## Obtaining a valid confidence interval
+
+- To obtain a valid confidence interval, we need to adjust for the uncertainty in estimating $\sigma^2$.
+- We obtain a test statistic that does not include $\sigma^2$, then find its distribution.
+- Divide by
+
+$$
+\sqrt{\frac{(n-k)s^2/\sigma^2}{n-k}}
+= \frac{s}{\sigma}.
+$$
+
+- This gives something that looks like a $t$-distributed random variable.
+
+## Obtaining a valid confidence interval
+
+- A $t_f$-distributed random variable can be expressed as
+
+$$
+\frac{Z}{\sqrt{V/f}},
+$$
+
+where $Z \sim \mathcal{N}(0, 1)$ and $V \sim \chi^2_f$ are independent.
+
+- We have
+
+$$
+\frac{\ell'\hat{\mathbf{\beta}} - \ell'\mathbf{\beta}}
+{\sigma\sqrt{\ell'\mathbf{C}\ell}}
+\sim \mathcal{N}(0, 1).
+$$
+
+## Obtaining a valid confidence interval
+
+- Since
+
+$$
+\frac{(n-k)s^2}{\sigma^2} \sim \chi^2_{n-k},
+$$
+
+we have
+
+$$
+\frac{
+\frac{\ell'\hat{\mathbf{\beta}} - \ell'\mathbf{\beta}}
+{\sigma\sqrt{\ell'\mathbf{C}\ell}}
+}{
+\sqrt{\frac{(n-k)s^2}{\sigma^2(n-k)}}
+}
+=
+\frac{\ell'\hat{\mathbf{\beta}} - \ell'\mathbf{\beta}}
+{s\sqrt{\ell'\mathbf{C}\ell}}.
+$$
+
+- This appears to be $t_{n-k}$-distributed.
+- However, we still need independence.
+
+## Independence of $\hat{\mathbf{\beta}}$ and $s^2$
+
+- See `RegNotesProof.pdf` for the proof.
+
+## Why independence matters
+
+- Suppose we construct this silly attempt at a $t$ statistic.
+- Let $Z \sim \mathcal{N}(0, 1)$.
+- We need some $V \sim \chi^2_1$.
+- Since $Z^2 \sim \chi^2_1$, let us pick $V=Z^2$.
+- Then
+
+$$
+T = \frac{Z}{\sqrt{Z^2}}
+= \frac{Z}{|Z|}
+= \operatorname{sign}(Z),
+$$
+
+which takes values $-1$ or $1$. This is clearly not $t_1$-distributed.
+
+## Confidence intervals for quantities of interest
+
+- We can now obtain confidence intervals for an individual coefficient:
+
+$$
+\beta_i \in
+\hat{\beta}_i \pm
+ t_{1-\alpha/2,\,n-k}s\sqrt{C_{(i+1)(i+1)}}.
+$$
+
+- Set $\ell = \begin{pmatrix}0 & 0 & \ldots & 1 & \ldots & 0\end{pmatrix}'$, where the $i+1$th entry is 1.
+- We use $i+1$ because the first index usually corresponds to the intercept, $\beta_0$.
+
+## Confidence intervals for quantities of interest
+
+- For a mean response:
+
+$$
+\mathbf{x}_{[i]}'\mathbf{\beta}
+\in
+\mathbf{x}_{[i]}'\hat{\mathbf{\beta}}
+\pm
+ t_{1-\alpha/2,\,n-k}
+s\sqrt{\mathbf{x}_{[i]}'\mathbf{C}\mathbf{x}_{[i]}}.
+$$
+
+- Set $\ell = \mathbf{x}_{[i]}$, for $\mathbf{x}_{[i]}'$ the $i$th row of the design matrix.
+
+## Simulation: coverage of confidence interval
+
+- To demonstrate the improved coverage of the confidence interval for $\beta_{\mathrm{TV}}$, we re-simulate.
+
+```{r}
+#| echo: true
+path_beta_t <- file.path(
+  "_tmp", "w3", "SlidesRegW3S1ConfInt", "beta_tv_contained_t.rds"
+)
+dir.create(dirname(path_beta_t), recursive = TRUE, showWarnings = FALSE)
+if (!file.exists(path_beta_t)) {
+  set.seed(3)
+  beta_tv_contained_t <- replicate(1e3, {
+    sim_tbl <- ad_tbl_few_x |>
+      dplyr::mutate(
+        revenue = spend_tv * 2 + rnorm(10, mean = 10, sd = 2)
+      )
+    fit <- lm(revenue ~ spend_radio + spend_tv, data = sim_tbl)
+    confint_vec <- coef(fit)[["spend_tv"]] +
+      c(-1, 1) * qt(0.975, 10 - 3) * summary(fit)$sigma * sqrt(C_mat_33)
+    2 > confint_vec[1] & 2 < confint_vec[2]
+  })
+  saveRDS(beta_tv_contained_t, path_beta_t)
+} else {
+  beta_tv_contained_t <- readRDS(path_beta_t)
+}
+```
+
+```{r}
+#| eval: false
+#| echo: true
+set.seed(3)
+beta_tv_contained_t <- replicate(1e3, {
+  sim_tbl <- ad_tbl_few_x |>
+    dplyr::mutate(
+      revenue = spend_tv * 2 + rnorm(10, mean = 10, sd = 2)
+    )
+  fit <- lm(revenue ~ spend_radio + spend_tv, data = sim_tbl)
+  confint_vec <- coef(fit)[["spend_tv"]] +
+    c(-1, 1) * qt(0.975, 10 - 3) * summary(fit)$sigma * sqrt(C_mat_33)
+  2 > confint_vec[1] & 2 < confint_vec[2]
+})
+```
+
+## Simulation: coverage of confidence interval
+
+- We find that the coverage is...
+
+```{r}
+signif(mean(beta_tv_contained_t) * 1e2, 4)
+```
+
+- It would get closer to 95 as the number of samples taken increased.
+
+## Exact calculation: coverage of confidence interval
+
+- The confidence interval using the $t$ statistic is exact.
+- We can also calculate the coverage of the $z$ statistic.
+- Since we know the distribution of
+
+$$
+\frac{\ell'\hat{\mathbf{\beta}} - \ell'\mathbf{\beta}}
+{s\sqrt{\ell'\mathbf{C}\ell}},
+$$
+
+we can work out the coverage of the incorrect interval.
+
+## Exact calculation: coverage of confidence interval
+
+$$
+P\left(
+-z_{1-\alpha/2}
+<
+\frac{\ell'\hat{\mathbf{\beta}} - \ell'\mathbf{\beta}}
+{s\sqrt{\ell'\mathbf{C}\ell}}
+<
+z_{1-\alpha/2}
+\right)
+=
+P\left(-z_{1-\alpha/2} < T_{n-k} < z_{1-\alpha/2}\right).
+$$
+
+```{r}
+## probability of being less than z_{0.975}:
+p_lt_0975 <- pt(qnorm(0.975), 10 - 3)
+## probability of being less than z_{0.025}:
+p_lt_0025 <- pt(qnorm(0.025), 10 - 3)
+## difference between the two
+((p_lt_0975 - p_lt_0025) * 1e2) |> signif(3)
+```
+
+- This is similar to the simulated value (`r signif(mean(beta_tv_contained_z) * 1e2, 4)`).
+
+## Interpreting confidence intervals
+
+- A confidence interval gives a range of plausible values for the parameter being estimated.
+- For an individual regression parameter: if the interval includes zero, then a zero coefficient is among the values compatible with the data and model.
+- For a mean response: the interval represents uncertainty in estimating the average response for given predictor values.
+- One may comment on whether the interval is narrow or wide, but what this means depends on the context.
+
+## Reporting confidence intervals
+
+- When discussing an estimated regression coefficient in a report, include the confidence interval.
+- For example:
+
+> Holding radio advertising constant, a one-unit increase in TV advertising is associated with an estimated 0.6-unit increase in sales (95% CI: 0.4, 0.8).
+
+- Often, the level is omitted if it is the standard 95% level.
+- If you state that values in brackets are confidence intervals, you can omit the “CI” part too.
+
+## Limitations
+
+- A confidence interval does not give the probability that the true parameter lies in the interval.
+  - $\beta$ is fixed, so it either lies in the interval or it does not.
+- The 95% refers to the procedure: over repeated samples, 95% of intervals constructed in this way would contain the true parameter, under the model assumptions.
+- The inference is only as good as the model assumptions, so always check the underlying assumptions.

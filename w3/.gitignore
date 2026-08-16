@@ -4,3 +4,5 @@
 *.toml
 .quarto/*
 .quarto/**/*
+_tmp/**/*
+_tmp
