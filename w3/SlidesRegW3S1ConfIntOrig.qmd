@@ -11,7 +11,7 @@ format:
     linkcolor: blue
     filecolor: magenta
     include-in-header:
-      file: preamble.tex
+      file: ../preamble.tex
 ---
 
 ```{r}
@@ -46,7 +46,7 @@ knitr::opts_chunk$set(echo = TRUE)
 - There are two questions regarding uncertainty we can answer to aid decision-making:
   - What are plausible values for the regression coefficients?
     - Tool: Confidence intervals
-  - Is our data compatible with there being no effect of the explanatory variable(s)?
+  - Are our data compatible with there being no effect of the explanatory variable(s)?
     - Tool: Hypothesis tests
 
 # Note re running code
@@ -181,9 +181,9 @@ cowplot::ggsave2(
 \includegraphics[width=0.85\textwidth]{`r path_fig`}
 \end{center}
 
-# Confidence intervals for fitted values {.smaller}
+# Confidence intervals for mean responses {.smaller}
 
-- Now, let's obtain confidence interval for the fitted value $\hat{y}_i$ at a specific value of radio spend, across a range of TV spend values:
+- Now, let's obtain a confidence interval for the mean response at a specific value of radio spend, across a range of TV spend values:
 
 ```{r}
 #| echo: true
@@ -199,7 +199,7 @@ confint_fitted <- predict(
 head(cbind(tv_spend, confint_fitted) |> signif(4))
 ```
 
-# Visualising confidence intervals for fitted values {.smaller}
+# Visualising confidence intervals for mean responses {.smaller}
 
 ```{r}
 #| echo: false
@@ -238,11 +238,11 @@ cowplot::ggsave2(
 # Confidence intervals for linear combinations of the regression coefficients
 
 - Quantities of interest are often linear combinations of the regression coefficients.
-- For example, suppose that $\symbf{\beta}' = (\beta_0, \beta_1, \beta_2)'$ are the regression coefficients.
+- For example, suppose that $\symbf{\beta} = (\beta_0, \beta_1, \beta_2)'$ is the vector of regression coefficients.
 - We might be interested in confidence intervals for the following two quantities, which can be represented as linear combinations of the regression coefficients:
   - $\beta_1 = \begin{pmatrix} 0 & 1 & 0 \end{pmatrix} \symbf{\beta}$
-  - Fitted value, given that $\symbf{x}_{[i]}' = \begin{pmatrix} 1 & x_{i1} & x_{i2} \end{pmatrix}'$:
-    - $\hat{y}_i = \begin{pmatrix} 1 & x_{i1} & x_{i2} \end{pmatrix} \symbf{\beta} = \symbf{x}_{[i]}'\symbf{\beta}$
+  - Mean response, given that $\symbf{x}_{[i]}' = \begin{pmatrix} 1 & x_{i1} & x_{i2} \end{pmatrix}$:
+    - $E(Y_i \mid \symbf{X}) = \begin{pmatrix} 1 & x_{i1} & x_{i2} \end{pmatrix} \symbf{\beta} = \symbf{x}_{[i]}'\symbf{\beta}$
 
 # We already know their distribution, right? {.smaller}
 
@@ -257,7 +257,7 @@ $$
 - From which we can get the $100(1-\alpha)\%$ confidence interval as
 
 $$
-\ell' \hat{\symbf{\beta}} \pm z_{\alpha/2} \sqrt{\sigma^2 \ell' (\symbf{X}'\symbf{X})^{-1} \ell}
+\ell' \hat{\symbf{\beta}} \pm z_{1-\alpha/2} \sqrt{\sigma^2 \ell' (\symbf{X}'\symbf{X})^{-1} \ell}
 $$
 
 \pause
@@ -266,13 +266,23 @@ $$
 
 # Simulation: coverage of confidence interval {.smaller}
 
+```{r}
+#| echo: false
+X_full <- model.matrix(fit)
+C_full <- solve(crossprod(X_full))
+var_beta_tv_known <- 4 * C_full["spend_tv", "spend_tv"]
+ci_beta_tv_known <- coef(fit)[["spend_tv"]] +
+  c(-1, 1) * qnorm(0.975) * sqrt(var_beta_tv_known)
+```
 
-- In the advertising dataset, $\symbf{\beta}_{\mathrm{TV}}=2$ and $\sigma^2=4$.
-- Using the previous results, we can work out that $\hat{\beta}_{\mathrm{TV}} \sim \mathcal{N}(2, 0.16)$.
-- A 95% confidence interval is then given by $2 \pm 1.96 \times \sqrt{0.16} = \left(1.216, 2.874\right)$.
+- In the advertising data-generating process, $\beta_{\mathrm{TV}}=2$ and $\sigma^2=4$.
+- Given the design matrix, $\hat{\beta}_{\mathrm{TV}} \sim \mathcal{N}\left(2, `r signif(var_beta_tv_known, 3)`\right)$.
+- For the sample above, if $\sigma^2$ were known, a 95% confidence interval would be
+  $\hat{\beta}_{\mathrm{TV}} \pm 1.96\sqrt{`r signif(var_beta_tv_known, 3)`}
+  = \left(`r signif(ci_beta_tv_known[1], 4)`, `r signif(ci_beta_tv_known[2], 4)`\right)$.
 
-- If our confidence intervals are valid, then they should contain the true value of $\beta_{\mathrm{TV}}$ 95% of the time.
-- However, if we estimate $\sigma^2$ from the data and simply plug that into the normal-distribution based confidence interval, we obtain a lower coverage than 95%.
+- If our confidence intervals are valid, then they should contain the true value of $\beta_{\mathrm{TV}}$ 95% of the time over repeated samples.
+- However, if we estimate $\sigma^2$ from the data and simply plug that estimate into the normal-distribution-based confidence interval, we obtain coverage below 95%.
 
 # Simulation: coverage of confidence interval {.smaller}
 
@@ -293,19 +303,42 @@ C_mat_33 <- C_mat[3, 3]
 
 - Now, we simulate the coverage of the confidence interval for $\beta_{\mathrm{TV}}$:
 
+
 ```{r}
+#| echo: false
+path_beta_z <- projr::projr_path_get(
+  "cache", "w3", "SlidesRegW3S1ConfInt", "beta_tv_contained_z.rds"
+)
+if (!file.exists(path_beta_z)) {
+  set.seed(3)
+  beta_tv_contained_z <- replicate(1e4, {
+    sim_tbl <- ad_tbl_few_x |>
+      dplyr::mutate(
+        revenue = spend_tv * 2 + rnorm(10, mean = 10, sd = 2)
+      )
+    fit <- lm(revenue ~ spend_radio + spend_tv, data = sim_tbl)
+    confint_vec <- coef(fit)[["spend_tv"]] +
+      c(-1, 1) * qnorm(0.975) * summary(fit)$sigma * sqrt(C_mat_33)
+    2 > confint_vec[1] & 2 < confint_vec[2]
+  })
+  saveRDS(beta_tv_contained_z, path_beta_z)
+} else {
+  beta_tv_contained_z <- readRDS(path_beta_z)
+}
+```
+
+```{r}
+#| eval: false
+#| echo: true
 set.seed(3)
 beta_tv_contained_z <- replicate(1e4, {
-  # simulate response, and then fit model
   sim_tbl <- ad_tbl_few_x |>
     dplyr::mutate(
       revenue = spend_tv * 2 + rnorm(10, mean = 10, sd = 2)
     )
   fit <- lm(revenue ~ spend_radio + spend_tv, data = sim_tbl)
-  # plug estimated sigma into standard normal-based confidence interval
-  confint_vec <- coef(fit)[[3]] +
+  confint_vec <- coef(fit)[["spend_tv"]] +
     c(-1, 1) * qnorm(0.975) * summary(fit)$sigma * sqrt(C_mat_33)
-  # check if true value is contained
   2 > confint_vec[1] & 2 < confint_vec[2]
 })
 ```
@@ -322,7 +355,6 @@ signif(mean(beta_tv_contained_z) * 1e2, 4)
 
 - To obtain a valid confidence interval, we need to adjust for the uncertainty in estimating $\sigma^2$.
 - We obtain a test statistic that does not include $\sigma^2$, and find its distribution.
-- To do so, we divide by $\sqrt{\frac{(n - k)s^2}{\sigma^2}}$ to obtain what looks like a $t$-distributed random variable.
 - First, we note that a $t_f$-distributed random variable can be expressed as
 
 $$
@@ -333,41 +365,46 @@ where $Z \sim \mathcal{N}(0, 1)$ and $V \sim \chi^2_{f}$ are independent.
 
 # Obtaining a valid confidence interval
 
-- We then have that
+- To complete the numerator, we set
 
 $$
-\frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{\sigma \sqrt{\ell' \symbf{C} \ell}} \sim \mathcal{N}(0, \symbf{I})
+Z = \frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{\sigma \sqrt{\ell' \symbf{C} \ell}} \sim \mathcal{N}(0, 1).
 $$
 
-- Since $\frac{(n - k)s^2}{\sigma^2} \sim \chi^2_{n-k}$, we have that
+- Since $\frac{(n - k)s^2}{\sigma^2} \sim \chi^2_{n-k}$, we can set
 
 $$
-\frac{\frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{\sigma \sqrt{\ell' \symbf{C} \ell}}}{\sqrt{\frac{(n - k)s^2}{\sigma^2(n-k)}}} 
+\sqrt{V/f}=\sqrt{\frac{(n - k)s^2}{\sigma^2}\mathbin{\Big/}(n-k)}=\sfrac{s}{\sigma}
+$$
+
+- to obtain
+
+$$
+\frac{Z}{\sqrt{V/f}} = \frac{\frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{\sigma \sqrt{\ell' \symbf{C} \ell}}}{\sfrac{s}{\sigma}} 
 =
-\frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{s\sqrt{\ell' \symbf{C} \ell}}
+\frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{s\sqrt{\ell' \symbf{C} \ell}}.
 $$
-
-- appears to be $t_{n-k}$-distributed.
-- However, we need to show that the numerator and denominator are independent.
 
 # Independence of $\hat{\symbf{\beta}}$ and $s^2$
 
-- See theorems 6 and 10 in `SlidesRegW3S1AdditionalProofs.qmd` for the proof.
+- $\frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{s\sqrt{\ell' \symbf{C} \ell}}$ appears to be $t_{n-k}$-distributed.
+- However, we need to show that the numerator and denominator are independent.
+- See `RegNotesProof.pdf` for the demonstration of this, firstly `Independence of a linear form and a quadratic form` and then `Independence of̂ `$\hat{\beta}$ `and` $𝑠^2$.
 
 # Example highlighting the importance of independence
 
 - Suppose we construct the following silly attempt at a $t$ statistic:
   - Let $Z \sim \mathcal{N}(0, 1)$
   - We then need some $V \sim \chi^2_1$. $Z^2$ is $\chi^2_1$-distributed, so let's pick it!
-  - Then we have that $T = \frac{Z}{\sqrt{Z^2}} = \frac{Z}{|Z|} = \text{sign}(Z)$, which takes values -1 or 1 and is clearly not $\chi^2_1$ distributed.
+  - Then we have that $T = \frac{Z}{\sqrt{Z^2}} = \frac{Z}{|Z|} = \text{sign}(Z)$, which takes values -1 or 1 and is clearly not $t_1$-distributed.
 
 # Confidence intervals for quantities of interest
 
-- We can now obtain confidence intervals for $\hat{\beta}_i$ and $\hat{y}_i$:
-  - $\hat{\beta}_i: \beta_i \in \hat{\beta}_i \pm t_{\alpha/2} s \sqrt{C_{(i+1)(i+1)}}$
-    - Set $\ell = \begin{pmatrix} 0 & 0 & \ldots & 1 & \ldots & 0 \end{pmatrix}$, where $i+1$th entry is 1.
-    - Note: We use i+1 instead of i as typically the first index corresponds to the intercept, $\beta_0$. 
-  - $\hat{y}_i: y_i \in \hat{y}_i \pm t_{\alpha/2} s \sqrt{\symbf{x}_{[i]}' \symbf{C} \symbf{x}_{[i]}}$
+- We can now obtain confidence intervals for an individual coefficient and for a mean response:
+  - $\beta_i \in \hat{\beta}_i \pm t_{1-\alpha/2,\,n-k} s \sqrt{C_{(i+1)(i+1)}}$
+    - Set $\ell = \begin{pmatrix} 0 & 0 & \ldots & 1 & \ldots & 0 \end{pmatrix}'$, where the $i+1$th entry is 1.
+    - We use $i+1$ instead of $i$ as the first index typically corresponds to the intercept, $\beta_0$.
+  - $\symbf{x}_{[i]}'\symbf{\beta} \in \symbf{x}_{[i]}'\hat{\symbf{\beta}} \pm t_{1-\alpha/2,\,n-k} s \sqrt{\symbf{x}_{[i]}' \symbf{C} \symbf{x}_{[i]}}$
     - Set $\ell = \symbf{x}_{[i]}$, for $\symbf{x}_{[i]}'$ the $i$th row of the design matrix.
 
 # Simulation: coverage of confidence interval {.smaller}
@@ -375,18 +412,40 @@ $$
 - To demonstrate the improved coverage of the confidence interval for $\beta_{\mathrm{TV}}$, we re-simulate:
 
 ```{r}
+#| echo: false
+path_beta_t <- projr::projr_path_get(
+  "cache", "w3", "SlidesRegW3S1ConfInt", "beta_tv_contained_t.rds"
+)
+if (!file.exists(path_beta_t)) {
+  set.seed(3)
+  beta_tv_contained_t <- replicate(1e3, {
+    sim_tbl <- ad_tbl_few_x |>
+      dplyr::mutate(
+        revenue = spend_tv * 2 + rnorm(10, mean = 10, sd = 2)
+      )
+    fit <- lm(revenue ~ spend_radio + spend_tv, data = sim_tbl)
+    confint_vec <- coef(fit)[["spend_tv"]] +
+      c(-1, 1) * qt(0.975, 10 - 3) * summary(fit)$sigma * sqrt(C_mat_33)
+    2 > confint_vec[1] & 2 < confint_vec[2]
+  })
+  saveRDS(beta_tv_contained_t, path_beta_t)
+} else {
+  beta_tv_contained_t <- readRDS(path_beta_t)
+}
+```
+
+```{r}
+#| eval: false
+#| echo: true
 set.seed(3)
 beta_tv_contained_t <- replicate(1e3, {
-  # simulate response, and then fit model
   sim_tbl <- ad_tbl_few_x |>
     dplyr::mutate(
       revenue = spend_tv * 2 + rnorm(10, mean = 10, sd = 2)
     )
-  fit <- lm(revenue ~ spend_tv + spend_radio, data = sim_tbl)
-  # plug estimated sigma into standard normal-based confidence interval
-  confint_vec <- coef(fit)[[2]] +
+  fit <- lm(revenue ~ spend_radio + spend_tv, data = sim_tbl)
+  confint_vec <- coef(fit)[["spend_tv"]] +
     c(-1, 1) * qt(0.975, 10 - 3) * summary(fit)$sigma * sqrt(C_mat_33)
-  # check if true value is contained
   2 > confint_vec[1] & 2 < confint_vec[2]
 })
 ```
@@ -409,7 +468,8 @@ signif(mean(beta_tv_contained_t) * 1e2, 4)
 - The coverage is given by
 
 $$
-P(z^{\alpha/2} < \frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{s\sqrt{\ell' \symbf{C} \ell}} < z^{1-\alpha/2}) = P(z^{\alpha/2} < t_{n-k} < z^{1-\alpha/2}).
+P\left(-z_{1-\alpha/2} < \frac{\ell' \hat{\symbf{\beta}} - \ell' \symbf{\beta}}{s\sqrt{\ell' \symbf{C} \ell}} < z_{1-\alpha/2}\right)
+= P\left(-z_{1-\alpha/2} < T_{n-k} < z_{1-\alpha/2}\right).
 $$
 
 # Exact calculation: coverage of confidence interval {.smaller}
@@ -417,11 +477,11 @@ $$
 - Using `R` to compute this when $n=10$, $k=3$ and $\alpha = 0.05$:
 
 ```{r}
-# probability of being less than z^{0.975}:
+# probability of being less than z_{0.975}:
 p_lt_0975 <- pt(qnorm(0.975), 10 - 3)
-# probability of being less than z^0.025:
+# probability of being less than z_{0.025}:
 p_lt_0025 <- pt(qnorm(0.025), 10 - 3)
-# differnce between the two
+# difference between the two
 ((p_lt_0975 - p_lt_0025) * 1e2) |> signif(3)
 ```
 
@@ -430,18 +490,19 @@ p_lt_0025 <- pt(qnorm(0.025), 10 - 3)
 # Interpreting Confidence Interval
 
 - A confidence interval provides a range of plausible values for the parameter being estimated (e.g., regression coefficients).
-- *Individual regression parameters*: If the confidence interval includes zero, it means that no relationship is plausible
-- *Fited values*: Confidence interval represents uncertainty in predicting the average response for given predictor values.
+- *Individual regression parameters*: If the confidence interval includes zero, then a zero coefficient is among the values compatible with the data and model.
+- *Mean responses*: The confidence interval represents uncertainty in estimating the average response for given predictor values.
 - One may comment on whether the confidence interval is narrow or wide, with exactly what this means depending on the context.
 
 # Reporting Confidence Intervals
 
-- When discussing the estimated effect of a parameter in the text of your report, include the confidence interval, e.g. "The estimated effect of TV advertising on sales is 0.6 (95% CI: 0.4, 0.8), suggesting a positive impact".
+- When discussing an estimated regression coefficient in the text of your report, include the confidence interval, e.g. "Holding radio advertising constant, a one-unit increase in TV advertising is associated with an estimated 0.6-unit increase in sales (95% CI: 0.4, 0.8)."
 - Often, the level ("95%") is omitted if it is the standard 95% level. In addition, if you specify somewhere in the text that the values in brackets are the confidence interval, you can omit the "CI" part, too.
 
 # Limitations
 
 - Confidence intervals do not imply the probability that the true parameter lies within the interval (i.e., it's not "the probability that $\beta$ is in the interval").
   - $\beta$ is fixed, so it either lies in the interval or it doesn't!
+- The 95% refers to the procedure: over repeated samples, 95% of intervals constructed in this way would contain the true parameter, under the model assumptions.
 - The inference is only as good as the model assumptions, so always check the validity of the underlying assumptions (we'll get to this).
 
