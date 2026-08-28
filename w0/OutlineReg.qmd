@@ -1,6 +1,6 @@
 ---
 title: "Regression content and competencies"
-subtitle: "STA2005S, Weeks 1-3"
+subtitle: "STA2005S, Weeks 1-4"
 author: "Department of Statistical Sciences, University of Cape Town"
 date: today
 format:
@@ -28,7 +28,7 @@ This guide provides you with:
 2. sources for content; and
 3. where to find the most relevant practice material.
 
-This release covers the first three weeks of the regression section.
+This release covers the first four weeks of the regression section.
 Later weeks
 will be added to the rendered document as they are taught.
 The main regression
@@ -85,6 +85,7 @@ These will be moved to `Proofs/Videos` as well.
 | 1 | Introduction, prerequisites and the multivariate normal distribution | Understand what regression is for and master the probability and linear-algebra results used in later regression derivations. |
 | 2 | The general linear model | Formulate the model in matrix form, estimate its parameters, and derive the principal sampling distributions. |
 | 3 | Confidence intervals and hypothesis tests | Use the sampling distributions from Week 2 to quantify uncertainty and test hypotheses about regression effects. |
+| 4 | ANOVA and model checking | Relate ANOVA to regression, handle categorical explanatory variables, and assess whether a fitted linear model is adequate. |
 
 # Proofs and derivations
 
@@ -155,6 +156,14 @@ In `SlidesRegW3S2HypTestV2.pdf`:
   coefficients;
 - derivation of the $F$ statistic for testing several linear combinations
   simultaneously.
+
+## Week 4
+
+In `SlidesRegW4L2ModelChecking.pdf`:
+
+- the joint distribution of the residauls
+
+- the result $\sum_i h_i=k$, and hence average leverage $k/n$.
 
 # Week 1: Introduction and multivariate normal foundations
 
@@ -575,6 +584,191 @@ After the move, they will be in `Proofs/Videos` with the other proof videos.
     particularly important for practice.
 - Week 3 practical: to be added.
 
+# Week 4: ANOVA and model checking
+
+## What you need to know
+
+### One-way ANOVA
+
+Given the one-way model
+
+$$
+Y_{ij}=\mu+\alpha_i+e_{ij},
+$$
+
+you should be able to state the equal-means null hypothesis. Know the test statistic
+
+$$
+F
+=
+\frac{SS_A/(a-1)}{SSE/(n-a)}
+=
+\frac{MS_A}{MSE}
+\sim F_{a-1,n-a}
+$$
+
+under the null hypothesis.
+
+I won't ask you to read an ANOVA table.
+
+### Categorical explanatory variables in regression
+
+A categorical explanatory variable with $a$ levels can be represented in a
+regression model using indicator variables. You should understand:
+
+- why fitting an intercept and one indicator for every level makes the columns
+  of the design matrix linearly dependent;
+- why reference coding uses $a-1$ indicator variables when an intercept is
+  present;
+- how to identify the reference level from the model specification or output;
+- how to construct the corresponding rows of the design matrix;
+- that the intercept is the mean for the reference level when the other
+  explanatory variables are zero;
+- that each category coefficient is a difference from the reference level,
+  holding any other explanatory variables fixed.
+- how to change the reference level by adjusting the design matrix.
+- that a simultaneous hypothesis test is required when there are more than two levels to test whether a given factor has an effect on the response.
+
+### ANOVA as regression and the joint $F$ test
+
+For a reference-coded one-way ANOVA, equality of all group means is equivalent
+to testing that all $a-1$ category coefficients are zero. Write this as
+
+$$
+H_0:\mathbf L\boldsymbol\beta=\mathbf 0,
+$$
+
+where $\mathbf L$ selects the category coefficients.
+
+You should understand that the same one-way ANOVA hypothesis can be tested in
+three equivalent ways:
+
+1. directly using $SS_A$ and $SSE$;
+2. using the general $\mathbf L\boldsymbol\beta$ regression $F$ test from Week
+   3; or
+3. by comparing a reduced and an unrestricted model.
+
+For nested reduced and unrestricted models, know
+
+$$
+F
+=
+\frac{
+  (SSE_R-SSE_{UR})/(k_{UR}-k_R)
+}{
+  SSE_{UR}/(n-k_{UR})
+}
+\sim
+F_{k_{UR}-k_R,\,n-k_{UR}}
+$$
+
+under the null hypothesis.
+
+You should be able to construct the reduced and unrestricted models for a
+stated hypothesis.
+
+You should also know that the overall $F$ statistic in `summary(lm(...))` tests
+whether all non-intercept coefficients are zero.
+
+### Two-way ANOVA and order of terms
+
+You do not need to know this part of the slides.
+
+### $R^2$ and adjusted $R^2$
+
+For a least-squares model with an intercept,
+
+$$
+R^2
+=
+\frac{SSR}{SST}
+=
+1-\frac{SSE}{SST}.
+$$
+
+You should understand $R^2$ as the proportion of the observed variation in the
+response explained by the fitted regression. You should also know that adding
+explanatory variables cannot reduce $R^2$.
+
+You do not need to know that calculation formula on slide 5.
+
+Adjusted $R^2$ is
+
+$$
+R^2_{\mathrm{adj}}
+=
+1-
+\frac{SSE/(n-k)}{SST/(n-1)}
+=
+1-(1-R^2)\frac{n-1}{n-k}.
+$$
+
+It penalises the addition of regression parameters and can decrease when a weak
+term is added. Neither $R^2$ nor adjusted $R^2$ replaces checking whether the
+model assumptions are plausible.
+
+### Model assumptions and graphical checks
+
+- Why we use residuals rather than errors (errors are unobserved)
+- What model assumptions we actually need to check
+
+You should be
+able to use:
+
+- a residuals-versus-fitted plot to look for a systematic mean pattern and
+  non-constant spread;
+- a histogram or density plot of residuals to look for strong skewness or
+  unusual tails;
+- a normal Q-Q plot, which should be approximately linear when normality is a
+  reasonable approximation (and to interpret the bands as a rough guide to sampling variability);
+- the Shapiro-Wilk and Kolmogorov-Smirnov tests as formal checks of normality (and that SW is more sensitive than KS, and that both are sensitive to sample size);,
+  including stating the null hypothesis and interpreting the p-value.
+
+Graphical and formal checks should be considered together.\
+A formal test does
+not tell you whether a deviation is important for the analysis by itsel.
+
+### Residuals and outliers
+
+- Know the distribution of the residuals.
+- Distinguish between raw residuals, internally studentised residuals and externally studentised residuals.
+- Formulae for internally and externally studentised residuals, and how to convert from internally to externally studentised residuals.
+- You do not need to know the distribution of the externally-studentised residauls, nor do you need to know how to derive the shortcut in working out the externally studentised residuals with one model fit (just that you can do it, and what the formula is). You also do not need to knwo thresholds.
+- What the difference fundamentally is between internally and externally studentised residuals, and why and when that matters.
+- How to practically handle large outliers
+- How to interpret a plot of studentised residuals against index
+
+### Leverage and influential observations
+
+- Difference between outliers and high-leverage points.
+- Definition of leverage
+- That leverage is the extent to which an observation predicts itself
+- Why high leverage tends to reduce the residual
+- Cook-type diagnostics combine residual size and leverage (do not need to know their formulae; you do not have to remember anything about the modified Cook's distance, and I also won't ask you about Cook's distance that uses s^2 estimated without the current observation)
+- How to practically handle large leverage points
+- How to interpret a plot of leverage/Cook's distance against index
+
+## Content
+
+1. `SlidesRegW4S1ANOVA.pdf`.
+2. `SlidesRegW4L2ModelChecking.pdf`.
+3. Relevant parts of `NotesReg.pdf`, as a broader reference.
+
+## Practice material
+
+- `QARegW4S1ANOVA.pdf`
+- `QARegW4S2ModelChecking.pdf`
+- `QuestionBankRegQuestions.pdf`, especially:
+  - `Week Four > ANOVA > Categorical Variables`;
+  - `Week Four > Model checking > Introduction`;
+  - `Week Four > Model checking > Leverage`.
+- `PracReg4Questions.qmd`, which gives practice constructing and implementing
+  joint $F$ tests, including the overall test and tests for subsets of
+  coefficients.
+
+The practical focuses mainly on the regression $F$ test.
+Use the Week Four question-bank and Q&A material for the categorical-variable and model-checking parts that it does not cover.
+
 <!--
 ===============================================================================
 FUTURE CONTENT: RETAINED IN THE SOURCE BUT HIDDEN FROM ALL RENDERED OUTPUTS
@@ -586,17 +780,6 @@ having to reconstruct it.
 
 
 # Future proofs and derivations
-
-## Week 4
-
-- `SlidesRegW4L2ModelChecking.pdf`
-  - Variance and covariance of the residuals, page 16.
-  - Average leverage, page 29.
-- [ANOVA slides](../w4/SlidesRegW4S1ANOVA.qmd)
-  - One-way ANOVA decomposition and its $F$ statistic.
-  - The full-versus-reduced-model $F$ statistic.
-  - Equivalence between an ANOVA test and a regression test of the corresponding
-    coefficient restrictions.
 
 ## Week 5
 
@@ -615,166 +798,6 @@ having to reconstruct it.
   - Why component variances equal the corresponding eigenvalues.
 
 # Future weekly content
-
-# Week 4: ANOVA and model checking
-
-## ANOVA and categorical variables
-
-### Content
-
-- One-way ANOVA:
-  - model formulation;
-  - group means and the overall mean;
-  - between-group, within-group and total sums of squares;
-  - degrees of freedom;
-  - mean squares;
-  - the $F=\mathrm{MSA}/\mathrm{MSE}$ statistic.
-- ANOVA as a special case of the general linear model.
-- Representing categorical variables:
-  - indicator or dummy variables;
-  - reference levels;
-  - why an intercept plus one indicator for every level is not full rank;
-  - alternative codings;
-  - models without an intercept.
-- Constructing and interpreting a design matrix containing numerical and
-  categorical explanatory variables.
-- Interpreting the intercept and category coefficients.
-- The effect of centring or recoding a variable on coefficient
-  interpretations.
-- Confidence intervals and tests for:
-  - one category difference;
-  - a comparison between non-reference categories;
-  - an average or other linear combination of effects;
-  - the overall effect of a multi-level categorical variable.
-- Reduced and full models.
-- Nested-model $F$ test:
-
-  $$
-  F =
-  \frac{(\mathrm{SSE}_R-\mathrm{SSE}_F)/(k_F-k_R)}
-       {\mathrm{SSE}_F/(n-k_F)}.
-  $$
-
-- Relationship among:
-  - the classical ANOVA $F$ test;
-  - the general $\mathbf{L}\boldsymbol{\beta}$ test;
-  - `anova()` comparisons of nested models;
-  - the overall $F$ statistic in `summary(lm(...))`.
-- Sequential sums of squares and why order can matter in an ANOVA table.
-- Partial effects in multiple regression and the sense in which regression
-  treats each variable as if it entered last.
-
-### Competencies
-
-You should be able to:
-
-- calculate a one-way ANOVA table from first principles;
-- translate an ANOVA model into regression notation;
-- select a reference level and construct the corresponding design matrix;
-- identify the reference level from model output;
-- interpret coefficients under different codings;
-- express substantive comparisons as linear hypotheses;
-- construct reduced and full models for a question about one or more terms;
-- calculate and interpret a nested-model $F$ test;
-- identify the null hypothesis of the overall `summary(lm(...))` $F$ test;
-- distinguish a single coefficient test from an overall test of a multi-level
-  factor.
-
-## Model fit, assumptions and influential observations
-
-### Content
-
-- Coefficient of determination:
-  - formula using sums of squares;
-  - interpretation and range;
-  - relationship to
-    $\operatorname{Cor}(\mathbf{Y},\hat{\mathbf{Y}})^2$;
-  - why it cannot decrease when variables are added.
-- Adjusted $R^2$:
-  - formula;
-  - motivation;
-  - advantages and limitations.
-- Revisiting the model assumptions:
-  - correct mean structure and linearity;
-  - constant variance;
-  - independence;
-  - normality;
-  - adequate design and absence of exact collinearity.
-- Graphical checks:
-  - residuals versus fitted values;
-  - residuals versus explanatory variables;
-  - residual histogram or density;
-  - normal Q-Q plot and its simulation band.
-- Formal normality tests:
-  - Shapiro-Wilk;
-  - Kolmogorov-Smirnov;
-  - null hypotheses, relative power, and limitations compared with graphical
-    methods.
-- Residual distribution:
-
-  $$
-  \hat{\boldsymbol{\epsilon}}
-  =(\mathbf{I}-\mathbf{H})\mathbf{Y},
-  \qquad
-  \operatorname{Var}(\hat{\boldsymbol{\epsilon}})
-  =\sigma^2(\mathbf{I}-\mathbf{H}).
-  $$
-
-- Internally and externally studentised residuals:
-  - formulae;
-  - motivation;
-  - interpretation and useful thresholds.
-- Leverage:
-  - diagonal elements $h_{ii}$ of the hat matrix;
-  - bounds, total and average leverage;
-  - why high leverage is a property of the explanatory-variable values;
-  - effect of leverage on fitted values and residual variance.
-- Outlying, high-leverage and influential observations.
-- Cook's distance:
-  - purpose;
-  - components;
-  - interpretation and common threshold.
-
-### Competencies
-
-You should be able to:
-
-- calculate and interpret $R^2$ and adjusted $R^2$;
-- identify likely assumption violations from plots and applied descriptions;
-- combine graphical and formal evidence without over-interpreting either;
-- derive and use the variance of an individual residual;
-- distinguish errors, raw residuals and studentised residuals;
-- distinguish an outlier from a high-leverage or influential observation;
-- calculate leverage, average leverage and studentised residuals;
-- explain why residual variance decreases as leverage increases;
-- identify potentially influential observations and recommend sensible
-  follow-up rather than automatically deleting them;
-- give an integrated judgement about whether a fitted model is adequate.
-
-## Sources
-
-- [ANOVA slides](../w4/SlidesRegW4S1ANOVA.qmd)
-- [ANOVA demonstration](../w4/DemW4S1ANOVA.qmd)
-- [ANOVA Q&A](../w4/QARegW4S1ANOVA.qmd)
-- [Model-checking facts](../w4/FactsRegW4S2ModelChecking.qmd)
-- [Model-checking Q&A](../w4/QARegW4S2ModelChecking.qmd)
-- [Additional Q&A on normality tests](../w4/QARegW4S2ExtraKSSW.qmd)
-
-## Practice and assessment emphasis
-
-- [Question bank: Week Four](../question_bank/QuestionBankRegQuestions.qmd)
-  - categorical-variable coding and interpretation;
-  - outliers and leverage;
-  - leverage calculations and properties.
-- [Previous ANOVA and model-checking tutorial](../_reference/eval/2025/TutRegW5ANOVAModelCheckingQuestions.qmd)
-- [Previous Week 5 practical](../_reference/eval/2025/PracRegW5Questions.qmd)
-  - ANOVA from first principles;
-  - R functions;
-  - model validation.
-- [Previous regression test](../_reference/eval/2025/TestRegQuestions.qmd)
-  - design matrices, reference levels and coefficient interpretation;
-  - linear-combination and factor tests;
-  - residual plots, normality, leverage and influence.
 
 # Week 5: Matching the model to the data
 
