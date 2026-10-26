@@ -15,12 +15,15 @@
 ^_tmp$
 ^_output/
 ^_output$
+^_projr-localonly\.yml$
 ^_projr\.yml$
 ^README\.Rmd$
 ^BUILDLOG\.md$
 ^CHANGELOG\.md$
 ^LICENSE\.md$
 ^manifest\.csv$
+^_extensions/
+^_extensions$
 # End of projr section
 
 ^LICENSE\.md$

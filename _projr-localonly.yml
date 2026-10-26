@@ -1,0 +1,41 @@
+build:
+  git: false
+  restrictions:
+    not_behind: false
+  scripts:
+  - w0/NotesRegProofs.qmd
+  - w0/NotesRegW1S0Prereq.qmd
+  - w0/OutlineReg.qmd
+  - w0/QARegNotesW1S0Prereq.qmd
+  - w1/DemRegW1S2IntroEndToEnd.qmd
+  - w1/DemRegW1S2IntroScenario.qmd
+  - w1/QARegSlidesW1S1Intro.qmd
+  - w1/QARegSlidesW1S3IntroMVN.qmd
+  - w1/SlidesRegW1S1Intro.qmd
+  - w1/SlidesRegW1S3MVN.qmd
+  - w2/DocsRegW2GLMMultiple.qmd
+  - w2/QARegW2S1LM.qmd
+  - w2/SlidesRegW2S1LM.qmd
+  - w3/QARegW3S1ConfInt.qmd
+  - w3/QARegW3S2HypTest.qmd
+  - w3/SlidesRegW3S1ConfIntOrig.qmd
+  - w3/SlidesRegW3S2HypTest.qmd
+  - w4/DemW4S1ANOVA.qmd
+  - w4/FactsRegW4S2ModelChecking.qmd
+  - w4/QARegW4S1ANOVA.qmd
+  - w4/QARegW4S2ExtraKSSW.qmd
+  - w4/QARegW4S2ModelChecking.qmd
+  - w4/SlidesRegW4S1ANOVA.qmd
+  - w4/SlidesRegW4S2ModelChecking.qmd
+  - w5/FactsRegW5S1Transformations.qmd
+  - w5/FactsRegW5S2Prediction.qmd
+  - w5/QARegW5S1Transformations.qmd
+  - w5/QARegW5S2Prediction.qmd
+  - w5/SlidesRegW5S1Transformations.qmd
+  - w5/SlidesRegW5S2Interactions.qmd
+  - w5/SlidesRegW5S3Prediction.qmd
+  - w5/SlidesRegW5S4GM.qmd
+  - w6/FactsRegW6S1Boot.qmd
+  - w6/FactsRegW6S2PCA.qmd
+  - w6/SlidesRegW6S1Boot.qmd
+  - w6/SlidesRegW6S2PCA.qmd

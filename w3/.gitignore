@@ -6,3 +6,5 @@
 .quarto/**/*
 _tmp/**/*
 _tmp
+/.quarto/
+**/*.quarto_ipynb

@@ -4,7 +4,7 @@ subtitle: "Slide deck II: Interactions"
 author: "Miguel Rodo"
 institute: University of Cape Town
 date: today
-bibliography: zotero.bib
+bibliography: ../zotero.bib
 format:
   beamer:
     embed-resources: true
@@ -243,7 +243,7 @@ For a two-level factor with reference group A:
 $$
 Y_i
 =
-\beta_0+eta_Xx_i+eta_GI(G_i=B)+
+\beta_0+\beta_Xx_i+\beta_GI(G_i=B)+
 \beta_{X:G}x_iI(G_i=B)+e_i.
 $$
 
@@ -529,7 +529,7 @@ $$
 \begin{aligned}
 E(Y\mid X,G)
 &=
-\beta_0+eta_XX\\
+\beta_0+\beta_XX\\
 &\quad+
 \sum_{j=2}^a\beta_{G_j}I(G=j)
 +

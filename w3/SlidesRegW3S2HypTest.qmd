@@ -302,6 +302,7 @@ individual_table <- data.frame(
   ),
   check.names = FALSE
 )
+rownames(individual_table) <- gsub("_", "\\_", rownames(individual_table), fixed = TRUE)
 knitr::kable(
   individual_table,
   format = "latex",

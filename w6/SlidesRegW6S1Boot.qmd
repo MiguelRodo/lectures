@@ -4,7 +4,7 @@ subtitle: "Slide deck I: Bootstrapping"
 author: "Yovna Junglee, edited by Miguel Rodo"
 institute: University of Cape Town
 date: today
-bibliography: zotero.bib
+bibliography: ../zotero.bib
 nocite: |
   @hesterberg14
 format:
@@ -153,9 +153,10 @@ This depends on strong structure:
 set.seed(6062)
 sampling_tbl <- map_dfr(c(5, 20, 100), function(n) {
   means <- replicate(5000, mean(rexp(n, rate = 1)))
+  standardised_means <- sqrt(n) * (means - 1)
   tibble(
     n = paste0("n = ", n),
-    z = sqrt(n) * (means - 1)
+    z = standardised_means
   )
 })
 
@@ -567,7 +568,11 @@ method_tbl <- tibble(
     "needs a standard error inside each bootstrap sample"
   )
 )
-knitr::kable(method_tbl, escape = FALSE)
+knitr::kable(
+  method_tbl,
+  col.names = gsub("_", "\\_", names(method_tbl), fixed = TRUE),
+  escape = FALSE
+)
 ```
 
 # Small samples are still small samples

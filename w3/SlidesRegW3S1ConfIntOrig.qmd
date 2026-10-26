@@ -3,6 +3,7 @@ title: "Regression Week III: Inference"
 subtitle: "Confidence Intervals"
 author: "Miguel Rodo (with credit to Yovna Junglee)"
 institute: "Department of Statistical Sciences - University of Cape Town"
+output-file: SlidesRegW3S1ConfInt.pdf
 format:
   beamer:
     embed-resources: true

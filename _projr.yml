@@ -11,6 +11,13 @@ directories:
   docs:
     path: docs
 build:
+  scripts:
+  - w0/OutlineReg.qmd
+  - w0/NotesRegW1S0Prereq.qmd
+  - w0/QARegNotesW1S0Prereq.qmd
+  - w1/SlidesRegW1S1Intro.qmd
+  - w1/SlidesRegW1S3MVN.qmd
+  - w1/QARegSlidesW1S3IntroMVN.qmd
   github:
     slides-2026-sta2005s:
       content:
@@ -19,13 +26,5 @@ build:
       - raw-content
       - docs
       - output
-  scripts:
-  - w0/OutlineReg.qmd
-  - w0/NotesRegW1S0Prereq.qmd
-  - w0/QARegNotesW1S0Prereq.qmd
-  - w1/SlidesRegW1S1Intro.qmd
-  - w1/SlidesRegW1S3MVN.qmd
-  - w1/QARegSlidesW1S3IntroMVN.qmd
 dev:
   scripts: w2/SlidesRegW2S1LM.qmd
-

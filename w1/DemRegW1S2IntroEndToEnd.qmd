@@ -116,7 +116,7 @@ First we read our data in:
 
 ```{r}
 # Read in the raw data from the Advertising.csv file
-data_raw_ad <- read.csv("_raw_data/Advertising.csv", header = TRUE)
+data_raw_ad <- read.csv("../_raw_data/Advertising.csv", header = TRUE)
 
 # Convert the raw data to a tibble for easier manipulation
 data_raw_ad <- as_tibble(data_raw_ad)

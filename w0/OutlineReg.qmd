@@ -1,18 +1,22 @@
 ---
 title: "Regression content and competencies"
-subtitle: "STA2005S, Weeks 1-4"
+subtitle: "STA2005S, Weeks 1-6"
 author: "Department of Statistical Sciences, University of Cape Town"
 date: today
 format:
   typst:
     toc: true
     toc-depth: 2
+    include-in-header:
+      text: |
+        #show outline: set text(size: 10pt)
     number-sections: true
     papersize: a4
     margin:
       x: 25mm
       y: 25mm
 fontsize: 11pt
+tbl-colwidths: [10, 90]
 lang: en-GB
 execute:
   echo: false
@@ -22,148 +26,125 @@ execute:
 
 # Introduction
 
-This guide provides you with:
-
-1. a detailed outline of course content;
-2. sources for content; and
-3. where to find the most relevant practice material.
-
-This release covers the first four weeks of the regression section.
-Later weeks
-will be added to the rendered document as they are taught.
-The main regression
-notes, `NotesReg.pdf`, remain a key source throughout and should be used
-alongside the slides and practice material.
+This guide outlines the regression topics, their sources and the relevant
+practice material for the examination. It covers all six weeks.
+Bootstrapping is not included this year.
 
 ::: {.callout-important title="Disclaimer"}
-Whilst this document is detailed, its intention is not to be absolutely exhaustive.
-In general, the course outline, notes, slides, what we discuss in class and any practice material define the boundaries of what is examinable.
-If you are unsure whether a topic is examinable, please ask.
+This outline is detailed, but not exhaustive. The course outline, notes,
+slides, class discussions and practice material define the examinable
+content, subject to the exclusions below. If you are unsure, please ask.
 :::
 
 ## Recommended study route
 
-After each lecture or slide deck:
+Review the relevant slides and notes, then use the matching Q&A to check
+recall and understanding. Work through tutorials, practicals and question-bank
+questions for sustained practice. Past papers provide further practice if
+time permits.
 
-1. Review the relevant section of the slides and notes.
-2. Complete the matching Q&A document to check factual understanding.
-3. Work through the relevant tutorial questions.
-4. Work through the relevant practical questions, which also assist in practising the theory.
-5. Use the question bank for additional practice.
-6. If time, work through any past papers.
-
-The Q&A documents are primarily for recall and understanding.
-Tutorials,
-question-bank questions, practicals and past assessments provide more sustained
-problem-solving practice.
-Past papers may be useful, but I try to make the other practice material as comprehensive as possible.
+If you cannot understand a concept, remember a Q&A answer or see why
+something is true, construct a simple but non-trivial example and work
+through it.
 
 ## Where the resources are on Amathuba
 
-All resources for the regression module are relative to `Module 1: Regression`.
+Locations below are relative to `Module 1: Regression`.
 
-- Notes:
-  - Main: `Notes/NotesReg.pdf`.
-  - Collected proofs and proof-specific slides: `Proofs/Notes/slides`.
-  - Pre-recorded proof videos: `Proofs/Videos`.
-  - Linear model (W2) notes: `2. General linear models/Notes/NotesRegW2GLM.pdf`.
-- Slides and matching Q&A documents: the `Slides` folder under the relevant
-  week's tab.
-- Tutorials: `Practice material/Tutorials`.
-- Question bank: `Practice material/Question bank`.
-- Practicals: `Practice material/Practicals`.
+- Main notes: `Notes/NotesReg.pdf`.
+- Week 2 notes: `NotesRegW2LM.pdf`.
+- Collected proofs: `Proofs/Notes/slides/NotesRegProofs.pdf`.
+- Week 2 additional proof slides:
+  `Proofs/Notes/slides/SlidesRegW2L1GLMProofsAdditional.pdf`.
+- Further Week 3 proof slides: `SlidesRegW3L1AdditionalProofs.pdf`.
+- Proof videos: `Proofs/Videos`.
 - Lecture recordings: `Lecture Videos/2026 Lecture Videos`.
+- Slides, Q&A, tutorials and practicals: use the resource names listed by week
+  below. Q&A and practical questions are generally HTML resources.
+- Question bank: `QuestionBankRegQuestions.pdf` and the matching solutions.
 
-A few Week 3 proof videos are still under
-`3. Confidence Intervals and Hypothesis testing/Proof videos`.
-These will be moved to `Proofs/Videos` as well.
+The MLE likelihood proof remains examinable despite there being no newly
+recorded proof video for it. Use the written proof in `NotesRegProofs.pdf`.
 
 ## Weekly overview
 
-| Week | Main theme | Main objective |
-|---|---|---|
-| 1 | Introduction, prerequisites and the multivariate normal distribution | Understand what regression is for and master the probability and linear-algebra results used in later regression derivations. |
-| 2 | The general linear model | Formulate the model in matrix form, estimate its parameters, and derive the principal sampling distributions. |
-| 3 | Confidence intervals and hypothesis tests | Use the sampling distributions from Week 2 to quantify uncertainty and test hypotheses about regression effects. |
-| 4 | ANOVA and model checking | Relate ANOVA to regression, handle categorical explanatory variables, and assess whether a fitted linear model is adequate. |
+| Week | Main topics |
+|---|---|
+| 1 | Regression, prerequisites and the multivariate normal distribution |
+| 2 | General linear model, estimation and sampling distributions |
+| 3 | Confidence intervals and hypothesis tests |
+| 4 | ANOVA, categorical variables and model checking |
+| 5 | Transformations, interactions, prediction, variable selection and Gauss-Markov |
+| 6 | Principal components analysis |
 
 # Proofs and derivations
 
-The proofs below are not separate from the rest of the course.
-You should know
-what each result says, why its assumptions matter, and how the result is used in
-later regression arguments.
+Know what each result says, its conditions and how it is used. The required
+proofs and derivations are listed here; knowing a result does not always mean
+that its proof is required.
 
 ## Week 1
 
 In `SlidesRegW1S3MVN.pdf`:
 
-- a linear transformation of a multivariate normal random vector is
-  multivariate normal;
-- a selected component or partition of a multivariate normal random vector is
-  multivariate normal;
-- if $\mathbf Z\sim N_k(\mathbf 0,\mathbf I)$ and $\mathbf A$ is symmetric and
-  idempotent, then
-
-  $$
-  \mathbf Z^T\mathbf A\mathbf Z
-  \sim \chi^2_{\operatorname{rank}(\mathbf A)}.
-  $$
+- linear transformations of multivariate normal vectors;
+- selected components and partitions of multivariate normal vectors;
+- the chi-squared result for a standard-normal quadratic form with a symmetric
+  idempotent matrix.
 
 ## Week 2
 
-In `2. General linear models/Notes/NotesRegW2GLM.pdf`:
+In `NotesRegW2LM.pdf`:
 
-- derivation of the least-squares estimator
+- derivation of the least-squares estimator.
 
-  $$
-  \hat{\boldsymbol\beta}
-  =(\mathbf X^T\mathbf X)^{-1}\mathbf X^T\mathbf Y.
-  $$
+In `NotesRegProofs.pdf` and `SlidesRegW2L1GLMProofsAdditional.pdf`:
 
-In `Proofs/Notes/slides/NotesRegProofs.pdf` and the accompanying
-proof-specific slides in `Proofs/Notes/slides`:
+- the likelihood/log-likelihood derivation of the MLE of the regression
+  coefficients, and why it equals OLS under normal errors;
+- the distribution of the regression-coefficient estimator;
+- the MLE of the error variance and its bias;
+- unbiasedness of $s^2$ and its scaled chi-squared distribution.
 
-- why the least-squares estimator is also the maximum-likelihood estimator under normally distributed errors;
-- derivation of the distribution of $\hat{\boldsymbol\beta}$;
-- derivation of the maximum-likelihood estimator of $\sigma^2$;
-- bias of $\hat\sigma^2_{\mathrm{MLE}}$ and unbiasedness of
-  $s^2=\mathrm{SSE}/(n-k)$;
-- derivation of
+In `TutReg1IntroMVNQuestions.pdf`, Questions Six and Seven:
 
-  $$
-  \frac{(n-k)s^2}{\sigma^2}\sim\chi^2_{n-k};
-  $$
+- the chi-squared quadratic-form result using the inverse covariance matrix
+  of an MVN vector, and its transformed version.
 
-- a useful alternative expression for $s^2$.
+The alternative computational expression for $s^2$ is not required.
 
 ## Week 3
 
-In `Proofs/Notes/slides/NotesRegProofs.pdf`:
+In `NotesRegProofs.pdf` and `SlidesRegW3L1AdditionalProofs.pdf`:
 
-- independence of a linear form and a quadratic form of a multivariate normal
-  random vector, under the stated conditions;
-- independence of $\hat{\boldsymbol\beta}$ and $s^2$.
+- the general linear-form/quadratic-form independence theorem and its
+  proof: the taught standard-normal-vector result for $B\mathbf Y$ and
+  $\mathbf Y^TA\mathbf Y$, with fixed symmetric idempotent $A$ and $BA=0$.
+  Use the conditions made explicit in the consolidated proof.
+- Know and use the independence of $\hat{\boldsymbol\beta}$ and $s^2$
+  under the normal linear model. Its specific proof is not required.
+  This does not exclude the general independence proof above.
 
-In `SlidesRegW3S1ConfInt.pdf`:
+In `SlidesRegW3S1ConfInt.pdf` and `SlidesRegW3S2HypTestV2.pdf`:
 
-- derivation of the $t$-distributed pivot used for inference about a single
-  linear combination $\boldsymbol\ell^T\boldsymbol\beta$.
-
-In `SlidesRegW3S2HypTestV2.pdf`:
-
-- derivation of the $t$ statistic for testing a single linear combination of
-  coefficients;
-- derivation of the $F$ statistic for testing several linear combinations
-  simultaneously.
+- derivation of the $t$ statistic used for confidence intervals and
+  hypothesis tests for a linear combination of regression coefficients;
+- the $F$ statistic for several simultaneous linear hypotheses.
 
 ## Week 4
 
 In `SlidesRegW4L2ModelChecking.pdf`:
 
-- the joint distribution of the residauls
+- the joint distribution of the residuals;
+- the sum of leverages and hence the average leverage.
 
-- the result $\sum_i h_i=k$, and hence average leverage $k/n$.
+## Week 5
+
+In `SlidesRegW5S3Prediction.pdf`:
+
+- the prediction-error distribution and prediction-interval derivation.
+
+The **Gauss-Markov proof is not examinable**.
 
 # Week 1: Introduction and multivariate normal foundations
 
@@ -171,86 +152,49 @@ In `SlidesRegW4L2ModelChecking.pdf`:
 
 ### Purpose and scope of regression
 
-You should understand:
-
-- the roles of the response variable, explanatory variables and random error;
-- what a regression model provides beyond an overall mean, a correlation
-  coefficient or a two-sample comparison;
-- the distinction between simple and multiple linear regression;
-- the main assumptions of a linear regression model at a conceptual level
+- Response, explanatory variables and random error.
+- What regression adds to an overall mean, correlation or two-sample
+  comparison; simple versus multiple regression.
+- The main model assumptions at a conceptual level.
 
 ### Statistical-distribution prerequisites
 
-You should be able to move between the normal, chi-squared, $t$ and $F$
-distributions.
+- Normal, chi-squared, $t$ and $F$ distributions and the relationships between
+  them.
 
 ### Linear-algebra prerequisites
 
-You should be comfortable with:
-
-- matrix dimensions, rows, columns, transposes and multiplication;
-- block matrices and block-matrix multiplication;
-- orthogonality and orthonormality;
-- trace, including the cyclic trace property;
-- rank, full column/row rank and linear dependence;
-- invertibility;
-- eigenvalues and eigenvectors;
-- symmetric, positive-definite, positive-semidefinite and idempotent matrices;
-- orthonormal eigendecompositions of symmetric matrices;
-- the fact that the eigenvalues of an idempotent matrix are zero or one.
+- Dimensions, rows, columns, transposes, multiplication and block matrices.
+- Orthogonality and orthonormality; trace and the cyclic trace property.
+- Rank, linear dependence, full rank and invertibility.
+- Eigenvalues, eigenvectors and orthonormal eigendecompositions.
+- Symmetric, positive-definite, positive-semidefinite and idempotent matrices;
+  the eigenvalues of an idempotent matrix.
 
 ### The multivariate normal distribution
 
-You should know and be able to use:
+- The univariate/MVN densities, mean, covariance matrix and MGF.
+- Affine transformations; selection matrices, components and partitions.
+- Standardised and symmetric-idempotent quadratic-form chi-squared results.
+- Stating and applying these results, including their conditions.
 
-- the univariate and multivariate normal density functions;
-- the mean vector and variance-covariance matrix of a multivariate normal random
-  vector;
-- the moment-generating function of a multivariate normal random vector;
-- the theorem for a linear transformation
-
-  $$
-  \mathbf Y=\mathbf A\mathbf X+\mathbf b;
-  $$
-
-- selection matrices for extracting individual components and subvectors;
-- the result that partitions and marginal subvectors of a multivariate normal
-  random vector are themselves multivariate normal;
-- chi-squared quadratic-form results, including
-
-  $$
-  (\mathbf X-\boldsymbol\mu)^T
-  \boldsymbol\Sigma^{-1}
-  (\mathbf X-\boldsymbol\mu)
-  \sim\chi^2_p
-  $$
-
-  when $\mathbf X\sim N_p(\boldsymbol\mu,\boldsymbol\Sigma)$ with invertible
-  $\boldsymbol\Sigma$;
-- the symmetric-idempotent quadratic-form theorem stated in the proofs section.
-
-::: {.callout-note title="What is not required for assessment"}
-You are not required to derive the multivariate normal density, derive its MGF,
-or determine the mean and covariance matrix by manipulating the exponent of an
-MVN density.
-You must nevertheless be able to **state and use** the density, MGF
-and associated theorems.
-:::
+You do not need to derive the MVN density or MGF, or recover the mean and
+covariance by manipulating the density's exponent. You must be able to
+**state and use** them.
 
 ## Content
 
-1. Relevant parts of `NotesReg.pdf`, which are reproduced in `Prerequisites/NotesRegW1S0Prereq.pdf`.
+1. `NotesRegW1S0Prereq.html` and the relevant parts of `NotesReg.pdf`.
 2. `SlidesRegW1S1Intro.pdf`.
 3. `SlidesRegW1S3MVN.pdf`.
 
 ## Practice material
 
-- `QARegNotesW1S0Prereq.pdf`
-- `QARegSlidesW1S3IntroMVN.pdf`
+- `QARegNotesW1S0Prereq.html`
+- `QARegSlidesW1S3IntroMVN.html`
 - `TutReg1IntroMVNQuestions.pdf`
-- `QuestionBankRegQuestions.pdf`, namely:
-  - `Prerequisites > Linear algebra`.
-- `PracReg1Questions.qmd`
+- Question bank: `Prerequisites > Linear algebra`.
+- `PracReg1Questions.html`
 
 # Week 2: The general linear model
 
@@ -258,137 +202,54 @@ and associated theorems.
 
 ### Model formulation
 
-The general linear model is
-
-$$
-\mathbf Y=\mathbf X\boldsymbol\beta+\boldsymbol\epsilon,
-$$
-
-where $\mathbf Y$ is an $n\times1$ response vector, $\mathbf X$ is a fixed
-$n\times k$ design matrix, $\boldsymbol\beta$ is a $k\times1$ parameter vector,
-and $\boldsymbol\epsilon$ is an $n\times1$ random error vector.
-
-You should understand:
-
-- scalar, vector and matrix representations of the same model;
-- which quantities are observed, fixed, unknown or random;
-- the role of the intercept column;
-- how numerical explanatory variables enter the design matrix;
-- the assumptions
-
-  $$
-  \operatorname E(\boldsymbol\epsilon)=\mathbf 0,
-  \qquad
-  \operatorname{Var}(\boldsymbol\epsilon)=\sigma^2\mathbf I;
-  $$
-
-- the additional normality assumption when exact finite-sample distributions
-  are required;
-- why $\mathbf X$ must have full column rank and why $n>k$;
-- simple and multiple linear regression as special cases.
+- Scalar, vector and matrix forms; dimensions and the roles of observed,
+  fixed, unknown and random quantities.
+- Design matrices, intercepts and numerical explanatory variables; simple and
+  multiple regression as special cases.
+- Zero-mean errors, common variance and uncorrelated errors; the additional
+  normality assumption for exact finite-sample inference.
+- Full column rank, positive error variance and the requirement $n>k$ for
+  residual-variance estimation and inference.
 
 ### Estimating the regression coefficients
 
-You should know:
-
-- ordinary least squares as minimisation of
-
-  $$
-  \operatorname{RSS}(\boldsymbol\beta)
-  =(\mathbf Y-\mathbf X\boldsymbol\beta)^T
-   (\mathbf Y-\mathbf X\boldsymbol\beta);
-  $$
-
-- the normal equations;
-- the estimator
-
-  $$
-  \hat{\boldsymbol\beta}
-  =(\mathbf X^T\mathbf X)^{-1}\mathbf X^T\mathbf Y;
-  $$
-
-- why normality is not needed to obtain the least-squares formula;
-- why the same estimator is the MLE under normal errors;
-- unbiasedness and the variance-covariance matrix of the estimator;
-- under normal errors,
-
-  $$
-  \hat{\boldsymbol\beta}
-  \sim
-  N_k\left(
-    \boldsymbol\beta,
-    \sigma^2(\mathbf X^T\mathbf X)^{-1}
-  \right);
-  $$
-
-- distributions of individual coefficients and linear functions such as
-  $\boldsymbol\ell^T\hat{\boldsymbol\beta}$ and
-  $\mathbf L\hat{\boldsymbol\beta}$;
-- how the scale and mutual correlation of explanatory variables affect the
-  precision and covariance of coefficient estimators.
+- OLS as minimising the residual sum of squares; normal equations and the
+  estimator formula.
+- The distinction between the OLS derivation and the normal-likelihood
+  derivation; normality is not needed for OLS itself.
+- Unbiasedness, covariance and the normal-model sampling distribution.
+- Individual coefficients and linear combinations, including vector-valued
+  combinations.
+- Effects of explanatory-variable scale and correlation on estimator precision
+  and covariance.
 
 ### Fitted values, residuals and residual variance
 
-You should know:
-
-- fitted values
-
-  $$
-  \hat{\mathbf Y}=\mathbf X\hat{\boldsymbol\beta};
-  $$
-
-- residuals
-
-  $$
-  \hat{\boldsymbol\epsilon}
-  =\mathbf Y-\hat{\mathbf Y};
-  $$
-
-- the difference between an unobserved error and an observed residual;
-- the hat matrix
-
-  $$
-  \mathbf H
-  =\mathbf X(\mathbf X^T\mathbf X)^{-1}\mathbf X^T;
-  $$
-
-- the residual-maker matrix $\mathbf M=\mathbf I-\mathbf H$ and the projection
-  interpretation of $\mathbf H\mathbf Y$ and $\mathbf M\mathbf Y$;
-- the residual sum of squares and the estimators
-
-  $$
-  \hat\sigma^2_{\mathrm{MLE}}
-  =\frac{\mathrm{SSE}}{n},
-  \qquad
-  s^2=\frac{\mathrm{SSE}}{n-k};
-  $$
-
-- why the MLE is biased, why $s^2$ is unbiased, and the role of residual degrees
-  of freedom;
-- the chi-squared distribution of the scaled unbiased variance estimator.
+- Fitted values and residuals; errors versus residuals.
+- Hat and residual-maker matrices, their properties and projection
+  interpretations.
+- SSE, the MLE of the error variance, $s^2$, bias and residual degrees of
+  freedom.
+- The scaled chi-squared variance result.
 
 ### Interpretation
 
-A coefficient in a multiple regression model describes the change in the
-conditional mean response associated with a one-unit increase in its
-explanatory variable, **holding the other explanatory variables fixed**.
-The interpretation must include the units, the comparison and the fact that it is a
-mean effect under the model.
+- Coefficient interpretation in context and units, as a mean effect holding
+  other explanatory variables fixed.
 
 ## Content
 
-1. `2. General linear models/Notes/NotesRegW2GLM.pdf`, which expands the material from `SlidesRegW2S1LM.pdf` from simple linear regression through the projection-matrix results.
-2. `Proofs/Notes/slides/NotesRegProofs.pdf` and the proof-specific slides in `Proofs/Notes/slides` for the proofs collected separately from the main notes. Where a proof is included there, favour that version in tests and exams.
+1. `NotesRegW2LM.pdf` and `SlidesRegW2S1LM.pdf`.
+2. `NotesRegProofs.pdf` and `SlidesRegW2L1GLMProofsAdditional.pdf` for the
+   required proofs. Favour the consolidated written proof where available.
 3. Relevant parts of `NotesReg.pdf`, as a broader reference.
-4. `SlidesRegW2S1LM.pdf`.
 
 ## Practice material
 
-- `QARegSlidesW2S1LM.pdf`
+- `QARegW2S1GLM.html`
 - `TutReg2LMQuestions.pdf`
-- `QuestionBankRegQuestions.pdf`, especially
-  - `Week Two > Model formulation`
-- `PracReg2Questions.pdf`
+- Question bank: `Week Two > Model formulation`.
+- `PracReg2Questions.html`
 
 # Week 3: Confidence intervals and hypothesis tests
 
@@ -396,357 +257,143 @@ mean effect under the model.
 
 ### Why we need inference
 
-The estimates from Week 2 vary from sample to sample.
-You should understand the distinction between:
-
-- a point estimate, which gives one estimated value;
-- a confidence interval, which describes the values compatible with the data
-  and model at a stated confidence level;
-- a hypothesis test, which asks whether the data provide enough evidence to
-  reject a specified null hypothesis.
-
-For inference about the regression coefficients, write
-
-$$
-\mathbf C=(\mathbf X^T\mathbf X)^{-1}.
-$$
-
-You should know that
-
-$$
-\boldsymbol\ell^T\hat{\boldsymbol\beta}
-\sim
-N\left(
-  \boldsymbol\ell^T\boldsymbol\beta,
-  \sigma^2\boldsymbol\ell^T\mathbf C\boldsymbol\ell
-\right)
-$$
-
-for any fixed vector $\boldsymbol\ell$ of the appropriate length.
-You should also know why replacing the unknown $\sigma^2$ by $s^2$ means that
-we use a $t$ rather than a normal distribution for exact finite-sample
-inference under the normal-error model.
-
-The key result is
-
-$$
-\frac{
-  \boldsymbol\ell^T\hat{\boldsymbol\beta}
-  -\boldsymbol\ell^T\boldsymbol\beta
-}{
-  s\sqrt{\boldsymbol\ell^T\mathbf C\boldsymbol\ell}
-}
-\sim t_{n-k}.
-$$
-
-This uses the Week 2 chi-squared result for $s^2$ together with the independence
-of $\hat{\boldsymbol\beta}$ and $s^2$.
+- Sampling variability; estimates, confidence intervals and hypothesis tests.
+- Sampling distributions of coefficient estimates and linear combinations.
+- Why exact normal-model inference uses a $t$ distribution when the error
+  variance is estimated, and the role of the coefficient/variance-estimator
+  independence result. Know that result; its specific proof is not required.
 
 ### Confidence intervals
 
-You should be able to construct and interpret the $100(1-\alpha)\%$ confidence
-interval
-
-$$
-\boldsymbol\ell^T\hat{\boldsymbol\beta}
-\pm
-t_{n-k}^{1-\alpha/2}
-s\sqrt{\boldsymbol\ell^T\mathbf C\boldsymbol\ell}.
-$$
-
-Important special cases include:
-
-- an individual regression coefficient;
-- a difference or other linear combination of coefficients;
-- the conditional mean response at specified explanatory-variable values,
-  obtained by setting $\boldsymbol\ell$ equal to the relevant design row.
-
-You should be able to move between a substantive comparison and the required
-$\boldsymbol\ell$ vector.
-You should also be able to calculate a confidence interval from R output or
-from the quantities in the formula above.
-
-For interpretation and reporting, you should understand:
-
-- what it means for zero to lie inside or outside a coefficient confidence
-  interval;
-- what it means for a confidence interval to contain, or not contain, negligible or practically important values;
-- that the interval concerns the uncertainty in the estimated mean response or
-  regression effect, not the spread of individual future observations.
+- Intervals for individual coefficients, differences and other linear
+  combinations, including a mean response at specified explanatory values.
+- Constructing the contrast vector or design row, and calculating intervals
+  from formulae or regression output.
+- Interpreting zero, negligible values and practically important effects in
+  an interval; uncertainty in a mean/effect versus spread of observations.
 
 ### Nominal and empirical coverage
 
-You should understand the difference between nominal and empirical coverage.
-In particular, you should be able to explain why simply inserting $s$ into a
-normal-based interval gives intervals that are too narrow in small samples,
-and why the $t$ interval corrects for the extra uncertainty from estimating
-$\sigma^2$.
+- Nominal versus empirical coverage.
+- Why substituting $s$ into a normal interval is inadequate in small samples,
+  and how the $t$ interval accounts for estimating the variance.
 
 ### Hypothesis tests for one linear combination
 
-For a null hypothesis of the form
-
-$$
-H_0:\boldsymbol\ell^T\boldsymbol\beta=c,
-$$
-
-you should be able to use
-
-$$
-t=
-\frac{
-  \boldsymbol\ell^T\hat{\boldsymbol\beta}-c
-}{
-  s\sqrt{\boldsymbol\ell^T\mathbf C\boldsymbol\ell}
-}
-\sim t_{n-k}
-$$
-
-under $H_0$.
-
-You should be able to:
-
-- state the null and alternative hypotheses;
-- calculate the test statistic and its degrees of freedom;
-- calculate or obtain the p-value for a one-sided or two-sided test;
-- make the test decision at a stated significance level;
-- relate a two-sided test to the corresponding confidence interval.
-
-An individual coefficient test is a special case obtained by choosing
-$\boldsymbol\ell$ to select that coefficient.
-You should also be able to test comparisons such as the difference between two
-regression coefficients.
+- Formulating a single linear null hypothesis, including coefficient and
+  coefficient-difference tests.
+- Contrast vectors, estimates, standard errors, $t$ statistics and degrees of
+  freedom; one-sided/two-sided p-values and test decisions.
+- The connection between a two-sided test and its confidence interval.
 
 ### Hypothesis tests for several linear combinations
 
-Some questions involve several restrictions at once. Write these as
-
-$$
-H_0:\mathbf L\boldsymbol\beta=\mathbf c,
-$$
-
-where $\mathbf L$ has $q$ linearly independent rows.
-You should know the test statistic
-
-$$
-F=
-\frac{
-  (\mathbf L\hat{\boldsymbol\beta}-\mathbf c)^T
-  (\mathbf L\mathbf C\mathbf L^T)^{-1}
-  (\mathbf L\hat{\boldsymbol\beta}-\mathbf c)
-}{q s^2}
-\sim F_{q,n-k}
-$$
-
-under $H_0$.
-
-You should be able to construct $\mathbf L$ for the stated hypothesis and use
-the resulting $F$ statistic. This includes tests that several specified
-coefficients are zero, including the usual test that all slope coefficients
-are zero.
-Separate $t$ tests do not answer the same joint question.
+- Formulating simultaneous restrictions with a contrast matrix whose rows are
+  linearly independent.
+- The joint $F$ statistic, degrees of freedom and interpretation.
+- Specified subsets of coefficients and all slopes as special cases;
+  why separate $t$ tests do not answer a joint hypothesis.
 
 ### Interpretation and reporting
 
-You should understand that:
-
-- a small p-value is evidence against the null hypothesis, under the model;
-- a p-value is not the probability that the null hypothesis is true;
-- a large p-value does not establish that the effect is zero;
-- the estimated effect and its uncertainty matter as well as statistical
-  significance;
-- statistical significance does not by itself imply a practically important
-  effect.
-
-When reporting a regression effect, state the effect in context and give its
-uncertainty. For a multiple regression coefficient, make clear that the
-comparison holds the other explanatory variables fixed.
+- P-values as evidence under the model; neither the probability that the null
+  is true nor proof of no effect when large.
+- Effect size, uncertainty, statistical versus practical significance, and
+  reporting comparisons in context while holding other variables fixed.
 
 ## Content
 
 1. `SlidesRegW3S1ConfInt.pdf`.
 2. `SlidesRegW3S2HypTestV2.pdf`.
-3. `Proofs/Notes/slides/NotesRegProofs.pdf`, especially the results on independence of a linear form and a quadratic form. You do not not need to be able to show the independence of $\hat{\boldsymbol\beta}$ and $s^2$.
-4. The proof-specific slides in `Proofs/Notes/slides` where relevant.
-5. Relevant parts of `NotesReg.pdf`, as a broader reference.
-
-Until the remaining Week 3 proof videos are moved, find them under
-`3. Confidence Intervals and Hypothesis testing/Proof videos`.
-After the move, they will be in `Proofs/Videos` with the other proof videos.
+3. `NotesRegProofs.pdf` and `SlidesRegW3L1AdditionalProofs.pdf`, subject to the
+   proof/result distinction in the proofs section above.
+4. Relevant parts of `NotesReg.pdf`, as a broader reference.
 
 ## Practice material
 
-- `QARegW3S1ConfInt.pdf`
-- `QARegW3S2HypTest.pdf`
-- `TutReg3Inference.pdf`
-- `QuestionBankRegQuestions.pdf`, especially all the `Week 3` sections.
-  - The tutorial for this week is light, and so the question bank will be 
-    particularly important for practice.
-- Week 3 practical: to be added.
+- `QARegW3S1ConfInt.html`
+- `QARegW3S2HypTest.html`
+- `TutReg3Questions.pdf`
+- Question bank: all `Week Three` sections. This is particularly important
+  practice because the tutorial is light.
+- `PracReg3Questions.html`
 
 # Week 4: ANOVA and model checking
 
-## What you need to know
+## ANOVA
 
 ### One-way ANOVA
 
-Given the one-way model
+- Normally distributed, equal-variance, zero-mean errors.
+- Group effects as differences from the overall mean; the sum-to-zero
+  constraint and why it is needed.
+- How sum-to-zero group-effect coding differs from reference-group coding.
 
-$$
-Y_{ij}=\mu+\alpha_i+e_{ij},
-$$
-
-you should be able to state the equal-means null hypothesis. Know the test statistic
-
-$$
-F
-=
-\frac{SS_A/(a-1)}{SSE/(n-a)}
-=
-\frac{MS_A}{MSE}
-\sim F_{a-1,n-a}
-$$
-
-under the null hypothesis.
-
-I won't ask you to read an ANOVA table.
+You do not need to write down the ANOVA model formula or read an ANOVA table.
 
 ### Categorical explanatory variables in regression
 
-A categorical explanatory variable with $a$ levels can be represented in a
-regression model using indicator variables. You should understand:
+- Indicator coding, reference levels, constructing design matrices and
+  interpreting coefficients.
+- Why an intercept plus an indicator for every level gives dependence;
+  coding with and without an intercept.
+- Changing the reference level and interpreting the resulting coefficients.
 
-- why fitting an intercept and one indicator for every level makes the columns
-  of the design matrix linearly dependent;
-- why reference coding uses $a-1$ indicator variables when an intercept is
-  present;
-- how to identify the reference level from the model specification or output;
-- how to construct the corresponding rows of the design matrix;
-- that the intercept is the mean for the reference level when the other
-  explanatory variables are zero;
-- that each category coefficient is a difference from the reference level,
-  holding any other explanatory variables fixed.
-- how to change the reference level by adjusting the design matrix.
-- that a simultaneous hypothesis test is required when there are more than two levels to test whether a given factor has an effect on the response.
+### ANOVA as regression and $F$ tests
 
-### ANOVA as regression and the joint $F$ test
-
-For a reference-coded one-way ANOVA, equality of all group means is equivalent
-to testing that all $a-1$ category coefficients are zero. Write this as
-
-$$
-H_0:\mathbf L\boldsymbol\beta=\mathbf 0,
-$$
-
-where $\mathbf L$ selects the category coefficients.
-
-You should understand that the same one-way ANOVA hypothesis can be tested in
-three equivalent ways:
-
-1. directly using $SS_A$ and $SSE$;
-2. using the general $\mathbf L\boldsymbol\beta$ regression $F$ test from Week
-   3; or
-3. by comparing a reduced and an unrestricted model.
-
-For nested reduced and unrestricted models, know
-
-$$
-F
-=
-\frac{
-  (SSE_R-SSE_{UR})/(k_{UR}-k_R)
-}{
-  SSE_{UR}/(n-k_{UR})
-}
-\sim
-F_{k_{UR}-k_R,\,n-k_{UR}}
-$$
-
-under the null hypothesis.
-
-You should be able to construct the reduced and unrestricted models for a
-stated hypothesis.
-
-You should also know that the overall $F$ statistic in `summary(lm(...))` tests
-whether all non-intercept coefficients are zero.
+- Constructing the $MS_A/MS_E$ statistic for the equal-means test with
+  sum-to-zero group effects, including its degrees of freedom.
+- The general regression $F$ test, including simultaneous tests for a factor
+  with more than two levels and the overall regression test.
+- Reduced/unrestricted models and the nested-model $F$ test.
 
 ### Two-way ANOVA and order of terms
 
-You do not need to know this part of the slides.
+You do not need this part of the slides.
+
+## Model checking
 
 ### $R^2$ and adjusted $R^2$
 
-For a least-squares model with an intercept,
+- Definitions, calculation and interpretation for a model with an intercept.
+- Their behaviour when terms are added.
 
-$$
-R^2
-=
-\frac{SSR}{SST}
-=
-1-\frac{SSE}{SST}.
-$$
-
-You should understand $R^2$ as the proportion of the observed variation in the
-response explained by the fitted regression. You should also know that adding
-explanatory variables cannot reduce $R^2$.
-
-You do not need to know that calculation formula on slide 5.
-
-Adjusted $R^2$ is
-
-$$
-R^2_{\mathrm{adj}}
-=
-1-
-\frac{SSE/(n-k)}{SST/(n-1)}
-=
-1-(1-R^2)\frac{n-1}{n-k}.
-$$
-
-It penalises the addition of regression parameters and can decrease when a weak
-term is added. Neither $R^2$ nor adjusted $R^2$ replaces checking whether the
-model assumptions are plausible.
+You do not need the alternative calculation formula for $R$ on slide 5 of the
+published model-checking slides.
 
 ### Model assumptions and graphical checks
 
-- Why we use residuals rather than errors (errors are unobserved)
-- What model assumptions we actually need to check
-
-You should be
-able to use:
-
-- a residuals-versus-fitted plot to look for a systematic mean pattern and
-  non-constant spread;
-- a histogram or density plot of residuals to look for strong skewness or
-  unusual tails;
-- a normal Q-Q plot, which should be approximately linear when normality is a
-  reasonable approximation (and to interpret the bands as a rough guide to sampling variability);
-- the Shapiro-Wilk and Kolmogorov-Smirnov tests as formal checks of normality (and that SW is more sensitive than KS, and that both are sensitive to sample size);,
-  including stating the null hypothesis and interpreting the p-value.
-
-Graphical and formal checks should be considered together.\
-A formal test does
-not tell you whether a deviation is important for the analysis by itsel.
+- Which error assumptions to check, and why we inspect residuals.
+- Residuals versus fitted values and time/observation order; histograms,
+  densities and normal Q-Q plots/bands; recognising patterns, non-constant
+  spread, unusual tails and dependence.
+- Shapiro-Wilk and Kolmogorov-Smirnov normality checks: null hypotheses,
+  p-value interpretation, sample-size sensitivity and limitations.
+- Using graphical and formal evidence together.
 
 ### Residuals and outliers
 
-- Know the distribution of the residuals.
-- Distinguish between raw residuals, internally studentised residuals and externally studentised residuals.
-- Formulae for internally and externally studentised residuals, and how to convert from internally to externally studentised residuals.
-- You do not need to know the distribution of the externally-studentised residauls, nor do you need to know how to derive the shortcut in working out the externally studentised residuals with one model fit (just that you can do it, and what the formula is). You also do not need to knwo thresholds.
-- What the difference fundamentally is between internally and externally studentised residuals, and why and when that matters.
-- How to practically handle large outliers
-- How to interpret a plot of studentised residuals against index
+- Joint residual distribution and individual residual variances.
+- Raw, internally studentised and externally studentised residuals: their
+  formulae, differences, conversion and when the distinction matters.
+- Interpreting studentised-residual plots and handling large outliers.
+
+You do not need the externally studentised residual distribution, screening
+thresholds, or the derivation of the shortcut using one model fit. Know that
+shortcut's formula and how to use it.
 
 ### Leverage and influential observations
 
-- Difference between outliers and high-leverage points.
-- Definition of leverage
-- That leverage is the extent to which an observation predicts itself
-- Why high leverage tends to reduce the residual
-- Cook-type diagnostics combine residual size and leverage (do not need to know their formulae; you do not have to remember anything about the modified Cook's distance, and I also won't ask you about Cook's distance that uses s^2 estimated without the current observation)
-- How to practically handle large leverage points
-- How to interpret a plot of leverage/Cook's distance against index
+- Outliers and high leverage; the four outlying/non-outlying and
+  high/low-leverage combinations in the question bank.
+- Leverage formula, bounds, sum, average and self-prediction interpretation;
+  intercept-only and saturated models as examples.
+- That leverage depends on the design rather than response size.
+- Interpreting leverage and Cook's-distance plots and handling unusual
+  observations.
+
+You do not need Cook's-distance formulae, the modified Cook's distance, or the
+Cook's-distance version using a variance estimate excluding the observation.
 
 ## Content
 
@@ -756,399 +403,135 @@ not tell you whether a deviation is important for the analysis by itsel.
 
 ## Practice material
 
-- `QARegW4S1ANOVA.pdf`
-- `QARegW4S2ModelChecking.pdf`
-- `QuestionBankRegQuestions.pdf`, especially:
-  - `Week Four > ANOVA > Categorical Variables`;
-  - `Week Four > Model checking > Introduction`;
-  - `Week Four > Model checking > Leverage`.
-- `PracReg4Questions.qmd`, which gives practice constructing and implementing
-  joint $F$ tests, including the overall test and tests for subsets of
-  coefficients.
+- `QARegW4S1ANOVA.html`
+- `QARegW4S2ModelChecking.html`
+- `TutReg4Questions`
+- Question bank: `Week Four > ANOVA > Categorical Variables`, and
+  `Week Four > Model checking > Introduction` and `Leverage`.
+- `PracReg4Questions.html`: joint regression $F$ tests.
+- `PracReg5Questions.html`: categorical coding and ANOVA, despite its number.
 
-The practical focuses mainly on the regression $F$ test.
-Use the Week Four question-bank and Q&A material for the categorical-variable and model-checking parts that it does not cover.
+Use the Q&A and question bank for model-checking practice.
 
-<!--
-===============================================================================
-FUTURE CONTENT: RETAINED IN THE SOURCE BUT HIDDEN FROM ALL RENDERED OUTPUTS
-===============================================================================
+# Week 5: Transformations, interactions and prediction
 
-The material below was present in the fuller six-week outline. It is retained
-here so that it can be reviewed, revised and released in later versions without
-having to reconstruct it.
+## Transformations and interactions
 
+### Matching the model to the data
 
-# Future proofs and derivations
+- Choosing between transforming the response, transforming an explanatory
+  variable, and adding terms; relating the choice to the diagnostic problem.
+- Discretisation and changes to the design matrix.
 
-## Week 5
+### Transforming the response or explanatory variables
 
-- [Prediction and variable selection](../w5/SlidesRegW5S2Prediction.qmd)
-  - Distribution of
-    $Y_f-\hat{Y}_f$ and derivation of the prediction interval.
-- [Gauss-Markov theorem](../w5/SlidesRegW5S3GM.qmd)
-  - Proof that OLS is the best linear unbiased estimator under the
-    Gauss-Markov assumptions.
+- Log/square-root response transformations: motivations, effects on all
+  explanatory-variable relationships, and interpretation on both scales.
+- Back-transformed fitted values versus the original-scale response mean.
+- Transforming explanatory variables; interpretation and the implied
+  relationship on the original scale.
+- Linear regression models with a transformed response.
 
-## Week 6
+### Interaction terms
 
-- [PCA slides](../w6/SlidesRegW6S2PCA.qmd)
-  - Variance-maximising objective for each principal component.
-  - Why the loading vectors are eigenvectors of the covariance matrix.
-  - Why component variances equal the corresponding eigenvalues.
+- Numerical-by-categorical interactions: model form, design matrices,
+  group-specific intercepts/slopes and fitted values; two-level and
+  multi-level factors.
+- Main effects at reference values, differences in slopes, and differences
+  between groups at a specified explanatory-variable value.
+- Appropriate simultaneous hypothesis tests, such as
+  $\beta_1=-\beta_2$ or $\beta_1=\beta_2=0$.
+- Estimates, standard errors, confidence intervals, $t$/$F$ tests and
+  corresponding reduced/unrestricted models.
 
-# Future weekly content
+## Prediction
 
-# Week 5: Matching the model to the data
+### Prediction intervals
 
-## Transformations and additional model terms
+- Mean-response confidence intervals versus individual-response prediction
+  intervals, and choosing the appropriate one.
+- The two sources of uncertainty and independence of future/training errors.
+- Derivation of the prediction interval, including the prediction-error
+  distribution.
+- Interval calculation/interpretation, relative widths, sample-size effects
+  and the position of the new design point.
 
-### Content
+### Model comparison and prediction performance
 
-- Why the original linear model may not match the data:
-  - non-linearity;
-  - non-constant variance;
-  - skewness;
-  - outliers;
-  - missing effect modification.
-- Transforming the response:
-  - common log and square-root transformations;
-  - linearising relationships;
-  - stabilising variance;
-  - reducing skewness and the impact of extreme observations;
-  - consequences for every explanatory-variable relationship;
-  - interpretation on the transformed and original scales.
-- Transforming an explanatory variable:
-  - log, square-root, exponential and square transformations;
-  - correcting a specific non-linear relationship;
-  - why this does not itself fix non-constant residual variance;
-  - interpretation after transforming $X$.
-- Introducing new explanatory variables:
-  - polynomial terms;
-  - discretised versions of a numerical variable;
-  - interactions.
-- Interactions between a numerical and a categorical explanatory variable:
-  - model formula;
-  - design matrix;
-  - fitted lines for each group;
-  - group-specific intercepts and slopes;
-  - differences between groups at a specified value of $X$;
-  - two-level and multi-level factors.
-- Tests involving interactions:
-  - whether slopes differ across groups;
-  - whether $X$ has an effect within a specified group;
-  - whether $X$ has an effect in any group;
-  - whether groups differ at a specified value of $X$;
-  - whether a factor has any effect through either intercepts or slopes.
-
-### Competencies
-
-You should be able to:
-
-- diagnose which aspect of a model a transformation is intended to address;
-- decide whether transforming $Y$, transforming an $X$, or adding model terms
-  is the more targeted response;
-- interpret coefficients on transformed scales and describe the corresponding
-  relationship on the original scale;
-- construct the design matrix for polynomial and interaction models;
-- calculate and plot fitted values for every level of an interacting factor;
-- interpret main effects in the presence of an interaction;
-- calculate group-specific slopes and between-group differences;
-- express each substantive interaction question as one or several linear
-  restrictions and choose a $t$ or $F$ test accordingly;
-- re-check the model after modifying its structure.
-
-## Prediction, variable selection and model performance
-
-### Content
-
-- Conditional mean versus an individual future response.
-- Confidence interval for a mean response versus prediction interval for a new
-  observation.
-- Sources of variability in each interval.
-- Prediction interval:
-
-  $$
-  \hat{Y}_f
-  \pm
-  t_{n-k}^{1-\alpha/2}
-  s\sqrt{
-    1+\mathbf{x}_f'
-    (\mathbf{X}'\mathbf{X})^{-1}
-    \mathbf{x}_f
-  }.
-  $$
-
-- Why prediction intervals are wider than confidence intervals.
-- What happens to each interval as sample size grows.
-- Why interval bands widen away from the centre of the observed design.
-- Motivation for variable selection:
-  - interpretation;
-  - cost of measurement;
-  - prediction accuracy;
-  - bias-variance trade-off.
-- Why exhaustive search is often infeasible.
-- Algorithms:
-  - forward selection;
-  - backward elimination;
-  - stepwise selection.
-- Selection criteria:
-  - AIC;
-  - BIC;
-  - adjusted $R^2$;
-  - balancing fit against model complexity.
-- How the AIC and BIC penalties differ as sample size changes.
-- Limitations of greedy selection algorithms.
-- Why ordinary p-values are not trustworthy after data-driven variable
-  selection without accounting for the selection process.
-- Training and test data:
-  - evaluating prediction on unseen observations;
-  - optimism of training error;
-  - trade-off in choosing the split size;
-  - uncertainty in the fitted model versus uncertainty in estimated test error.
-
-### Competencies
-
-You should be able to:
-
-- derive and calculate a prediction interval;
-- explain every source of uncertainty in a confidence or prediction interval;
-- choose the interval appropriate to an applied decision;
-- describe forward, backward and stepwise selection and identify when each can
-  or cannot be run;
-- calculate and compare AIC and BIC values;
-- explain why a criterion may favour a larger or smaller model;
-- critique inferential claims made after model selection;
-- design a training-test split and explain its competing sources of
-  uncertainty;
-- evaluate predictive performance on unseen data.
+- Motivation, bias-variance trade-off and why exhaustive subset search is
+  often infeasible.
+- Forward, backward and stepwise selection; suitability and limitations.
+- $R^2$, adjusted $R^2$, AIC and BIC as selection criteria; calculating the
+  criteria and comparing models using them.
+- Optimism of in-sample error; training/test roles, predictive performance
+  and the split-size trade-off.
 
 ## Gauss-Markov theorem
 
-### Content
+- Statement and assumptions; meanings of best, linear and unbiased.
+- The comparison class of linear unbiased estimators, and why normality is
+  not required.
+- Applying the assumptions in the bank's `Basics` and `Validity` questions.
 
-- Statement and assumptions of the theorem.
-- Meaning of each word in BLUE:
-  - best;
-  - linear;
-  - unbiased;
-  - estimator.
-- Proof that OLS has the smallest variance among linear unbiased estimators.
-- Normality is not required for the Gauss-Markov result.
-- Difference between:
-  - OLS being BLUE;
-  - OLS being maximum likelihood;
-  - exact normal-theory confidence intervals and tests being valid.
-- Consequences of:
-  - omitted variables correlated with included variables;
-  - non-linearity in the parameters;
-  - non-constant variance;
-  - correlated errors;
-  - biased estimators with smaller variance.
+I keep this section relatively simple. The included question-bank questions
+indicate roughly the upper difficulty expected, and exam questions will be
+quite similar. `Week Five > Gauss-Markov theorem > Deeper Understanding` is
+excluded, and the **Gauss-Markov proof is not examinable**.
 
-### Competencies
+## Content
 
-You should be able to:
+1. `SlidesRegW5S1Transformations.pdf`, including interactions.
+2. `SlidesRegW5S3Prediction.pdf`.
+3. `SlidesRegW5S3GM.pdf`.
+4. Relevant parts of `NotesReg.pdf`, as a broader reference.
 
-- state the Gauss-Markov theorem precisely;
-- identify which assumptions are needed and which are not;
-- explain the comparison class implicit in the word "best";
-- reproduce the proof and explain why the added covariance term is
-  non-negative;
-- determine whether the theorem applies to a proposed model;
-- distinguish low variance from low mean-squared error when bias is present;
-- explain why satisfying the theorem does not establish that a model is
-  scientifically adequate.
+## Practice material
 
-## Sources
+- `QARegW5S1Transformations.html`
+- `QARegW5S2Prediction.html`
+- `TutReg5Questions.pdf`
+- Question bank: `Week Five > Prediction`, `Transformations > Transforming Y
+  or X`, `Transformations > Interaction terms`, and
+  `Gauss-Markov theorem > Basics` and `Validity`.
 
-- [Transformations slides](../w5/SlidesRegW5S1Transformations.qmd)
-- [Transformations facts](../w5/FactsRegW5S1Transformations.qmd)
-- [Transformations Q&A](../w5/QARegW5S1Transformations.qmd)
-- [Prediction and variable-selection slides](../w5/SlidesRegW5S2Prediction.qmd)
-- [Prediction and variable-selection facts](../w5/FactsRegW5S2Prediction.qmd)
-- [Prediction Q&A](../w5/QARegW5S2Prediction.qmd)
-- [Gauss-Markov theorem](../w5/SlidesRegW5S3GM.qmd)
+# Week 6: Principal components analysis
 
-## Practice and assessment emphasis
+## What you need to know
 
-- [Question bank: Week Five](../question_bank/QuestionBankRegQuestions.qmd)
-  - prediction intervals;
-  - variable-selection algorithms and criteria;
-  - post-selection inference;
-  - training-test splits;
-  - response and explanatory-variable transformations;
-  - interaction models, fitted values, contrasts and joint tests;
-  - Gauss-Markov assumptions, meaning and limitations.
-- [Previous assignment](../_reference/eval/2025/AssignmentRegQuestions.qmd)
-  - interaction terms in multiple regression;
-  - comparing a mis-specified linear relationship with an appropriate
-    transformed relationship;
-  - explanatory versus predictive goals.
+### Purpose, scores and loadings
 
-# Week 6: Bootstrapping and principal components analysis
+- PCA's purpose; components, loading vectors and scores.
+- Variance-maximising objectives, unit-length and orthogonality constraints.
+- Centring/scaling and their role in the question-bank example.
 
-## Bootstrapping
+### Eigenvalues, scores and explained variance
 
-### Content
+- Using the given covariance matrix/eigendecomposition to identify loadings,
+  calculate scores and obtain component variances.
+- Uncorrelated components; total variance and individual/cumulative
+  proportions of variance explained.
 
-- Sampling distributions and why they are needed for inference.
-- Limitations of normal and $t$ approximations when the sampling distribution
-  is skewed or otherwise poorly approximated.
-- The central idea of the non-parametric bootstrap:
-  - treat the empirical distribution as an estimate of the population
-    distribution;
-  - sample observations with replacement;
-  - keep each bootstrap sample the same size as the original sample;
-  - recompute the statistic for many bootstrap samples.
-- Why sampling with replacement is essential.
-- Bootstrap estimate of a sampling distribution and standard error.
-- Bootstrap confidence intervals:
-  - percentile interval;
-  - interval using a bootstrap standard error and a theoretical $t$ quantile;
-  - bootstrap-$t$ interval.
-- Which intervals can be asymmetric and where the asymmetry arises.
-- Comparing bootstrap methods with ordinary normal and $t$ intervals.
-- Strengths and limitations:
-  - fewer parametric assumptions;
-  - dependence on the observed sample being representative;
-  - difficulty with very small samples, dependent observations or inappropriate
-    resampling units;
-  - simulation error and the number of bootstrap repetitions.
+### Choosing and interpreting components
 
-### Competencies
+- Drawing/interpreting a scree plot and motivating the number retained using
+  the plot and explained variance.
+- Reading the scores, loadings, standard deviations and explained variance in
+  the output shown in the slides.
 
-You should be able to:
+I keep this section relatively simple. Use `Week Six > Principal Component
+Analysis > Calculation and Application`, including its `Questions`
+subsection, as the difficulty guide. These questions need no code, indicate
+roughly the upper difficulty expected, and exam questions will be quite
+similar. The **`Deeper Understanding` section is excluded**.
 
-- explain sampling with replacement and construct a bootstrap sample;
-- distinguish a data distribution from a statistic's sampling distribution;
-- describe the bootstrap algorithm in words, notation and R;
-- estimate a bootstrap standard error;
-- calculate or interpret percentile, bootstrap-standard-error and bootstrap-$t$
-  intervals;
-- identify which interval methods allow asymmetry;
-- explain when a bootstrap method may improve on a theoretical approximation;
-- identify settings in which a naive bootstrap would be unreliable.
+Bootstrapping remains excluded even though its resources are still available.
 
-## Principal components analysis
+## Content
 
-### Content
+1. `SlidesRegW6S2PCA.pdf`.
+2. Relevant parts of `FactsRegW6S2PCA.html`, subject to the exclusion above.
 
-- Purposes of PCA:
-  - dimensionality reduction;
-  - visualisation;
-  - pattern recognition;
-  - noise reduction;
-  - reducing collinearity among derived explanatory variables.
-- Centring and, where appropriate, standardising the original variables.
-- Covariance-matrix versus correlation-matrix PCA.
-- Definition of a principal component as a linear combination of the original
-  variables.
-- Loading vectors and the unit-length constraint.
-- Principal-component scores.
-- Variance-maximising objective and orthogonality constraints.
-- Eigenvectors of the covariance matrix as loading vectors.
-- Eigenvalues as component variances.
-- Ordering of components and why components are uncorrelated.
-- Total variance and proportion of variance explained:
+## Practice material
 
-  $$
-  \operatorname{PVE}_j
-  =\frac{\lambda_j}{\sum_{r=1}^p\lambda_r},
-  \qquad
-  \operatorname{CPVE}_m
-  =\frac{\sum_{j=1}^m\lambda_j}{\sum_{r=1}^p\lambda_r}.
-  $$
-
-- Choosing the number of components:
-  - scree plot and elbow;
-  - cumulative proportion of variance explained;
-  - interpretability and the aim of the analysis.
-- Interpreting loadings:
-  - magnitude;
-  - sign;
-  - contrasts and shared patterns among variables;
-  - arbitrary reversal of a component's sign.
-- Consequences of a covariance matrix that is not full rank.
-- Regression using principal-component scores and the resulting coefficient
-  correlations.
-- Costs and limitations:
-  - information loss;
-  - difficult interpretation;
-  - sensitivity to scale;
-  - high variance need not mean high relevance to a response.
-- Reading and interpreting the main output of `prcomp()`.
-
-### Competencies
-
-You should be able to:
-
-- explain why PCA is used and when standardisation is necessary;
-- calculate a covariance matrix and its eigendecomposition;
-- identify the loading vector and variance of each component;
-- calculate principal-component scores for specified observations;
-- prove or explain why component variances are eigenvalues and components are
-  uncorrelated;
-- calculate total, individual and cumulative proportions of variance
-  explained;
-- draw and interpret a scree plot;
-- motivate the number of components retained using more than one criterion;
-- interpret a component from its loadings while recognising sign ambiguity;
-- explain the effect of rank deficiency;
-- relate PCA to regression with correlated explanatory variables;
-- critique the claim that the last components are necessarily irrelevant.
-
-## Sources
-
-- [Bootstrap slides](../w6/SlidesRegW6S1Boot.qmd)
-- [Bootstrap facts](../w6/FactsRegW6S1Boot.qmd)
-- [PCA slides](../w6/SlidesRegW6S2PCA.qmd)
-- [PCA facts](../w6/FactsRegW6S2PCA.qmd)
-
-## Practice and assessment emphasis
-
-- [Question bank: Week Six](../question_bank/QuestionBankRegQuestions.qmd)
-  - sampling with replacement and the purpose of bootstrapping;
-  - limitations of traditional intervals;
-  - asymmetric bootstrap intervals;
-  - PCA scores, loadings, eigenvalues and explained variance;
-  - scree plots, component interpretation, scaling and rank;
-  - conceptual links between PCA and regression.
-
-# Statistical computing and applied analysis
-
-The practical strand is cumulative. A later assessment may require earlier R
-and data-analysis skills even when its statistical topic comes from a later
-week.
-
-| Practical stage | Competencies |
-|---|---|
-| Data preparation and exploration | Load and inspect data; calculate summaries; distinguish numerical, nominal and ordinal variables; create histograms, densities, boxplots, scatterplots and pairwise plots; identify skewness, outliers and possible collinearity. |
-| Model formulation and fitting | Simulate data; create factors with appropriate levels; construct model and design matrices; fit simple, multiple, categorical, transformed and interaction models; calculate OLS estimates manually. |
-| Inference | Extract model components; calculate standard errors, confidence intervals, p-values and nested-model tests; distinguish individual and simultaneous hypotheses. |
-| Programming foundations | Work with vectors and matrices; write `for` loops; use conditions and `if`, `else` and `ifelse`; distinguish scalar and element-wise logical operators; write and debug functions. |
-| Simulation | Estimate coverage and power; keep fixed and random quantities distinct; repeat an analysis reproducibly; summarise and plot simulation results. |
-| Model assessment | Calculate ANOVA components; obtain fitted values and residual diagnostics; identify outliers, leverage and influence; compare training and test performance. |
-| Communication | State the analytical goal; justify model choices; interpret effects in context; report uncertainty; distinguish statistical from practical importance; present reproducible code and clear tables and figures. |
-
-The [previous practicals](../_reference/eval/2025/) and
-[previous assignment](../_reference/eval/2025/AssignmentRegQuestions.qmd)
-show how these competencies can be combined in longer applied questions.
-
-# Final revision checklist
-
-Before an assessment, check that you can do each of the following without
-depending on a memorised example:
-
-- translate a substantive question into a model and one or more hypotheses;
-- construct the relevant design row, contrast vector or contrast matrix;
-- calculate an estimate, standard error, interval or test statistic;
-- state the assumptions behind the calculation;
-- interpret the result in the units and context of the problem;
-- identify what the result does not establish;
-- use diagnostic evidence to assess the model;
-- connect the mathematics to the corresponding R output;
-- reproduce the required proofs and adapt the underlying results to a new
-  derivation.
-
--->
+- Question bank: `Week Six > Principal Component Analysis > Calculation and
+  Application`.

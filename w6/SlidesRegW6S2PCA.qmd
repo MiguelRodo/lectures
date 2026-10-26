@@ -1,7 +1,7 @@
 ---
 title: Principal component analysis
 author: Miguel Rodo
-bibliography: zotero.bib
+bibliography: ../zotero.bib
 format:
   beamer:
     embed-resources: true
@@ -10,7 +10,7 @@ format:
     linkcolor: blue
     filecolor: magenta
     include-in-header:
-      file: preamble.tex
+      file: ../preamble.tex
 nocite: |
     @johnson_wichern07
 ---
@@ -20,7 +20,7 @@ nocite: |
 library(tibble)
 library(ggplot2)
 library(DataTidy23RodoHonsMult)
-for (x in list.files("R", full.names = TRUE)) {
+for (x in list.files("../R", full.names = TRUE)) {
   source(x)
 }
 ```
