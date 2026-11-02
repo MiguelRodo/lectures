@@ -1,0 +1,11 @@
+{
+  "image": "ghcr.io/miguelrodo/devcontainers-main:v1.12.1",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "quarto.quarto",
+        "mathematic.vscode-pdf"
+      ]
+    }
+  }
+}

@@ -1,12 +1,12 @@
-# Lecture material
+# Slides for the assistant lecturer interview
 
-This repository is for generating lecture material for the course specified by `<year>-<course>` in the branch name.
+This repository is to generate slides for the assistant lecturer interview.
 
 ## Contact
 
 For more information, please contact:
-- Miguel J. Rodo:
-  - miguel.rodo@uct.ac.za
+
+- Miguel J. Rodo: miguel.rodo@uct.ac.za
 
 ## Links
 
@@ -15,4 +15,3 @@ For more information, please contact:
 ## Details
 
 [Methods, timeline, team, data sources, software/tools, etc.]
-
