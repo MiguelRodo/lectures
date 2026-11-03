@@ -1,0 +1,18 @@
+Package: Slides26RodoALInterview
+Title: Slides for the 2026 Assistant Lecturer Interview
+Version: 0.2.0-1
+Authors@R: person("Miguel", "Rodo", , "miguel.rodo@uct.ac.za", role =
+        c("aut", "cre"))
+Maintainer: Miguel Rodo <miguel.rodo@uct.ac.za>
+Description: Teaching-demonstration slides introducing multiple linear
+        regression, for the 2026 assistant lecturer interview in the
+        Department of Statistical Sciences, University of Cape Town.
+        The slides follow on from simple linear regression in STA1000
+        and use simulated advertising data.
+License: CC BY 4.0
+URL: https://github.com/MiguelRodo/lectures
+BugReports: https://github.com/MiguelRodo/lectures/issues
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports: cowplot, ggplot2, knitr, projr, quarto, rmarkdown, tibble
+Remotes: SATVILab/projr

@@ -1,0 +1,632 @@
+---
+title: Introduction to Multiple Linear Regression
+subtitle: From one predictor to many
+author: Miguel Rodo
+institute: University of Cape Town
+date: 3 November 2026
+format:
+  beamer:
+    aspectratio: 169
+    fontsize: 11pt
+    pdf-engine: pdflatex
+    slide-level: 1
+    keep-tex: true
+    embed-resources: true
+    include-in-header:
+    - text: |
+        \usepackage{xcolor}
+        \usepackage{xfrac}
+        \usepackage{amssymb} % For additional symbols
+        \usepackage{caption}
+        % Definitions for all colors used in the presentation
+        \definecolor{balancedOrange}{RGB}{255,216,180}
+        \definecolor{secondaryOrange}{RGB}{251,188,5}
+        \definecolor{softBlue}{RGB}{100,124,156}
+        \definecolor{titleColor}{RGB}{0,51,102}
+        \definecolor{accentColor}{RGB}{112,173,71}
+
+            % Applying colors to Beamer elements
+            \setbeamercolor{palette primary}{bg=balancedOrange,fg=titleColor}
+            \setbeamercolor{palette secondary}{bg=secondaryOrange,fg=white}
+            \setbeamercolor{palette tertiary}{bg=softBlue,fg=white}
+            \setbeamercolor{titlelike}{parent=palette primary, fg=titleColor}
+            \setbeamercolor{structure}{fg=softBlue}
+            \setbeamercolor{block title}{bg=balancedOrange,fg=titleColor}
+            \setbeamercolor{block body}{bg=balancedOrange!10,fg=black}
+
+        % Customizing bullet points to a smaller sideways triangle and adjusting vertical position
+        \setbeamertemplate{itemize item}{\raisebox{1.5pt}{\scalebox{0.6}{$\blacktriangleright$}}}
+        \setbeamertemplate{itemize subitem}{\raisebox{1.3pt}{\scalebox{0.5}{$\blacktriangleright$}}}
+        \setbeamertemplate{itemize subsubitem}{\raisebox{1.1pt}{\scalebox{0.4}{$\blacktriangleright$}}}
+
+        % Suppressing the footline on the title slide
+        \setbeamertemplate{footline}{
+            \ifnum\insertpagenumber=1
+            \else
+                \hfill\insertframenumber/\inserttotalframenumber\hspace*{1em}\vspace*{1em}
+            \fi
+        }
+        \setbeamertemplate{navigation symbols}{}
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| include: false
+library(ggplot2)
+knitr::opts_chunk$set(fig.align = "center", dev = "pdf")
+
+# Simulated advertising data (as in STA2005S W3/W4):
+# radio spend is correlated with TV spend, but revenue depends on TV only.
+set.seed(201)
+ad_tbl <- tibble::tibble(
+  spend_radio = runif(100, 0, 3)
+)
+ad_tbl$spend_tv <- 1.2 * ad_tbl$spend_radio + runif(100, 0, 3)
+ad_tbl$revenue <- 10 + 2 * ad_tbl$spend_tv + rnorm(100, sd = 2)
+
+fit_tv <- lm(revenue ~ spend_tv, data = ad_tbl)
+fit_radio <- lm(revenue ~ spend_radio, data = ad_tbl)
+fit_both <- lm(revenue ~ spend_tv + spend_radio, data = ad_tbl)
+
+fmt <- function(x, digits = 2) formatC(x, format = "f", digits = digits)
+fmt_p <- function(p) if (p < 0.001) "<0.001" else paste0("=", fmt(p, 2))
+r2 <- function(fit) summary(fit)$r.squared
+coef_row <- function(fit, term) summary(fit)$coefficients[term, ]
+
+r_tv <- cor(ad_tbl$spend_tv, ad_tbl$revenue)
+r_tv_radio <- cor(ad_tbl$spend_tv, ad_tbl$spend_radio)
+b_tv <- coef(fit_tv)
+
+col_point <- "#a6cee3"
+col_line <- "#003366"
+col_accent <- "#e6550d"
+col_simple <- "#fc8d62"
+col_multiple <- "#66c2a5"
+col_est <- "#7b3294"
+col_pred <- "#b8860b"
+
+theme_slide <- function(font_size = 18) {
+  cowplot::theme_cowplot(font_size = font_size) +
+    theme(
+      plot.background = element_rect(fill = "white", colour = NA),
+      panel.background = element_rect(fill = "white", colour = NA)
+    )
+}
+lab_tv <- "TV spend"
+lab_radio <- "Radio spend"
+lab_rev <- "Revenue"
+```
+
+# Correlation summarises the strength of a relationship
+
+::::{.columns}
+
+:::{.column width=55%}
+
+```{r}
+#| fig-width: 4.6
+#| fig-height: 3.6
+#| out-width: "100%"
+ggplot(ad_tbl, aes(spend_tv, revenue)) +
+  geom_point(col = col_point, size = 2) +
+  annotate("text", x = min(ad_tbl$spend_tv), y = max(ad_tbl$revenue),
+           hjust = 0, vjust = 1, label = paste0("r = ", fmt(r_tv)), size = 6.5) +
+  labs(x = lab_tv, y = lab_rev) +
+  theme_slide()
+```
+
+:::
+
+:::{.column width=45%}
+
+- Advertising spend and revenue across 100 markets
+
+- Correlation coefficient formula:
+$$
+r=\frac{\sum_{i=1}^n(x_i-\bar x)(y_i-\bar y)}
+{\sqrt{\sum_{i=1}^n(x_i-\bar x)^2\sum_{i=1}^n(y_i-\bar y)^2}}
+$$
+
+
+:::
+
+::::
+
+# Simple linear regression describes the relationship with a line
+
+::::{.columns}
+
+:::{.column width=55%}
+
+```{r}
+#| fig-width: 4.6
+#| fig-height: 3.6
+#| out-width: "100%"
+ggplot(ad_tbl, aes(spend_tv, revenue)) +
+  geom_point(col = col_point, size = 2) +
+  geom_abline(intercept = b_tv[1], slope = b_tv[2], col = col_simple, linewidth = 1.5) +
+  labs(x = lab_tv, y = lab_rev) +
+  theme_slide()
+```
+
+:::
+
+:::{.column width=45%}
+
+\begin{block}{Model}
+\centering
+$Y=\beta_0+\beta_1X+e,\qquad e\sim N(0,\sigma^2)$
+\end{block}
+
+- $\beta_0$: mean of $Y$ when $X=0$
+- $\beta_1$: change in the mean of $Y$ for a one-unit increase in $X$
+- Fitted line: $\hat{y} = 10.22 + 1.98 x_{\mathrm{TV}}$
+
+:::
+
+::::
+
+# Multiple linear regression uses several predictors at once
+
+Use **multiple** explanatory variables to model one response:
+
+$$
+Y=\beta_0+\beta_1X_1+\beta_2X_2+\cdots+\beta_pX_p+e,
+\qquad
+e\sim N(0,\sigma^2)
+$$
+
+*Example*: Revenue against TV **and** radio spend:
+
+$$
+Y_{\mathrm{Rev}}=\beta_0+\beta_{\mathrm{TV}}X_{\mathrm{TV}}+\beta_{\mathrm{R}}X_{\mathrm{R}}+e
+$$
+
+Why care?
+
+- Isolate effects of individual variables
+- Greater predictive ability
+
+
+```{r}
+est_tbl <- rbind(
+  data.frame(term = "TV", model = "Simple", t(coef_row(fit_tv, "spend_tv")),
+             t(confint(fit_tv)["spend_tv", ]), check.names = FALSE),
+  data.frame(term = "TV", model = "Multiple", t(coef_row(fit_both, "spend_tv")),
+             t(confint(fit_both)["spend_tv", ]), check.names = FALSE),
+  data.frame(term = "Radio", model = "Simple", t(coef_row(fit_radio, "spend_radio")),
+             t(confint(fit_radio)["spend_radio", ]), check.names = FALSE),
+  data.frame(term = "Radio", model = "Multiple", t(coef_row(fit_both, "spend_radio")),
+             t(confint(fit_both)["spend_radio", ]), check.names = FALSE)
+)
+names(est_tbl) <- c("term", "model", "est", "se", "t", "p", "lwr", "upr")
+est_tbl$term <- factor(est_tbl$term, levels = c("Radio", "TV"))
+est_tbl$model <- factor(est_tbl$model, levels = c("Multiple", "Simple"))
+est_radio_s <- est_tbl[est_tbl$term == "Radio" & est_tbl$model == "Simple", ]
+est_radio_m <- est_tbl[est_tbl$term == "Radio" & est_tbl$model == "Multiple", ]
+est_tv_s <- est_tbl[est_tbl$term == "TV" & est_tbl$model == "Simple", ]
+est_tv_m <- est_tbl[est_tbl$term == "TV" & est_tbl$model == "Multiple", ]
+```
+
+```{r}
+plot_simple <- function(xvar, xlab, fit) {
+  ggplot(ad_tbl, aes(.data[[xvar]], revenue)) +
+    geom_point(col = col_point, size = 1.8) +
+    geom_abline(intercept = coef(fit)[1], slope = coef(fit)[2],
+                col = col_simple, linewidth = 1.65) +
+    labs(x = xlab, y = lab_rev) +
+    theme_slide(font_size = 17)
+}
+ci_txt <- function(row) paste0("$", fmt(row$lwr), "$ to $", fmt(row$upr), "$")
+```
+
+# On their own, TV and radio both look related to revenue
+
+::::{.columns}
+
+:::{.column width=50%}
+
+```{r}
+#| fig-width: 4.2
+#| fig-height: 2.3
+#| out-width: "85%"
+plot_simple("spend_tv", lab_tv, fit_tv)
+```
+
+\centering
+$\hat\beta_{\mathrm{TV}}=`r fmt(est_tv_s$est)`$ (95% CI: `r ci_txt(est_tv_s)`)
+
+:::
+
+:::{.column width=50%}
+
+```{r}
+#| fig-width: 4.2
+#| fig-height: 2.3
+#| out-width: "85%"
+plot_simple("spend_radio", lab_radio, fit_radio)
+```
+
+\centering
+$\hat\beta_{\mathrm{R}}=`r fmt(est_radio_s$est)`$ (95% CI: `r ci_txt(est_radio_s)`)
+
+:::
+
+::::
+
+\begin{block}{Your turn: what happens when we put both in one model?}
+\centering
+$Y_{\mathrm{Rev}}=\beta_0+\beta_{\mathrm{TV}}X_{\mathrm{TV}}+\beta_{\mathrm{R}}X_{\mathrm{R}}+e$
+\end{block}
+
+\pause
+
+\centering
+$\hat\beta_{\mathrm{TV}}=`r fmt(est_tv_m$est)`$ (95% CI: `r ci_txt(est_tv_m)`),
+\qquad
+$\hat\beta_{\mathrm{R}}=`r fmt(est_radio_m$est)`$ (95% CI: `r ci_txt(est_radio_m)`)
+
+# Radio looked useful only because it travels with TV
+
+::::{.columns}
+
+:::{.column width=42%}
+
+```{r}
+#| fig-width: 3.6
+#| fig-height: 2.3
+#| out-width: "95%"
+ggplot(ad_tbl, aes(spend_radio, spend_tv)) +
+  geom_point(col = col_point, size = 1.8) +
+  annotate("text", x = 0, y = max(ad_tbl$spend_tv), hjust = 0, vjust = 1,
+           label = paste0("r = ", fmt(r_tv_radio)), size = 6) +
+  labs(x = lab_radio, y = lab_tv) +
+  theme_slide(font_size = 17)
+```
+
+:::
+
+:::{.column width=58%}
+
+```{r}
+#| fig-width: 4.9
+#| fig-height: 2.3
+#| out-width: "95%"
+ggplot(ad_tbl, aes(spend_radio, revenue, size = spend_tv, col = spend_tv)) +
+  geom_point(alpha = 0.8) +
+  geom_abline(intercept = coef(fit_radio)[1], slope = coef(fit_radio)[2],
+              col = col_simple, linewidth = 1.5) +
+  scale_size_continuous(range = c(0.8, 5), name = lab_tv) +
+  scale_colour_gradient(low = "#c6dbef", high = col_line, name = lab_tv) +
+  guides(size = guide_legend(), colour = guide_legend()) +
+  labs(x = lab_radio, y = lab_rev) +
+  theme_slide(font_size = 17)
+```
+
+:::
+
+::::
+
+\begin{block}{The key change in interpretation}
+\small
+\begin{itemize}
+\item \emph{Simple}: $\beta_{\mathrm{R}}$ is the change in mean revenue for a one-unit increase in radio spend
+\item \emph{Multiple}: $\beta_{\mathrm{R}}$ is the change in mean revenue for a one-unit increase in radio spend, \textbf{holding TV spend fixed}
+\end{itemize}
+\end{block}
+
+
+# Is radio related to revenue once TV is accounted for?
+
+```{r}
+t_s <- est_radio_s$t
+t_m <- est_radio_m$t
+df_s <- df.residual(fit_radio)
+df_m <- df.residual(fit_both)
+t_lim <- max(4, ceiling(abs(t_s)) + 1)
+t_grid <- data.frame(t = seq(-t_lim, t_lim, length.out = 400))
+t_grid$dens <- dt(t_grid$t, df = df_m)
+crit <- qt(0.975, df = df_m)
+p_null <- ggplot(t_grid, aes(t, dens)) +
+  geom_area(data = subset(t_grid, t <= -crit), fill = "grey75") +
+  geom_area(data = subset(t_grid, t >= crit), fill = "grey75") +
+  geom_line(linewidth = 0.9) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 0.45)) +
+  labs(x = "t statistic for radio", y = expression("Density under " * H[0])) +
+  theme_slide(font_size = 17) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+```
+
+::::{.columns}
+
+:::{.column width=55%}
+
+```{r}
+#| fig-width: 4.8
+#| fig-height: 3.3
+#| out-width: "100%"
+p_null
+```
+
+:::
+
+:::{.column width=45%}
+
+- Hypotheses:
+$$
+H_0:\beta_{\mathrm{R}}=0
+\quad\text{vs}\quad
+H_1:\beta_{\mathrm{R}}\neq0
+$$
+
+- Test statistic:
+$$
+t=\frac{\hat\beta_{\mathrm{R}}}{SE(\hat\beta_{\mathrm{R}})}
+$$
+
+:::
+
+::::
+
+# Radio is significant alone, but not once TV is accounted for
+
+::::{.columns}
+
+:::{.column width=55%}
+
+```{r}
+#| fig-width: 4.8
+#| fig-height: 3.3
+#| out-width: "100%"
+p_null +
+  geom_vline(xintercept = t_s, col = col_simple, linewidth = 1.1) +
+  geom_vline(xintercept = t_m, col = col_multiple, linewidth = 1.1) +
+  annotate("text", x = t_s, y = 0.38, label = "Simple", col = col_simple,
+           hjust = 1.1, size = 5.5) +
+  annotate("text", x = t_m, y = 0.42, label = "Multiple", col = col_multiple,
+           hjust = -0.1, size = 5.5)
+```
+
+:::
+
+:::{.column width=45%}
+
+- Simple: $t=`r fmt(t_s)`$, $p`r fmt_p(est_radio_s$p)`$
+  - Reject $H_0$
+
+- Multiple: $t=`r fmt(t_m)`$, $p`r fmt_p(est_radio_m$p)`$
+  - Do not reject $H_0$
+
+- Same test as in first year; the question changes: is radio related to revenue **once TV is accounted for**?
+
+:::
+
+
+::::
+
+# $R^2$ captures how well our model explains the response
+
+```{r}
+y_rev <- ad_tbl$revenue
+var_y <- var(y_rev)
+y_lim <- range(y_rev)
+lab_y <- expression("Revenue (" * Y * ")")
+lab_yhat <- expression("Predicted revenue (" * hat(Y) * ")")
+fig_dir <- knitr::opts_chunk$get("fig.path")
+save_fig <- function(p, name, width = 4.6, height = 3.7) {
+  f <- paste0(fig_dir, name, ".pdf")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  ggsave(f, p, width = width, height = height)
+  f
+}
+
+# Simulated predictors with a chosen correlation with revenue:
+# X1 is only slightly related, X2 more strongly than TV spend
+sim_x <- function(r, seed) {
+  set.seed(seed)
+  z_rev <- as.numeric(scale(y_rev))
+  x <- r * z_rev + sqrt(1 - r^2) * rnorm(length(y_rev))
+  3 * (x - min(x)) / diff(range(x))
+}
+x_weak <- sim_x(0.15, 7)
+x_strong <- sim_x(0.87, 7)
+fit_weak <- lm(y_rev ~ x_weak)
+fit_strong <- lm(y_rev ~ x_strong)
+lab_weak <- expression(X[1] * " (simulated)")
+lab_strong <- expression(X[2] * " (simulated)")
+
+r2_scatter <- function(x, fit, xlab, show_fit) {
+  d <- data.frame(x = x, y = y_rev, yhat = fitted(fit))
+  p <- ggplot(d, aes(x, y))
+  if (show_fit) {
+    p <- p + geom_segment(aes(xend = x, yend = yhat), col = "grey75", linewidth = 0.3)
+  }
+  p <- p +
+    geom_point(col = col_point, size = 1.3) +
+    annotate("text", x = min(x), y = max(y_rev), hjust = 0, vjust = 1, size = 4.3,
+             label = paste0("Var(Y)~'='~'", fmt(var_y), "'"), parse = TRUE) +
+    labs(x = xlab, y = expression(Y)) +
+    theme_slide(font_size = 13)
+  if (show_fit) {
+    p <- p + geom_abline(intercept = coef(fit)[1], slope = coef(fit)[2],
+                         col = col_simple, linewidth = 1.5)
+  }
+  p
+}
+
+hist_breaks <- seq(floor(y_lim[1]), ceiling(y_lim[2]), by = 1)
+r2_hist <- function(fit) {
+  ggplot(data.frame(yhat = fitted(fit)), aes(yhat)) +
+    geom_histogram(breaks = hist_breaks, fill = col_simple, col = "white", alpha = 0.8) +
+    annotate("text", x = y_lim[1], y = Inf, hjust = 0, vjust = 1.3, size = 4.3,
+             label = paste0("Var(hat(Y))~'='~'", fmt(var(fitted(fit))), "'"), parse = TRUE) +
+    coord_cartesian(xlim = range(hist_breaks)) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.45))) +
+    labs(x = expression(hat(Y)), y = "Count") +
+    theme_slide(font_size = 13)
+}
+
+r2_txt <- function(fit) {
+  v_hat <- var(fitted(fit))
+  paste0("$R^2=", fmt(v_hat), "/", fmt(var_y), "=", fmt(v_hat / var_y), "$")
+}
+
+fig_w <- 3.3
+fig_h <- 3.7
+f_r2_left_1 <- save_fig(
+  cowplot::plot_grid(r2_scatter(x_weak, fit_weak, lab_weak, FALSE),
+                     NULL, ncol = 1, align = "v"),
+  "r2-left-1", width = fig_w, height = fig_h
+)
+f_r2_left_2 <- save_fig(
+  cowplot::plot_grid(r2_scatter(x_weak, fit_weak, lab_weak, TRUE),
+                     r2_hist(fit_weak), ncol = 1, align = "v"),
+  "r2-left-2", width = fig_w, height = fig_h
+)
+f_r2_right <- save_fig(
+  cowplot::plot_grid(r2_scatter(x_strong, fit_strong, lab_strong, TRUE),
+                     r2_hist(fit_strong), ncol = 1, align = "v"),
+  "r2-right", width = fig_w, height = fig_h
+)
+```
+
+\centering
+$R^2=\dfrac{\text{Explained variation}}{\text{Total variation}}=\dfrac{\mathrm{Var}(\hat Y)}{\mathrm{Var}(Y)};\qquad \hat Y=\hat\beta_0+\hat\beta_1X$
+
+::::{.columns}
+
+:::{.column width=48%}
+
+\centering
+\only<1>{\includegraphics[height=5.2cm]{`r f_r2_left_1`}}\only<2->{\includegraphics[height=5.2cm]{`r f_r2_left_2`}}
+
+\visible<2->{`r r2_txt(fit_weak)`}
+
+:::
+
+:::{.column width=48%}
+
+\centering
+\visible<3>{\includegraphics[height=5.2cm]{`r f_r2_right`}}
+
+\visible<3>{`r r2_txt(fit_strong)`}
+
+:::
+
+::::
+
+# $R^2$ is the squared correlation between the response and the fitted values
+
+```{r}
+rev_breaks <- seq(8, 24, by = 4)
+cor_panel <- function(x, fit, xlab) {
+  d <- data.frame(x = x, y = y_rev, yhat = fitted(fit))
+  r <- cor(d$y, d$yhat)
+  top <- ggplot(d, aes(x, y)) +
+    geom_point(col = col_point, size = 1.3) +
+    geom_abline(intercept = coef(fit)[1], slope = coef(fit)[2],
+                col = col_simple, linewidth = 1.5) +
+    labs(x = xlab, y = expression(Y)) +
+    theme_slide(font_size = 13)
+  bottom <- ggplot(d, aes(yhat, y)) +
+    geom_point(col = col_point, size = 1.3) +
+    annotate("text", x = y_lim[1], y = y_lim[2], hjust = 0, vjust = 1, size = 4.3,
+             label = paste0("r~'='~'", fmt(r), "'*','~~r^2~'='~'", fmt(r^2), "'"),
+             parse = TRUE) +
+    scale_x_continuous(breaks = rev_breaks) +
+    scale_y_continuous(breaks = rev_breaks) +
+    coord_cartesian(xlim = y_lim, ylim = y_lim) +
+    labs(x = expression(hat(Y)), y = expression(Y)) +
+    theme_slide(font_size = 13)
+  cowplot::plot_grid(top, bottom, ncol = 1, align = "v")
+}
+```
+
+\centering
+$R^2=\mathrm{cor}(Y,\hat Y)^2$
+
+::::{.columns}
+
+:::{.column width=48%}
+
+```{r}
+#| fig-width: 3.4
+#| fig-height: 4.2
+#| out-width: "74%"
+cor_panel(x_weak, fit_weak, lab_weak)
+```
+
+:::
+
+:::{.column width=48%}
+
+```{r}
+#| fig-width: 3.4
+#| fig-height: 4.2
+#| out-width: "74%"
+cor_panel(x_strong, fit_strong, lab_strong)
+```
+
+:::
+
+::::
+
+# Adding TV to radio doubles $R^2$
+
+```{r}
+pred_tbl <- rbind(
+  data.frame(model = "Radio only", observed = ad_tbl$revenue, predicted = fitted(fit_radio)),
+  data.frame(model = "TV and radio", observed = ad_tbl$revenue, predicted = fitted(fit_both))
+)
+pred_tbl$model <- factor(pred_tbl$model, levels = c("Radio only", "TV and radio"))
+r2_labs <- c(
+  "Radio only" = paste0("Radio only\nR\u00b2 = ", fmt(r2(fit_radio))),
+  "TV and radio" = paste0("TV and radio\nR\u00b2 = ", fmt(r2(fit_both)))
+)
+```
+
+```{r}
+#| fig-width: 6.4
+#| fig-height: 3.1
+#| out-width: "78%"
+ggplot(pred_tbl, aes(predicted, observed, col = model)) +
+  geom_abline(intercept = 0, slope = 1, col = "grey40", linetype = 2) +
+  geom_point(size = 1.6) +
+  facet_wrap(~model, labeller = as_labeller(r2_labs)) +
+  scale_colour_manual(values = c(col_simple, col_multiple)) +
+  scale_x_continuous(breaks = c(12, 16, 20)) +
+  labs(x = lab_yhat, y = lab_y) +
+  theme_slide(font_size = 16) +
+  theme(legend.position = "none", strip.background = element_rect(fill = "grey92"))
+```
+
+- Prediction is the same idea: $\hat y=\hat\beta_0+\hat\beta_{\mathrm{TV}}\text{TV}+\hat\beta_{\mathrm{R}}\text{Radio}$ is our best (unbiased) prediction of the mean
+- Adding a useful predictor (TV) raises $R^2$ and pulls predictions closer to observations
+
+# Almost everything carries over from simple to multiple regression
+
+\small
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{@{}p{0.15\linewidth}p{0.37\linewidth}p{0.44\linewidth}@{}}
+ & \textbf{Simple} & \textbf{Multiple} \\
+\hline
+Model & $Y=\beta_0+\beta_1X+e$, \newline $e\sim N(0,\sigma^2)$ & $Y=\beta_0+\beta_1X_1+\dots+\beta_pX_p+e$, \newline $e\sim N(0,\sigma^2)$ \\
+Interpretation & $\beta_1$: change in mean $Y$ for a one-unit increase in $X$ & $\beta_j$: change in mean $Y$ for a one-unit increase in $X_j$, \textbf{holding the other predictors fixed} \\
+Hypothesis test & $H_0:\beta_1=0$ vs $H_1:\beta_1\neq0$ \newline $t=\hat\beta_1/SE(\hat\beta_1)\sim t_{n-2}$ & $H_0:\beta_j=0$ vs $H_1:\beta_j\neq0$ \newline $t=\hat\beta_j/SE(\hat\beta_j)\sim t_{n-p-1}$ \\
+Fitted values & $\hat Y=\hat\beta_0+\hat\beta_1X$ & $\hat Y=\hat\beta_0+\hat\beta_1X_1+\dots+\hat\beta_pX_p$ \\
+$R^2$ & $\dfrac{\text{Explained variation}}{\text{Total variation}}=\mathrm{cor}(Y,\hat Y)^2$ & $\dfrac{\text{Explained variation}}{\text{Total variation}}=\mathrm{cor}(Y,\hat Y)^2$ \\
+\end{tabular}
+
+# Multiple regression isolates individual effects and predicts better
+
+Multiple linear regression lets us:
+
+- **Isolate the effects of individual variables**
+  - Each coefficient describes one variable, holding the others fixed
+  - Radio seemed to matter alone, but not once TV was accounted for
+
+- **Strengthen predictive power**
+  - More useful predictors $\Rightarrow$ higher $R^2$ and better predictions

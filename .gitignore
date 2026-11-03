@@ -1,0 +1,13 @@
+/.quarto/
+**/*.quarto_ipynb
+# Start of projr section: do not edit by hand (update with projr_ignore_auto())
+_references/**
+_tmp/**
+_output/**
+docs/**
+IntroductionMultipleLinearRegression.tex
+.quarto/**
+IntroductionMultipleLinearRegression_files/**
+IntroductionMultipleLinearRegression.pdf/**
+# End of projr section
+

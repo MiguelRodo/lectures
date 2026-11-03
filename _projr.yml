@@ -1,0 +1,15 @@
+directories:
+  raw-docs:
+    path: _references
+  cache:
+    path: _tmp
+  output:
+    path: _output
+  docs:
+    path: docs
+build:
+  git: no
+  scripts: IntroductionMultipleLinearRegression.qmd
+dev:
+  scripts: IntroductionMultipleLinearRegression.qmd
+

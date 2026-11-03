@@ -1,0 +1,34 @@
+^_raw_data/
+^_raw_data$
+^_tmp/
+^_tmp$
+^_output/
+^_output$
+^docs/
+^docs$
+
+# Start of projr section: do not edit by hand (update with projr_ignore_auto())
+^_references/
+^_references$
+^_tmp/
+^_tmp$
+^_output/
+^_output$
+^docs/
+^docs$
+^_projr\.yml$
+^IntroductionMultipleLinearRegression\.qmd$
+^IntroductionMultipleLinearRegression\.tex$
+^BUILDLOG\.md$
+^CHANGELOG\.md$
+^manifest\.csv$
+^\.quarto/
+^\.quarto$
+^\.devcontainer/
+^\.devcontainer$
+^IntroductionMultipleLinearRegression_files/
+^IntroductionMultipleLinearRegression_files$
+^IntroductionMultipleLinearRegression\.pdf/
+^IntroductionMultipleLinearRegression\.pdf$
+# End of projr section
+
