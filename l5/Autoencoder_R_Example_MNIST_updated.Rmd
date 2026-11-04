@@ -1,0 +1,111 @@
+---
+title: "Autoencoder Tutorial"
+author: "Juwa"
+date: "06/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE
+)
+
+library(ggplot2)
+library(keras3)
+library(scatterplot3d)
+
+set_random_seed(5077)
+```
+
+# PCA versus an autoencoder
+
+This example compares PCA and an autoencoder for dimensionality reduction. We use the following libraries:
+
+- `keras3`, for fitting autoencoders and loading the MNIST dataset;
+- `ggplot2`, for two-dimensional plots; and
+- `scatterplot3d`, for three-dimensional plots.
+
+The `lle` package is no longer required.
+It was loaded only for visualisation, while the document actually uses `scatterplot3d` for the three-dimensional plots. The `h2o` package was also loaded but not used.
+
+Run the following once, outside the knitted document, if Keras has not yet been installed:
+
+```{r install-keras, eval=FALSE}
+install.packages(c("keras3", "ggplot2", "scatterplot3d"))
+keras3::install_keras(backend = "tensorflow")
+```
+
+
+
+By visualising only two principal components, we do not see all of the variation in the data. Plotting the observations in three dimensions can give a better indication of their structure, although variation represented by the remaining components is still omitted.
+
+```{r pca-3d}
+scatterplot3d(
+  x = pca$x[plot_index, 1],
+  y = pca$x[plot_index, 2],
+  z = pca$x[plot_index, 3],
+  color = as.integer(factor(y_train[plot_index])),
+  pch = 16,
+  cex.symbols = 0.35,
+  xlab = "PC1",
+  ylab = "PC2",
+  zlab = "PC3"
+)
+```
+
+The third dimension can help separate some of the digits.
+
+
+
+# Autoencoder in Keras
+
+The installation commands should not be placed inside a chunk that runs whenever the document is knitted. The document therefore assumes that `keras3` and its backend have already been installed using the installation chunk above.
+
+
+
+
+
+# Compile the model
+
+```{r autoencoder-2d-compile}
+model |>
+  compile(
+    loss = "mean_squared_error",
+    optimizer = "adam"
+  )
+```
+
+# Fit the model
+
+
+
+
+
+# Summary of the model
+
+
+# Compile the model
+
+```{r autoencoder-3d-compile}
+model3 |>
+  compile(
+    loss = "mean_squared_error",
+    optimizer = "adam"
+  )
+```
+
+# Fit the model
+
+
+
+# Evaluate the model
+
+
+# Extract the bottleneck layer
+
+
+
+
+

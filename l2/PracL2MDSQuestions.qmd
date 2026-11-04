@@ -1,0 +1,264 @@
+---
+title: "Multidimensional scaling"
+subtitle: "STA5077Z coding practical"
+author: "Miguel Rodó"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: false
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Introduction
+
+This practical uses simulated dissimilarities to examine classical, least-squares and non-metric multidimensional scaling.
+You will repair an invalid dissimilarity matrix, assess a classical MDS representation, investigate different definitions of dissimilarity, and compare what the three methods preserve.
+
+## Setup
+
+Load the required packages.
+
+```{r}
+#| label: load-mds-practical-packages
+library(MASS)
+library(tibble)
+library(dplyr)
+library(ggplot2)
+```
+
+The following code generates three groups of observations and constructs a dissimilarity matrix (`diss_mat_orig`) containing several deliberate errors.
+
+```{r}
+#| label: create-mds-practical-data
+#| echo: true
+#| eval: false
+
+set.seed(5077)
+
+pos_def <- function(n, covEvMin = 0.25, covEvMax = 0.75) {
+    # Generates a positive definite matrix of dimension n
+    # Upper and lower bounds control the range of the variance eigenvalues.
+
+    # Generate the bounded eigenvalues before matrix decomposition
+    ev <- runif(n, min = covEvMin, max = covEvMax)
+
+    if (n == 1) {
+        return(matrix(ev, 1, 1))
+    }
+
+    z <- matrix(ncol = n, rnorm(n^2))
+    decomp <- qr(z)
+    q <- qr.Q(decomp)
+    r <- qr.R(decomp)
+    d <- diag(r)
+    ph <- d / abs(d)
+
+    o <- q %*% diag(ph, nrow = n)
+    z <- t(o) %*% diag(ev, nrow = n) %*% o
+    return(z)
+}
+
+simulate_group <- function(group, mean, n = 8) {
+  simulated_values <- MASS::mvrnorm(
+    n = n,
+    mu = mean,
+    Sigma = pos_def(length(mean))
+  )
+  colnames(simulated_values) <- paste0("v", seq_len(length(mean)))
+
+  tibble(
+    label = paste0(group, seq_len(n)),
+    group = group
+  ) |>
+    dplyr::bind_cols(
+      as_tibble(simulated_values)
+    )
+}
+
+mds_observations_tbl <- bind_rows(
+  simulate_group(
+    group = "A",
+    mean = c(-2.2, -0.6, -1, -4)
+  ),
+  simulate_group(
+    group = "B",
+    mean = c(0.0, 1.8, 1, 1.5)
+  ),
+  simulate_group(
+    group = "C",
+    mean = c(2.1, -0.7, 1, 3)
+  )
+)
+
+mds_feature_mat <- mds_observations_tbl |>
+  dplyr::select(v1, v2, v3, v4) |>
+  as.matrix()
+
+rownames(mds_feature_mat) <- mds_observations_tbl$label
+
+original_euclidean_mat <- as.matrix(
+  dist(mds_feature_mat, method = "euclidean")
+)
+
+diss_mat_orig <- original_euclidean_mat
+
+diag(diss_mat_orig)[c(3, 11, 20)] <- c(
+  0.45,
+  0.80,
+  0.60
+)
+
+diss_mat_orig[2, 15] <-
+  1.15 * diss_mat_orig[2, 15]
+
+diss_mat_orig[6, 21] <-
+  diss_mat_orig[6, 21] + 0.80
+
+diss_mat_orig[10, 18] <-
+  0.75 * diss_mat_orig[10, 18]
+
+diss_mat_orig[13, 24] <-
+  diss_mat_orig[13, 24] + 0.50
+
+mds_group_key_tbl <- mds_observations_tbl |>
+  dplyr::select(label, group)
+```
+
+# Core practical
+
+## Question 1: Repair the dissimilarity matrix
+
+Identify and fix the errors in `diss_mat_orig`.
+Hint: if need be, off-diagonal elements can be averaged using 
+
+$$
+\delta_{ij}^{*}
+=
+\frac{\delta_{ij}+\delta_{ji}}{2}.
+$$
+
+```{r}
+#| label: identify-invalid-dissimilarities
+
+# Your code here
+```
+
+## Question 2: Apply and interpret classical MDS
+
+Fit a two-dimensional classical MDS representation using `cmdscale()` to your repaired distance matrix.
+
+```{r}
+#| label: fit-classical-mds
+
+# Your code here
+```
+
+Plot the coordinates, indicating group membership, which are provided by the object `mds_group_key_tbl` in the `group` column.
+The ordering of the `diss_mat_orig` and `mds_group_key_tbl` are the same, i.e. the $i$-th row of `mds_group_key_tbl` matches the $i$-th row/column of `diss_mat_orig`.
+Use equal scaling on the two axes and colour the observations by group.
+
+```{r}
+#| label: fig-classical-mds-configuration
+
+# Your code here
+```
+
+Describe the within-group and between-group relationships visible in the map.
+
+## Question 3: Choose the number of dimensions
+
+Fit classical MDS representations using one to five dimensions and calculate the relative distance error for each representation.
+Comment on the results.
+
+$$
+\text{relative distance error}
+=
+\left[
+\frac{
+\sum_{i<j}(d_{ij}-\delta_{ij})^2
+}{
+\sum_{i<j}\delta_{ij}^2
+}
+\right]^{1/2}.
+$$
+
+```{r}
+#| label: calculate-dimension-fit
+
+# Your code here
+```
+
+## Question 4: Compare fitted and input dissimilarities
+
+Plot the interpoint distances from the two-dimensional MDS fit on the y-axis against the original dissimilarities on the x-axis.
+
+```{r}
+#| label: fig-classical-mds-distance-comparison
+
+# Your code here
+```
+
+Comment on how well the two-dimensional configuration reproduces the input dissimilarities.
+
+## Question 5: Experiment with the dissimilarities
+
+### Part a
+
+Cube each of the distances in your dissimilarity matrix.
+
+Fit the following two-dimensional representations:
+
+1. classical MDS using `cmdscale()`;
+2. non-metric MDS using `MASS::isoMDS()`; and
+3. least-squares MDS minimising the following objective function:
+
+$$
+\sum_{i<j}(d_{ij}-\delta_{ij})^2/\delta_{ij}^2
+$$
+
+As some help to do the least-squares MDS:
+
+- note that your goal is to obtain $n$ pairs of 2-dimensional coordinate positions, i.e. you are trying to obtain an $n\times 2$ matrix, where each row corresponds to a single observation and the columns correspond to the x- and y-axis coordinate positions (or, equivalently, two variable values).
+- You can use the `optim` function.
+- Use the `cmdscale` coordinates as the starting values.
+- The function that you are minimising must treat the coordinates as the parameters with respect to which the objective is minimised, and should return the value of the objective function as defined above. It does not return the coordinate values themselves.
+  - You will need to use the coordinate values internally to that function to calculate the MDS interpoint distances.
+  - These need to be compared to the input dissimilarities.
+- As a check on whether you are correct, the `MASS::sammon` function optimises a somewhat similar objective function, with denominator $\delta_{ij}$ rather than $\delta_{ij}^2$.
+
+```{r}
+#| label: fit-cubed-dissimilarity-mds
+
+# Your code here
+```
+
+### Part b
+
+Assess each approach, using the following plots:
+
+1. Plot the MDS coordinates.
+2. Plot the interpoint distances against the original dissimilarities.
+3. Plot the interpoint distances against the ranks of the original dissimilarities.
+
+```{r}
+#| label: fig-compare-mds-configurations
+
+# Your code here
+```
+
+```{r}
+#| label: fig-compare-mds-distances
+
+# Your code here
+```
+
+```{r}
+#| label: fig-compare-mds-ranks
+
+# Your code here
+```
